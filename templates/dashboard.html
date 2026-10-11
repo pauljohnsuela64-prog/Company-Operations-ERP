@@ -19,7 +19,7 @@ Dashboard
         Welcome, {{ session.username }}!
     </h2>
 
-    <p class="text-muted">
+    <p class="text-muted mb-0">
         You are signed in as
         <strong>{{ session.role_name }}</strong>.
     </p>
@@ -31,15 +31,26 @@ Dashboard
 
     <div class="col-md-6 col-xl-3">
 
-        <div class="card dashboard-card shadow-sm">
+        <div class="card dashboard-card shadow-sm h-100">
 
             <div class="card-body">
 
                 <small class="text-muted">
-                    Employees
+                    Total Employees
                 </small>
 
-                <h3>0</h3>
+                <h2 class="mt-2 mb-1">
+                    {{ summary.total_employees }}
+                </h2>
+
+                {% if has_permission('employees.view') %}
+                    <a
+                        href="{{ url_for('employees') }}"
+                        class="small text-decoration-none"
+                    >
+                        View employees
+                    </a>
+                {% endif %}
 
             </div>
 
@@ -50,15 +61,21 @@ Dashboard
 
     <div class="col-md-6 col-xl-3">
 
-        <div class="card dashboard-card shadow-sm">
+        <div class="card dashboard-card shadow-sm h-100">
 
             <div class="card-body">
 
                 <small class="text-muted">
-                    Inventory Items
+                    Active Employees
                 </small>
 
-                <h3>0</h3>
+                <h2 class="mt-2 mb-1">
+                    {{ summary.active_employees }}
+                </h2>
+
+                <span class="badge text-bg-success">
+                    Active
+                </span>
 
             </div>
 
@@ -69,15 +86,21 @@ Dashboard
 
     <div class="col-md-6 col-xl-3">
 
-        <div class="card dashboard-card shadow-sm">
+        <div class="card dashboard-card shadow-sm h-100">
 
             <div class="card-body">
 
                 <small class="text-muted">
-                    Open Tickets
+                    Non-Active Employees
                 </small>
 
-                <h3>0</h3>
+                <h2 class="mt-2 mb-1">
+                    {{ summary.non_active_employees }}
+                </h2>
+
+                <small class="text-muted">
+                    Inactive, On Leave, Resigned or Terminated
+                </small>
 
             </div>
 
@@ -88,15 +111,35 @@ Dashboard
 
     <div class="col-md-6 col-xl-3">
 
-        <div class="card dashboard-card shadow-sm">
+        <div class="card dashboard-card shadow-sm h-100">
 
             <div class="card-body">
 
                 <small class="text-muted">
-                    Expenses
+                    Departments
                 </small>
 
-                <h3>₱0.00</h3>
+                <h2 class="mt-2 mb-1">
+                    {{ summary.total_departments }}
+                </h2>
+
+                <small class="text-muted">
+                    {{ summary.active_departments }}
+                    active
+                </small>
+
+                {% if has_permission('departments.view') %}
+                    <div class="mt-1">
+
+                        <a
+                            href="{{ url_for('departments') }}"
+                            class="small text-decoration-none"
+                        >
+                            View departments
+                        </a>
+
+                    </div>
+                {% endif %}
 
             </div>
 

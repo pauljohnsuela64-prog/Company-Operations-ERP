@@ -2,6 +2,9 @@ import os
 from functools import wraps
 
 from dotenv import load_dotenv
+
+from dashboard_repository import get_dashboard_summary
+
 from flask import (
     Flask,
     flash,
@@ -150,7 +153,12 @@ def login():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    return render_template("dashboard.html")
+    summary = get_dashboard_summary()
+
+    return render_template(
+        "dashboard.html",
+        summary=summary,
+    )
 
 
 @app.route("/departments")
