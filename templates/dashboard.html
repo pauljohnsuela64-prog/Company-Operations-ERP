@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Dashboard | Company Operations ERP</title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+</head>
+
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-dark">
+    <div class="container">
+
+        <span class="navbar-brand">
+            Company Operations ERP
+        </span>
+
+        <a
+            href="{{ url_for('logout') }}"
+            class="btn btn-outline-light btn-sm"
+        >
+            Logout
+        </a>
+
+    </div>
+</nav>
+
+<div class="container py-5">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="card shadow-sm">
+
+        <div class="card-body p-4">
+
+            <h2>
+                Welcome, {{ session.username }}!
+            </h2>
+
+            <p class="mb-0">
+                Role:
+                <strong>{{ session.role_name }}</strong>
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>
