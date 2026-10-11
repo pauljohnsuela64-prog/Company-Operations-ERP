@@ -22,6 +22,9 @@ from user_repository import (
 from department_repository import (
     create_department,
     get_all_departments,
+    get_department_by_id,
+    set_department_active_status,
+    update_department,
 )
 
 load_dotenv()
@@ -229,6 +232,134 @@ def add_department():
     return render_template(
         "departments/add.html",
     )
+
+@app.route(
+    "/departments/<int:department_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required("departments.manage")
+def edit_department(department_id):
+    department = get_department_by_id(department_id)
+
+    if not department:
+        flash("Department not found.", "danger")
+        return redirect(url_for("departments"))
+
+    if request.method == "POST":
+        department_code = request.form.get(
+            "department_code",
+            "",
+        ).strip().upper()
+
+        department_name = request.form.get(
+            "department_name",
+            "",
+        ).strip()
+
+        description = request.form.get(
+            "description",
+            "",
+        ).strip()
+
+        if not department_code or not department_name:
+            flash(
+                "Department code and name are required.",
+                "danger",
+            )
+
+            return render_template(
+                "departments/edit.html",
+                department=department,
+            )
+
+        if len(department_code) > 20:
+            flash(
+                "Department code must not exceed 20 characters.",
+                "danger",
+            )
+
+            return render_template(
+                "departments/edit.html",
+                department=department,
+            )
+
+        if len(department_name) > 100:
+            flash(
+                "Department name must not exceed 100 characters.",
+                "danger",
+            )
+
+            return render_template(
+                "departments/edit.html",
+                department=department,
+            )
+
+        try:
+            update_department(
+                department_id,
+                department_code,
+                department_name,
+                description or None,
+            )
+
+        except Exception as error:
+            if getattr(error, "errno", None) == 1062:
+                flash(
+                    "Department code or department name already exists.",
+                    "danger",
+                )
+
+                return render_template(
+                    "departments/edit.html",
+                    department=department,
+                )
+
+            raise
+
+        flash(
+            "Department updated successfully.",
+            "success",
+        )
+
+        return redirect(url_for("departments"))
+
+    return render_template(
+        "departments/edit.html",
+        department=department,
+    )
+
+
+@app.route(
+    "/departments/<int:department_id>/status",
+    methods=["POST"],
+)
+@permission_required("departments.manage")
+def change_department_status(department_id):
+    department = get_department_by_id(department_id)
+
+    if not department:
+        flash("Department not found.", "danger")
+        return redirect(url_for("departments"))
+
+    new_status = not bool(department["is_active"])
+
+    set_department_active_status(
+        department_id,
+        new_status,
+    )
+
+    if new_status:
+        flash(
+            "Department activated successfully.",
+            "success",
+        )
+    else:
+        flash(
+            "Department deactivated successfully.",
+            "success",
+        )
+
+    return redirect(url_for("departments"))
 
 
 @app.route("/logout")
