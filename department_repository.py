@@ -160,3 +160,27 @@ def set_department_active_status(
     finally:
         cursor.close()
         connection.close()
+
+
+def get_active_departments():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            """
+            SELECT
+                department_id,
+                department_code,
+                department_name
+            FROM departments
+            WHERE is_active = TRUE
+            ORDER BY department_name
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+        cursor.close()
+        connection.close()

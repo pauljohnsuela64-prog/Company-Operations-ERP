@@ -21,11 +21,19 @@ from user_repository import (
 
 from department_repository import (
     create_department,
+    get_active_departments,
     get_all_departments,
     get_department_by_id,
     set_department_active_status,
     update_department,
 )
+
+from employee_repository import (
+    create_employee,
+    get_all_employees,
+)
+
+from employee_repository import get_all_employees
 
 load_dotenv()
 
@@ -361,6 +369,116 @@ def change_department_status(department_id):
 
     return redirect(url_for("departments"))
 
+@app.route("/employees")
+@permission_required("employees.view")
+def employees():
+    employee_list = get_all_employees()
+
+    return render_template(
+        "employees/index.html",
+        employees=employee_list,
+    )
+
+@app.route("/employees/add", methods=["GET", "POST"])
+@permission_required("employees.create")
+def add_employee():
+    departments = get_active_departments()
+
+    if request.method == "POST":
+        employee_number = request.form.get(
+            "employee_number",
+            "",
+        ).strip().upper()
+
+        department_id = request.form.get(
+            "department_id",
+            "",
+        ).strip()
+
+        first_name = request.form.get(
+            "first_name",
+            "",
+        ).strip()
+
+        middle_name = request.form.get(
+            "middle_name",
+            "",
+        ).strip()
+
+        last_name = request.form.get(
+            "last_name",
+            "",
+        ).strip()
+
+        email = request.form.get(
+            "email",
+            "",
+        ).strip()
+
+        phone = request.form.get(
+            "phone",
+            "",
+        ).strip()
+
+        job_title = request.form.get(
+            "job_title",
+            "",
+        ).strip()
+
+        hire_date = request.form.get(
+            "hire_date",
+            "",
+        ).strip()
+
+        if not employee_number or not first_name or not last_name:
+            flash(
+                "Employee number, first name, and last name are required.",
+                "danger",
+            )
+
+            return render_template(
+                "employees/add.html",
+                departments=departments,
+            )
+
+        try:
+            create_employee(
+                employee_number,
+                int(department_id) if department_id else None,
+                first_name,
+                middle_name or None,
+                last_name,
+                email or None,
+                phone or None,
+                job_title or None,
+                hire_date or None,
+            )
+
+        except Exception as error:
+            if getattr(error, "errno", None) == 1062:
+                flash(
+                    "Employee number or email already exists.",
+                    "danger",
+                )
+
+                return render_template(
+                    "employees/add.html",
+                    departments=departments,
+                )
+
+            raise
+
+        flash(
+            "Employee created successfully.",
+            "success",
+        )
+
+        return redirect(url_for("employees"))
+
+    return render_template(
+        "employees/add.html",
+        departments=departments,
+    )
 
 @app.route("/logout")
 @login_required
