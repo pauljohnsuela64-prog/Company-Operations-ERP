@@ -133,12 +133,15 @@ Employees
 
                                 <td class="text-end">
 
-                                    <button
+                                    <a
+                                        href="{{ url_for(
+                                        'edit_employee',
+                                        employee_id=employee.employee_id
+                                        ) }}"
                                         class="btn btn-sm btn-outline-primary"
-                                        disabled
                                     >
                                         Edit
-                                    </button>
+                                    </a>
 
                                 </td>
 

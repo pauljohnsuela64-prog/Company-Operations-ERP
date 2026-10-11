@@ -11,6 +11,7 @@ def get_all_employees():
             SELECT
                 e.employee_id,
                 e.employee_number,
+                e.department_id,
                 e.first_name,
                 e.middle_name,
                 e.last_name,
@@ -29,6 +30,39 @@ def get_all_employees():
         )
 
         return cursor.fetchall()
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def get_employee_by_id(employee_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            """
+            SELECT
+                employee_id,
+                employee_number,
+                department_id,
+                first_name,
+                middle_name,
+                last_name,
+                email,
+                phone,
+                job_title,
+                hire_date,
+                employment_status
+            FROM employees
+            WHERE employee_id = %s
+            LIMIT 1
+            """,
+            (employee_id,),
+        )
+
+        return cursor.fetchone()
 
     finally:
         cursor.close()
@@ -79,6 +113,65 @@ def create_employee(
                 phone,
                 job_title,
                 hire_date,
+            ),
+        )
+
+        connection.commit()
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def update_employee(
+    employee_id,
+    employee_number,
+    department_id,
+    first_name,
+    middle_name,
+    last_name,
+    email,
+    phone,
+    job_title,
+    hire_date,
+    employment_status,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            UPDATE employees
+            SET
+                employee_number = %s,
+                department_id = %s,
+                first_name = %s,
+                middle_name = %s,
+                last_name = %s,
+                email = %s,
+                phone = %s,
+                job_title = %s,
+                hire_date = %s,
+                employment_status = %s
+            WHERE employee_id = %s
+            """,
+            (
+                employee_number,
+                department_id,
+                first_name,
+                middle_name,
+                last_name,
+                email,
+                phone,
+                job_title,
+                hire_date,
+                employment_status,
+                employee_id,
             ),
         )
 

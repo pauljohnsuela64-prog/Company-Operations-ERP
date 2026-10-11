@@ -31,6 +31,8 @@ from department_repository import (
 from employee_repository import (
     create_employee,
     get_all_employees,
+    get_employee_by_id,
+    update_employee,
 )
 
 from employee_repository import get_all_employees
@@ -478,6 +480,188 @@ def add_employee():
     return render_template(
         "employees/add.html",
         departments=departments,
+    )
+
+@app.route(
+    "/employees/<int:employee_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required("employees.edit")
+def edit_employee(employee_id):
+    employee = get_employee_by_id(employee_id)
+
+    if not employee:
+        flash("Employee not found.", "danger")
+        return redirect(url_for("employees"))
+
+    departments = get_all_departments()
+
+    allowed_statuses = [
+        "Active",
+        "Inactive",
+        "On Leave",
+        "Resigned",
+        "Terminated",
+    ]
+
+    if request.method == "POST":
+        employee_number = request.form.get(
+            "employee_number",
+            "",
+        ).strip().upper()
+
+        department_id = request.form.get(
+            "department_id",
+            "",
+        ).strip()
+
+        first_name = request.form.get(
+            "first_name",
+            "",
+        ).strip()
+
+        middle_name = request.form.get(
+            "middle_name",
+            "",
+        ).strip()
+
+        last_name = request.form.get(
+            "last_name",
+            "",
+        ).strip()
+
+        email = request.form.get(
+            "email",
+            "",
+        ).strip()
+
+        phone = request.form.get(
+            "phone",
+            "",
+        ).strip()
+
+        job_title = request.form.get(
+            "job_title",
+            "",
+        ).strip()
+
+        hire_date = request.form.get(
+            "hire_date",
+            "",
+        ).strip()
+
+        employment_status = request.form.get(
+            "employment_status",
+            "",
+        ).strip()
+
+        if not employee_number or not first_name or not last_name:
+            flash(
+                "Employee number, first name, and last name are required.",
+                "danger",
+            )
+
+            return render_template(
+                "employees/edit.html",
+                employee=employee,
+                departments=departments,
+                allowed_statuses=allowed_statuses,
+            )
+
+        if employment_status not in allowed_statuses:
+            flash(
+                "Invalid employment status.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_employee",
+                    employee_id=employee_id,
+                )
+            )
+
+        selected_department_id = None
+
+        if department_id:
+            selected_department = get_department_by_id(
+                int(department_id)
+            )
+
+            if not selected_department:
+                flash(
+                    "Selected department does not exist.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_employee",
+                        employee_id=employee_id,
+                    )
+                )
+
+            if (
+                not selected_department["is_active"]
+                and int(department_id) != employee["department_id"]
+            ):
+                flash(
+                    "You cannot assign an employee to an inactive department.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_employee",
+                        employee_id=employee_id,
+                    )
+                )
+
+            selected_department_id = int(department_id)
+
+        try:
+            update_employee(
+                employee_id,
+                employee_number,
+                selected_department_id,
+                first_name,
+                middle_name or None,
+                last_name,
+                email or None,
+                phone or None,
+                job_title or None,
+                hire_date or None,
+                employment_status,
+            )
+
+        except Exception as error:
+            if getattr(error, "errno", None) == 1062:
+                flash(
+                    "Employee number or email already exists.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_employee",
+                        employee_id=employee_id,
+                    )
+                )
+
+            raise
+
+        flash(
+            "Employee updated successfully.",
+            "success",
+        )
+
+        return redirect(url_for("employees"))
+
+    return render_template(
+        "employees/edit.html",
+        employee=employee,
+        departments=departments,
+        allowed_statuses=allowed_statuses,
     )
 
 @app.route("/logout")
