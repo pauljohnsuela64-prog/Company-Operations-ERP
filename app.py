@@ -19,6 +19,8 @@ from user_repository import (
     update_last_login,
 )
 
+from department_repository import get_all_departments
+
 
 load_dotenv()
 
@@ -42,6 +44,27 @@ def login_required(view_function):
         return view_function(*args, **kwargs)
 
     return wrapped_view
+
+def permission_required(permission_code):
+    def decorator(view_function):
+        @wraps(view_function)
+        def wrapped_view(*args, **kwargs):
+            if "user_id" not in session:
+                flash("Please log in first.", "warning")
+                return redirect(url_for("login"))
+
+            if permission_code not in session.get("permissions", []):
+                flash(
+                    "You do not have permission to access that page.",
+                    "danger",
+                )
+                return redirect(url_for("dashboard"))
+
+            return view_function(*args, **kwargs)
+
+        return wrapped_view
+
+    return decorator
 
 
 def has_permission(permission_code):
@@ -113,6 +136,17 @@ def login():
 @login_required
 def dashboard():
     return render_template("dashboard.html")
+
+
+@app.route("/departments")
+@permission_required("departments.view")
+def departments():
+    department_list = get_all_departments()
+
+    return render_template(
+        "departments/index.html",
+        departments=department_list,
+    )
 
 
 @app.route("/logout")

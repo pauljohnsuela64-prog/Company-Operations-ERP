@@ -60,7 +60,10 @@
                 {% endif %}
 
                 {% if has_permission('departments.view') %}
-                    <a href="#" class="sidebar-link">
+                     <a
+                        href="{{ url_for('departments') }}"
+                        class="sidebar-link"
+                        >
                         Departments
                     </a>
                 {% endif %}
