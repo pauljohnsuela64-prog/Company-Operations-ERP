@@ -31,6 +31,30 @@ def get_user_by_username(username):
         connection.close()
 
 
+def get_permissions_by_role_id(role_id):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            SELECT p.permission_code
+            FROM permissions p
+            JOIN role_permissions rp
+                ON p.permission_id = rp.permission_id
+            WHERE rp.role_id = %s
+            ORDER BY p.permission_code
+            """,
+            (role_id,),
+        )
+
+        return [row[0] for row in cursor.fetchall()]
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
 def update_last_login(user_id):
     connection = get_connection()
     cursor = connection.cursor()

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {% block title %}Company Operations ERP{% endblock %}
+    </title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+</head>
+
+<body>
+
+<div class="erp-layout">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-brand">
+            <h5>Company Operations</h5>
+            <small>ERP System</small>
+        </div>
+
+        <nav class="sidebar-nav">
+
+            <a
+                href="{{ url_for('dashboard') }}"
+                class="sidebar-link"
+            >
+                Dashboard
+            </a>
+
+
+            {% if
+                has_permission('employees.view')
+                or has_permission('departments.view')
+            %}
+
+                <div class="sidebar-section">
+                    Human Resources
+                </div>
+
+                {% if has_permission('employees.view') %}
+                    <a href="#" class="sidebar-link">
+                        Employees
+                    </a>
+                {% endif %}
+
+                {% if has_permission('departments.view') %}
+                    <a href="#" class="sidebar-link">
+                        Departments
+                    </a>
+                {% endif %}
+
+            {% endif %}
+
+
+            {% if has_permission('inventory.view') %}
+
+                <div class="sidebar-section">
+                    Inventory
+                </div>
+
+                <a href="#" class="sidebar-link">
+                    Inventory
+                </a>
+
+            {% endif %}
+
+
+            {% if has_permission('procurement.view') %}
+
+                <div class="sidebar-section">
+                    Procurement
+                </div>
+
+                <a href="#" class="sidebar-link">
+                    Procurement
+                </a>
+
+            {% endif %}
+
+
+            {% if
+                has_permission('it_assets.view')
+                or has_permission('helpdesk.view')
+            %}
+
+                <div class="sidebar-section">
+                    IT Management
+                </div>
+
+                {% if has_permission('it_assets.view') %}
+                    <a href="#" class="sidebar-link">
+                        IT Assets
+                    </a>
+                {% endif %}
+
+                {% if has_permission('helpdesk.view') %}
+                    <a href="#" class="sidebar-link">
+                        Help Desk
+                    </a>
+                {% endif %}
+
+            {% endif %}
+
+
+            {% if has_permission('expenses.view') %}
+
+                <div class="sidebar-section">
+                    Finance
+                </div>
+
+                <a href="#" class="sidebar-link">
+                    Expenses
+                </a>
+
+            {% endif %}
+
+
+            {% if has_permission('reports.view') %}
+
+                <div class="sidebar-section">
+                    Reporting
+                </div>
+
+                <a href="#" class="sidebar-link">
+                    Reports
+                </a>
+
+            {% endif %}
+
+
+            {% if
+                has_permission('users.manage')
+                or has_permission('roles.manage')
+                or has_permission('audit_logs.view')
+            %}
+
+                <div class="sidebar-section">
+                    Administration
+                </div>
+
+                {% if has_permission('users.manage') %}
+                    <a href="#" class="sidebar-link">
+                        Users
+                    </a>
+                {% endif %}
+
+                {% if has_permission('roles.manage') %}
+                    <a href="#" class="sidebar-link">
+                        Roles & Permissions
+                    </a>
+                {% endif %}
+
+                {% if has_permission('audit_logs.view') %}
+                    <a href="#" class="sidebar-link">
+                        Audit Logs
+                    </a>
+                {% endif %}
+
+            {% endif %}
+
+        </nav>
+
+    </aside>
+
+
+    <div class="main-area">
+
+        <header class="topbar">
+
+            <div>
+                <strong>
+                    {% block page_title %}Dashboard{% endblock %}
+                </strong>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+
+                <div class="text-end">
+                    <div>{{ session.username }}</div>
+
+                    <small class="text-muted">
+                        {{ session.role_name }}
+                    </small>
+                </div>
+
+                <a
+                    href="{{ url_for('logout') }}"
+                    class="btn btn-outline-danger btn-sm"
+                >
+                    Logout
+                </a>
+
+            </div>
+
+        </header>
+
+
+        <main class="content-area">
+
+            {% with messages =
+                get_flashed_messages(with_categories=true)
+            %}
+
+                {% for category, message in messages %}
+
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+
+                {% endfor %}
+
+            {% endwith %}
+
+
+            {% block content %}
+            {% endblock %}
+
+        </main>
+
+    </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,86 @@
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    background: #f5f6f8;
+}
+
+.erp-layout {
+    min-height: 100vh;
+    display: flex;
+}
+
+.sidebar {
+    width: 250px;
+    background: #212529;
+    color: white;
+    flex-shrink: 0;
+}
+
+.sidebar-brand {
+    padding: 24px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-brand h5 {
+    margin: 0;
+}
+
+.sidebar-brand small {
+    color: #adb5bd;
+}
+
+.sidebar-nav {
+    padding: 15px 0;
+}
+
+.sidebar-section {
+    padding: 20px 20px 8px;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #868e96;
+    font-weight: 600;
+}
+
+.sidebar-link {
+    display: block;
+    padding: 10px 20px;
+    color: #dee2e6;
+    text-decoration: none;
+}
+
+.sidebar-link:hover {
+    background: #343a40;
+    color: white;
+}
+
+.main-area {
+    flex: 1;
+    min-width: 0;
+}
+
+.topbar {
+    height: 72px;
+    background: white;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;  
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 30px;
+}
+
+.content-area {
+    padding: 30px;
+}
+
+.dashboard-card {
+    border: 0;
+}
+
+.dashboard-card h3 {
+    margin-top: 8px;
+    margin-bottom: 0;
+}
