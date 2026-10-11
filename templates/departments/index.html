@@ -24,9 +24,12 @@ Departments
     </div>
 
     {% if has_permission('departments.manage') %}
-        <button class="btn btn-primary" disabled>
+        <a
+            href="{{ url_for('add_department') }}"
+            class="btn btn-primary"
+        >
             Add Department
-        </button>
+        </a>
     {% endif %}
 
 </div>

@@ -26,3 +26,40 @@ def get_all_departments():
     finally:
         cursor.close()
         connection.close()
+
+
+def create_department(
+    department_code,
+    department_name,
+    description=None,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO departments (
+                department_code,
+                department_name,
+                description,
+                is_active
+            )
+            VALUES (%s, %s, %s, TRUE)
+            """,
+            (
+                department_code,
+                department_name,
+                description,
+            ),
+        )
+
+        connection.commit()
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        connection.close()

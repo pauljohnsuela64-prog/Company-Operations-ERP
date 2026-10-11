@@ -19,8 +19,10 @@ from user_repository import (
     update_last_login,
 )
 
-from department_repository import get_all_departments
-
+from department_repository import (
+    create_department,
+    get_all_departments,
+)
 
 load_dotenv()
 
@@ -146,6 +148,86 @@ def departments():
     return render_template(
         "departments/index.html",
         departments=department_list,
+    )
+
+@app.route("/departments/add", methods=["GET", "POST"])
+@permission_required("departments.manage")
+def add_department():
+    if request.method == "POST":
+        department_code = request.form.get(
+            "department_code",
+            "",
+        ).strip().upper()
+
+        department_name = request.form.get(
+            "department_name",
+            "",
+        ).strip()
+
+        description = request.form.get(
+            "description",
+            "",
+        ).strip()
+
+        if not department_code or not department_name:
+            flash(
+                "Department code and name are required.",
+                "danger",
+            )
+
+            return render_template(
+                "departments/add.html",
+            )
+
+        if len(department_code) > 20:
+            flash(
+                "Department code must not exceed 20 characters.",
+                "danger",
+            )
+
+            return render_template(
+                "departments/add.html",
+            )
+
+        if len(department_name) > 100:
+            flash(
+                "Department name must not exceed 100 characters.",
+                "danger",
+            )
+
+            return render_template(
+                "departments/add.html",
+            )
+
+        try:
+            create_department(
+                department_code,
+                department_name,
+                description or None,
+            )
+
+        except Exception as error:
+            if getattr(error, "errno", None) == 1062:
+                flash(
+                    "Department code or department name already exists.",
+                    "danger",
+                )
+
+                return render_template(
+                    "departments/add.html",
+                )
+
+            raise
+
+        flash(
+            "Department created successfully.",
+            "success",
+        )
+
+        return redirect(url_for("departments"))
+
+    return render_template(
+        "departments/add.html",
     )
 
 
