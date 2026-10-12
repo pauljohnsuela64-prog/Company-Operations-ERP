@@ -5,6 +5,13 @@ from dotenv import load_dotenv
 
 from dashboard_repository import get_dashboard_summary
 
+from stock_repository import (
+    get_all_stock,
+    stock_in,
+    stock_out,
+)
+
+
 from inventory_item_repository import (
     create_inventory_item,
     get_all_inventory_items,
@@ -1359,6 +1366,213 @@ def change_inventory_item_status(item_id):
         )
 
     return redirect(url_for("inventory_items"))
+
+
+@app.route("/inventory/stock")
+@permission_required("inventory.view")
+def inventory_stock():
+    stock_records = get_all_stock()
+
+    return render_template(
+        "inventory/stock/index.html",
+        stock_records=stock_records,
+    )
+
+@app.route(
+    "/inventory/stock/in",
+    methods=["GET", "POST"],
+)
+@permission_required("inventory.stock.manage")
+def inventory_stock_in():
+    items = get_all_inventory_items()
+    warehouses = get_all_warehouses()
+
+    active_items = [
+        item
+        for item in items
+        if item["is_active"]
+    ]
+
+    active_warehouses = [
+        warehouse
+        for warehouse in warehouses
+        if warehouse["is_active"]
+    ]
+
+    if request.method == "POST":
+        item_id = request.form.get(
+            "item_id",
+            "",
+        ).strip()
+
+        warehouse_id = request.form.get(
+            "warehouse_id",
+            "",
+        ).strip()
+
+        quantity = request.form.get(
+            "quantity",
+            "",
+        ).strip()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+        if not item_id or not warehouse_id or not quantity:
+            flash(
+                "Item, warehouse, and quantity are required.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/stock/in.html",
+                items=active_items,
+                warehouses=active_warehouses,
+            )
+
+        try:
+            item_id_value = int(item_id)
+            warehouse_id_value = int(warehouse_id)
+            quantity_value = float(quantity)
+
+            if quantity_value <= 0:
+                raise ValueError
+
+        except ValueError:
+            flash(
+                "Quantity must be greater than zero.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/stock/in.html",
+                items=active_items,
+                warehouses=active_warehouses,
+            )
+
+        item = get_inventory_item_by_id(
+            item_id_value
+        )
+
+        warehouse = get_warehouse_by_id(
+            warehouse_id_value
+        )
+
+        if not item or not item["is_active"]:
+            flash(
+                "Selected inventory item is invalid or inactive.",
+                "danger",
+            )
+            return redirect(url_for("inventory_stock_in"))
+
+        if not warehouse or not warehouse["is_active"]:
+            flash(
+                "Selected warehouse is invalid or inactive.",
+                "danger",
+            )
+            return redirect(url_for("inventory_stock_in"))
+
+        stock_in(
+            item_id_value,
+            warehouse_id_value,
+            quantity_value,
+            notes or None,
+            session["user_id"],
+        )
+
+        flash(
+            "Stock added successfully.",
+            "success",
+        )
+
+        return redirect(url_for("inventory_stock"))
+
+    return render_template(
+        "inventory/stock/in.html",
+        items=active_items,
+        warehouses=active_warehouses,
+    )
+
+
+@app.route(
+    "/inventory/stock/out",
+    methods=["GET", "POST"],
+)
+@permission_required("inventory.stock.manage")
+def inventory_stock_out():
+    items = get_all_inventory_items()
+    warehouses = get_all_warehouses()
+
+    active_items = [
+        item
+        for item in items
+        if item["is_active"]
+    ]
+
+    active_warehouses = [
+        warehouse
+        for warehouse in warehouses
+        if warehouse["is_active"]
+    ]
+
+    if request.method == "POST":
+        item_id = request.form.get("item_id", "").strip()
+        warehouse_id = request.form.get("warehouse_id", "").strip()
+        quantity = request.form.get("quantity", "").strip()
+        notes = request.form.get("notes", "").strip()
+
+        try:
+            item_id_value = int(item_id)
+            warehouse_id_value = int(warehouse_id)
+            quantity_value = float(quantity)
+
+            if quantity_value <= 0:
+                raise ValueError
+
+        except ValueError:
+            flash(
+                "Item, warehouse, and a quantity greater than zero are required.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/stock/out.html",
+                items=active_items,
+                warehouses=active_warehouses,
+            )
+
+        try:
+            stock_out(
+                item_id_value,
+                warehouse_id_value,
+                quantity_value,
+                notes or None,
+                session["user_id"],
+            )
+
+        except ValueError as error:
+            flash(str(error), "danger")
+
+            return render_template(
+                "inventory/stock/out.html",
+                items=active_items,
+                warehouses=active_warehouses,
+            )
+
+        flash(
+            "Stock removed successfully.",
+            "success",
+        )
+
+        return redirect(url_for("inventory_stock"))
+
+    return render_template(
+        "inventory/stock/out.html",
+        items=active_items,
+        warehouses=active_warehouses,
+    )
 
 
 @app.route("/logout")

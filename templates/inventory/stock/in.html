@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}
+Stock In | Company Operations ERP
+{% endblock %}
+
+{% block page_title %}
+Stock In
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+
+    <div class="col-lg-7 col-xl-6">
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-body p-4">
+
+                <h4 class="mb-1">
+                    Receive Inventory
+                </h4>
+
+                <p class="text-muted mb-4">
+                    Add inventory stock to a warehouse.
+                </p>
+
+                <form method="POST">
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Item
+                        </label>
+
+                        <select
+                            name="item_id"
+                            class="form-select"
+                            required
+                        >
+
+                            <option value="">
+                                Select an item
+                            </option>
+
+                            {% for item in items %}
+
+                                <option
+                                    value="{{ item.item_id }}"
+                                    {% if request.form.get('item_id') == item.item_id|string %}
+                                        selected
+                                    {% endif %}
+                                >
+                                    {{ item.item_code }}
+                                    -
+                                    {{ item.item_name }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Warehouse
+                        </label>
+
+                        <select
+                            name="warehouse_id"
+                            class="form-select"
+                            required
+                        >
+
+                            <option value="">
+                                Select a warehouse
+                            </option>
+
+                            {% for warehouse in warehouses %}
+
+                                <option
+                                    value="{{ warehouse.warehouse_id }}"
+                                    {% if request.form.get('warehouse_id') == warehouse.warehouse_id|string %}
+                                        selected
+                                    {% endif %}
+                                >
+                                    {{ warehouse.warehouse_code }}
+                                    -
+                                    {{ warehouse.warehouse_name }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Quantity
+                        </label>
+
+                        <input
+                            type="number"
+                            name="quantity"
+                            class="form-control"
+                            min="0.01"
+                            step="0.01"
+                            value="{{ request.form.get('quantity', '') }}"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="mb-4">
+
+                        <label class="form-label">
+                            Notes
+                        </label>
+
+                        <textarea
+                            name="notes"
+                            class="form-control"
+                            maxlength="255"
+                            rows="3"
+                            placeholder="Optional reason or reference"
+                        >{{ request.form.get('notes', '') }}</textarea>
+
+                    </div>
+
+
+                    <div class="d-flex gap-2">
+
+                        <button
+                            type="submit"
+                            class="btn btn-success"
+                        >
+                            Add Stock
+                        </button>
+
+                        <a
+                            href="{{ url_for('inventory_stock') }}"
+                            class="btn btn-outline-secondary"
+                        >
+                            Cancel
+                        </a>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -101,6 +101,13 @@
         Items
     </a>
 
+    <a
+    href="{{ url_for('inventory_stock') }}"
+    class="sidebar-link"
+>
+    Stock
+</a>
+
 {% endif %}
 
             {% if has_permission('procurement.view') %}
