@@ -30,8 +30,13 @@ PERMISSIONS = [
     ("inventory.stock.manage", "Manage inventory stock"),
 
     ("procurement.view", "View procurement records"),
-    ("procurement.manage", "Manage procurement records"),
-    ("purchase_requests.approve", "Approve purchase requests"),
+
+    ("procurement.suppliers.manage", "Manage suppliers"),
+    ("procurement.requests.create", "Create purchase requests"),
+    ("procurement.requests.manage", "Manage purchase requests"),
+    ("procurement.requests.approve", "Approve purchase requests"),
+    ("procurement.orders.manage", "Manage purchase orders"),
+    ("procurement.receipts.manage", "Receive purchase orders"),
 
     ("it_assets.view", "View IT assets"),
     ("it_assets.manage", "Manage IT assets"),
@@ -52,6 +57,8 @@ PERMISSIONS = [
 
 OBSOLETE_PERMISSIONS = [
     "inventory.manage",
+    "procurement.manage",
+    "purchase_requests.approve",
 ]
 
 def remove_obsolete_permissions(cursor):
@@ -89,12 +96,16 @@ ROLE_PERMISSION_MAP = {
     ],
 
     "Procurement Manager": [
-        "dashboard.view",
-        "procurement.view",
-        "procurement.manage",
-        "purchase_requests.approve",
-        "reports.view",
-    ],
+    "dashboard.view",
+    "procurement.view",
+    "procurement.suppliers.manage",
+    "procurement.requests.create",
+    "procurement.requests.manage",
+    "procurement.requests.approve",
+    "procurement.orders.manage",
+    "procurement.receipts.manage",
+    "reports.view",
+],
 
     "IT Manager": [
         "dashboard.view",
