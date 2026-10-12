@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}
+Edit Inventory Category | Company Operations ERP
+{% endblock %}
+
+{% block page_title %}
+Edit Inventory Category
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+
+    <div class="col-lg-7 col-xl-6">
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-body p-4">
+
+                <h4 class="mb-1">
+                    Edit Inventory Category
+                </h4>
+
+                <p class="text-muted mb-4">
+                    Update category information.
+                </p>
+
+                <form method="POST">
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Category Code
+                        </label>
+
+                        <input
+                            type="text"
+                            name="category_code"
+                            class="form-control"
+                            maxlength="30"
+                            value="{{ request.form.get(
+                                'category_code',
+                                category.category_code
+                            ) }}"
+                            required
+                        >
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Category Name
+                        </label>
+
+                        <input
+                            type="text"
+                            name="category_name"
+                            class="form-control"
+                            maxlength="100"
+                            value="{{ request.form.get(
+                                'category_name',
+                                category.category_name
+                            ) }}"
+                            required
+                        >
+
+                    </div>
+
+                    <div class="mb-4">
+
+                        <label class="form-label">
+                            Description
+                        </label>
+
+                        <textarea
+                            name="description"
+                            class="form-control"
+                            rows="4"
+                            maxlength="255"
+                        >{{ request.form.get(
+                            'description',
+                            category.description or ''
+                        ) }}</textarea>
+
+                    </div>
+
+                    <div class="d-flex gap-2">
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                        >
+                            Save Changes
+                        </button>
+
+                        <a
+                            href="{{ url_for('inventory_categories') }}"
+                            class="btn btn-outline-secondary"
+                        >
+                            Cancel
+                        </a>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

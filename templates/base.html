@@ -76,16 +76,18 @@
 
             {% if has_permission('inventory.view') %}
 
-                <div class="sidebar-section">
-                    Inventory
-                </div>
+            <div class="sidebar-section">
+                Inventory
+            </div>
 
-                <a href="#" class="sidebar-link">
-                    Inventory
-                </a>
+            <a
+                href="{{ url_for('inventory_categories') }}"
+                class="sidebar-link"
+                >
+                Categories
+            </a>
 
             {% endif %}
-
 
             {% if has_permission('procurement.view') %}
 

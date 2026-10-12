@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}
+Add Inventory Category | Company Operations ERP
+{% endblock %}
+
+{% block page_title %}
+Add Inventory Category
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+
+    <div class="col-lg-7 col-xl-6">
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-body p-4">
+
+                <h4 class="mb-1">
+                    New Inventory Category
+                </h4>
+
+                <p class="text-muted mb-4">
+                    Add a category for organizing inventory items.
+                </p>
+
+                <form method="POST">
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Category Code
+                        </label>
+
+                        <input
+                            type="text"
+                            name="category_code"
+                            class="form-control"
+                            maxlength="30"
+                            value="{{ request.form.get('category_code', '') }}"
+                            placeholder="Example: ELEC"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Category Name
+                        </label>
+
+                        <input
+                            type="text"
+                            name="category_name"
+                            class="form-control"
+                            maxlength="100"
+                            value="{{ request.form.get('category_name', '') }}"
+                            placeholder="Example: Electronics"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="mb-4">
+
+                        <label class="form-label">
+                            Description
+                        </label>
+
+                        <textarea
+                            name="description"
+                            class="form-control"
+                            rows="4"
+                            maxlength="255"
+                            placeholder="Optional category description"
+                        >{{ request.form.get('description', '') }}</textarea>
+
+                    </div>
+
+
+                    <div class="d-flex gap-2">
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                        >
+                            Save Category
+                        </button>
+
+                        <a
+                            href="{{ url_for('inventory_categories') }}"
+                            class="btn btn-outline-secondary"
+                        >
+                            Cancel
+                        </a>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

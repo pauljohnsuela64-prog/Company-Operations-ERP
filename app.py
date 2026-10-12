@@ -5,6 +5,14 @@ from dotenv import load_dotenv
 
 from dashboard_repository import get_dashboard_summary
 
+from inventory_category_repository import (
+    create_inventory_category,
+    get_all_inventory_categories,
+    get_inventory_category_by_id,
+    set_inventory_category_active_status,
+    update_inventory_category,
+)
+
 from flask import (
     Flask,
     flash,
@@ -671,6 +679,207 @@ def edit_employee(employee_id):
         departments=departments,
         allowed_statuses=allowed_statuses,
     )
+
+@app.route("/inventory/categories")
+@permission_required("inventory.view")
+def inventory_categories():
+    categories = get_all_inventory_categories()
+
+    return render_template(
+        "inventory/categories/index.html",
+        categories=categories,
+    )
+
+@app.route(
+    "/inventory/categories/add",
+    methods=["GET", "POST"],
+)
+@permission_required("inventory.categories.manage")
+def add_inventory_category():
+    if request.method == "POST":
+        category_code = request.form.get(
+            "category_code",
+            "",
+        ).strip().upper()
+
+        category_name = request.form.get(
+            "category_name",
+            "",
+        ).strip()
+
+        description = request.form.get(
+            "description",
+            "",
+        ).strip()
+
+        if not category_code or not category_name:
+            flash(
+                "Category code and name are required.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/categories/add.html",
+            )
+
+        if len(category_code) > 30:
+            flash(
+                "Category code must not exceed 30 characters.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/categories/add.html",
+            )
+
+        if len(category_name) > 100:
+            flash(
+                "Category name must not exceed 100 characters.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/categories/add.html",
+            )
+
+        try:
+            create_inventory_category(
+                category_code,
+                category_name,
+                description or None,
+            )
+
+        except Exception as error:
+            if getattr(error, "errno", None) == 1062:
+                flash(
+                    "Category code or category name already exists.",
+                    "danger",
+                )
+
+                return render_template(
+                    "inventory/categories/add.html",
+                )
+
+            raise
+
+        flash(
+            "Inventory category created successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for("inventory_categories")
+        )
+
+    return render_template(
+        "inventory/categories/add.html",
+    )
+
+@app.route(
+    "/inventory/categories/<int:category_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required("inventory.categories.manage")
+def edit_inventory_category(category_id):
+    category = get_inventory_category_by_id(category_id)
+
+    if not category:
+        flash("Inventory category not found.", "danger")
+        return redirect(url_for("inventory_categories"))
+
+    if request.method == "POST":
+        category_code = request.form.get(
+            "category_code",
+            "",
+        ).strip().upper()
+
+        category_name = request.form.get(
+            "category_name",
+            "",
+        ).strip()
+
+        description = request.form.get(
+            "description",
+            "",
+        ).strip()
+
+        if not category_code or not category_name:
+            flash(
+                "Category code and name are required.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/categories/edit.html",
+                category=category,
+            )
+
+        try:
+            update_inventory_category(
+                category_id,
+                category_code,
+                category_name,
+                description or None,
+            )
+
+        except Exception as error:
+            if getattr(error, "errno", None) == 1062:
+                flash(
+                    "Category code or category name already exists.",
+                    "danger",
+                )
+
+                return render_template(
+                    "inventory/categories/edit.html",
+                    category=category,
+                )
+
+            raise
+
+        flash(
+            "Inventory category updated successfully.",
+            "success",
+        )
+
+        return redirect(url_for("inventory_categories"))
+
+    return render_template(
+        "inventory/categories/edit.html",
+        category=category,
+    )
+
+
+@app.route(
+    "/inventory/categories/<int:category_id>/status",
+    methods=["POST"],
+)
+@permission_required("inventory.categories.manage")
+def change_inventory_category_status(category_id):
+    category = get_inventory_category_by_id(category_id)
+
+    if not category:
+        flash("Inventory category not found.", "danger")
+        return redirect(url_for("inventory_categories"))
+
+    new_status = not bool(category["is_active"])
+
+    set_inventory_category_active_status(
+        category_id,
+        new_status,
+    )
+
+    if new_status:
+        flash(
+            "Inventory category activated successfully.",
+            "success",
+        )
+    else:
+        flash(
+            "Inventory category deactivated successfully.",
+            "success",
+        )
+
+    return redirect(url_for("inventory_categories"))
 
 @app.route("/logout")
 @login_required
