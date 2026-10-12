@@ -5,6 +5,14 @@ from dotenv import load_dotenv
 
 from dashboard_repository import get_dashboard_summary
 
+from warehouse_repository import (
+    create_warehouse,
+    get_all_warehouses,
+    get_warehouse_by_id,
+    set_warehouse_active_status,
+    update_warehouse,
+)
+
 from inventory_category_repository import (
     create_inventory_category,
     get_all_inventory_categories,
@@ -880,6 +888,209 @@ def change_inventory_category_status(category_id):
         )
 
     return redirect(url_for("inventory_categories"))
+
+
+
+@app.route("/inventory/warehouses")
+@permission_required("inventory.view")
+def warehouses():
+    warehouse_list = get_all_warehouses()
+
+    return render_template(
+        "inventory/warehouses/index.html",
+        warehouses=warehouse_list,
+    )
+
+@app.route(
+    "/inventory/warehouses/add",
+    methods=["GET", "POST"],
+)
+@permission_required("inventory.warehouses.manage")
+def add_warehouse():
+    if request.method == "POST":
+        warehouse_code = request.form.get(
+            "warehouse_code",
+            "",
+        ).strip().upper()
+
+        warehouse_name = request.form.get(
+            "warehouse_name",
+            "",
+        ).strip()
+
+        location = request.form.get(
+            "location",
+            "",
+        ).strip()
+
+        if not warehouse_code or not warehouse_name:
+            flash(
+                "Warehouse code and name are required.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/warehouses/add.html",
+            )
+
+        if len(warehouse_code) > 30:
+            flash(
+                "Warehouse code must not exceed 30 characters.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/warehouses/add.html",
+            )
+
+        if len(warehouse_name) > 100:
+            flash(
+                "Warehouse name must not exceed 100 characters.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/warehouses/add.html",
+            )
+
+        try:
+            create_warehouse(
+                warehouse_code,
+                warehouse_name,
+                location or None,
+            )
+
+        except Exception as error:
+            if getattr(error, "errno", None) == 1062:
+                flash(
+                    "Warehouse code or warehouse name already exists.",
+                    "danger",
+                )
+
+                return render_template(
+                    "inventory/warehouses/add.html",
+                )
+
+            raise
+
+        flash(
+            "Warehouse created successfully.",
+            "success",
+        )
+
+        return redirect(url_for("warehouses"))
+
+    return render_template(
+        "inventory/warehouses/add.html",
+    )
+
+
+@app.route(
+    "/inventory/warehouses/<int:warehouse_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required("inventory.warehouses.manage")
+def edit_warehouse(warehouse_id):
+    warehouse = get_warehouse_by_id(warehouse_id)
+
+    if not warehouse:
+        flash("Warehouse not found.", "danger")
+        return redirect(url_for("warehouses"))
+
+    if request.method == "POST":
+        warehouse_code = request.form.get(
+            "warehouse_code",
+            "",
+        ).strip().upper()
+
+        warehouse_name = request.form.get(
+            "warehouse_name",
+            "",
+        ).strip()
+
+        location = request.form.get(
+            "location",
+            "",
+        ).strip()
+
+        if not warehouse_code or not warehouse_name:
+            flash(
+                "Warehouse code and name are required.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/warehouses/edit.html",
+                warehouse=warehouse,
+            )
+
+        try:
+            update_warehouse(
+                warehouse_id,
+                warehouse_code,
+                warehouse_name,
+                location or None,
+            )
+
+        except Exception as error:
+            if getattr(error, "errno", None) == 1062:
+                flash(
+                    "Warehouse code or warehouse name already exists.",
+                    "danger",
+                )
+
+                return render_template(
+                    "inventory/warehouses/edit.html",
+                    warehouse=warehouse,
+                )
+
+            raise
+
+        flash(
+            "Warehouse updated successfully.",
+            "success",
+        )
+
+        return redirect(url_for("warehouses"))
+
+    return render_template(
+        "inventory/warehouses/edit.html",
+        warehouse=warehouse,
+    )
+
+
+@app.route(
+    "/inventory/warehouses/<int:warehouse_id>/status",
+    methods=["POST"],
+)
+@permission_required("inventory.warehouses.manage")
+def change_warehouse_status(warehouse_id):
+    warehouse = get_warehouse_by_id(warehouse_id)
+
+    if not warehouse:
+        flash("Warehouse not found.", "danger")
+        return redirect(url_for("warehouses"))
+
+    new_status = not bool(warehouse["is_active"])
+
+    set_warehouse_active_status(
+        warehouse_id,
+        new_status,
+    )
+
+    if new_status:
+        flash(
+            "Warehouse activated successfully.",
+            "success",
+        )
+    else:
+        flash(
+            "Warehouse deactivated successfully.",
+            "success",
+        )
+
+    return redirect(url_for("warehouses"))
+
 
 @app.route("/logout")
 @login_required
