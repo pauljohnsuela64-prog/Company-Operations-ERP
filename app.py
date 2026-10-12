@@ -5,6 +5,14 @@ from dotenv import load_dotenv
 
 from dashboard_repository import get_dashboard_summary
 
+from inventory_item_repository import (
+    create_inventory_item,
+    get_all_inventory_items,
+    get_inventory_item_by_id,
+    set_inventory_item_active_status,
+    update_inventory_item,
+)
+
 from warehouse_repository import (
     create_warehouse,
     get_all_warehouses,
@@ -15,12 +23,12 @@ from warehouse_repository import (
 
 from inventory_category_repository import (
     create_inventory_category,
+    get_active_inventory_categories,
     get_all_inventory_categories,
     get_inventory_category_by_id,
     set_inventory_category_active_status,
     update_inventory_category,
 )
-
 from flask import (
     Flask,
     flash,
@@ -1090,6 +1098,267 @@ def change_warehouse_status(warehouse_id):
         )
 
     return redirect(url_for("warehouses"))
+
+
+@app.route("/inventory/items")
+@permission_required("inventory.view")
+def inventory_items():
+    items = get_all_inventory_items()
+
+    return render_template(
+        "inventory/items/index.html",
+        items=items,
+    )
+
+@app.route(
+    "/inventory/items/add",
+    methods=["GET", "POST"],
+)
+@permission_required("inventory.items.manage")
+def add_inventory_item():
+    categories = get_active_inventory_categories()
+
+    if request.method == "POST":
+        item_code = request.form.get(
+            "item_code",
+            "",
+        ).strip().upper()
+
+        item_name = request.form.get(
+            "item_name",
+            "",
+        ).strip()
+
+        category_id = request.form.get(
+            "category_id",
+            "",
+        ).strip()
+
+        description = request.form.get(
+            "description",
+            "",
+        ).strip()
+
+        unit_of_measure = request.form.get(
+            "unit_of_measure",
+            "",
+        ).strip()
+
+        reorder_level = request.form.get(
+            "reorder_level",
+            "0",
+        ).strip()
+
+        if not item_code or not item_name or not unit_of_measure:
+            flash(
+                "Item code, item name, and unit of measure are required.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/items/add.html",
+                categories=categories,
+            )
+
+        try:
+            reorder_level_value = float(reorder_level)
+
+            if reorder_level_value < 0:
+                raise ValueError
+
+        except ValueError:
+            flash(
+                "Reorder level must be zero or greater.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/items/add.html",
+                categories=categories,
+            )
+
+        try:
+            create_inventory_item(
+                item_code,
+                item_name,
+                int(category_id) if category_id else None,
+                description or None,
+                unit_of_measure,
+                reorder_level_value,
+            )
+
+        except Exception as error:
+            if getattr(error, "errno", None) == 1062:
+                flash(
+                    "Item code already exists.",
+                    "danger",
+                )
+
+                return render_template(
+                    "inventory/items/add.html",
+                    categories=categories,
+                )
+
+            raise
+
+        flash(
+            "Inventory item created successfully.",
+            "success",
+        )
+
+        return redirect(url_for("inventory_items"))
+
+    return render_template(
+        "inventory/items/add.html",
+        categories=categories,
+    )
+
+
+@app.route(
+    "/inventory/items/<int:item_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required("inventory.items.manage")
+def edit_inventory_item(item_id):
+    item = get_inventory_item_by_id(item_id)
+
+    if not item:
+        flash("Inventory item not found.", "danger")
+        return redirect(url_for("inventory_items"))
+
+    categories = get_all_inventory_categories()
+
+    if request.method == "POST":
+        item_code = request.form.get(
+            "item_code",
+            "",
+        ).strip().upper()
+
+        item_name = request.form.get(
+            "item_name",
+            "",
+        ).strip()
+
+        category_id = request.form.get(
+            "category_id",
+            "",
+        ).strip()
+
+        description = request.form.get(
+            "description",
+            "",
+        ).strip()
+
+        unit_of_measure = request.form.get(
+            "unit_of_measure",
+            "",
+        ).strip()
+
+        reorder_level = request.form.get(
+            "reorder_level",
+            "0",
+        ).strip()
+
+        if not item_code or not item_name or not unit_of_measure:
+            flash(
+                "Item code, item name, and unit of measure are required.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/items/edit.html",
+                item=item,
+                categories=categories,
+            )
+
+        try:
+            reorder_level_value = float(reorder_level)
+
+            if reorder_level_value < 0:
+                raise ValueError
+
+        except ValueError:
+            flash(
+                "Reorder level must be zero or greater.",
+                "danger",
+            )
+
+            return render_template(
+                "inventory/items/edit.html",
+                item=item,
+                categories=categories,
+            )
+
+        try:
+            update_inventory_item(
+                item_id,
+                item_code,
+                item_name,
+                int(category_id) if category_id else None,
+                description or None,
+                unit_of_measure,
+                reorder_level_value,
+            )
+
+        except Exception as error:
+            if getattr(error, "errno", None) == 1062:
+                flash(
+                    "Item code already exists.",
+                    "danger",
+                )
+
+                return render_template(
+                    "inventory/items/edit.html",
+                    item=item,
+                    categories=categories,
+                )
+
+            raise
+
+        flash(
+            "Inventory item updated successfully.",
+            "success",
+        )
+
+        return redirect(url_for("inventory_items"))
+
+    return render_template(
+        "inventory/items/edit.html",
+        item=item,
+        categories=categories,
+    )
+
+@app.route(
+    "/inventory/items/<int:item_id>/status",
+    methods=["POST"],
+)
+@permission_required("inventory.items.manage")
+def change_inventory_item_status(item_id):
+    item = get_inventory_item_by_id(item_id)
+
+    if not item:
+        flash("Inventory item not found.", "danger")
+        return redirect(url_for("inventory_items"))
+
+    new_status = not bool(item["is_active"])
+
+    set_inventory_item_active_status(
+        item_id,
+        new_status,
+    )
+
+    if new_status:
+        flash(
+            "Inventory item activated successfully.",
+            "success",
+        )
+    else:
+        flash(
+            "Inventory item deactivated successfully.",
+            "success",
+        )
+
+    return redirect(url_for("inventory_items"))
 
 
 @app.route("/logout")

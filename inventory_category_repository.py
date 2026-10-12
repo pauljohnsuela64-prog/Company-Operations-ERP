@@ -159,3 +159,28 @@ def set_inventory_category_active_status(
     finally:
         cursor.close()
         connection.close()
+
+
+
+def get_active_inventory_categories():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            """
+            SELECT
+                category_id,
+                category_code,
+                category_name
+            FROM inventory_categories
+            WHERE is_active = TRUE
+            ORDER BY category_name
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+        cursor.close()
+        connection.close()

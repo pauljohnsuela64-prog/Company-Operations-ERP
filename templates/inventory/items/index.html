@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+Inventory Items | Company Operations ERP
+{% endblock %}
+
+
+{% block page_title %}
+Inventory Items
+{% endblock %}
+
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+        <h2 class="mb-1">Inventory Items</h2>
+
+        <p class="text-muted mb-0">
+            Manage company inventory items and products.
+        </p>
+    </div>
+
+    {% if has_permission('inventory.items.manage') %}
+    <a
+        href="{{ url_for('add_inventory_item') }}"
+        class="btn btn-primary"
+    >
+        Add Item
+    </a>
+{% endif %}
+</div>
+
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+                    <tr>
+                        <th>Item Code</th>
+                        <th>Item Name</th>
+                        <th>Category</th>
+                        <th>Unit</th>
+                        <th>Reorder Level</th>
+                        <th>Status</th>
+
+                        {% if has_permission('inventory.items.manage') %}
+                            <th class="text-end">
+                                Actions
+                            </th>
+                        {% endif %}
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for item in items %}
+
+                        <tr>
+
+                            <td>
+                                <strong>
+                                    {{ item.item_code }}
+                                </strong>
+                            </td>
+
+                            <td>
+                                {{ item.item_name }}
+                            </td>
+
+                            <td>
+
+                                {% if item.category_name %}
+
+                                    {{ item.category_name }}
+
+                                    <div class="small text-muted">
+                                        {{ item.category_code }}
+                                    </div>
+
+                                {% else %}
+
+                                    <span class="text-muted">
+                                        No Category
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+                                {{ item.unit_of_measure }}
+                            </td>
+
+                            <td>
+                                {{ item.reorder_level }}
+                            </td>
+
+                            <td>
+
+                                {% if item.is_active %}
+
+                                    <span class="badge text-bg-success">
+                                        Active
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge text-bg-secondary">
+                                        Inactive
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            {% if has_permission('inventory.items.manage') %}
+
+                                <td class="text-end">
+
+                                    <a
+    href="{{ url_for(
+        'edit_inventory_item',
+        item_id=item.item_id
+    ) }}"
+    class="btn btn-sm btn-outline-primary"
+>
+    Edit
+</a>
+
+<form
+    method="POST"
+    action="{{ url_for(
+        'change_inventory_item_status',
+        item_id=item.item_id
+    ) }}"
+    class="d-inline"
+>
+
+    {% if item.is_active %}
+
+        <button
+            type="submit"
+            class="btn btn-sm btn-outline-danger"
+            onclick="return confirm(
+                'Deactivate this inventory item?'
+            )"
+        >
+            Deactivate
+        </button>
+
+    {% else %}
+
+        <button
+            type="submit"
+            class="btn btn-sm btn-outline-success"
+            onclick="return confirm(
+                'Activate this inventory item?'
+            )"
+        >
+            Activate
+        </button>
+
+    {% endif %}
+
+</form>
+
+                                </td>
+
+                            {% endif %}
+
+                        </tr>
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="{{ 7 if has_permission('inventory.items.manage') else 6 }}"
+                                class="text-center text-muted py-4"
+                            >
+                                No inventory items found.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

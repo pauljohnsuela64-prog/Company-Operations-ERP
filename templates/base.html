@@ -76,9 +76,9 @@
 
             {% if has_permission('inventory.view') %}
 
-                <div class="sidebar-section">
-                Inventory
-                </div>
+    <div class="sidebar-section">
+        Inventory
+    </div>
 
     <a
         href="{{ url_for('inventory_categories') }}"
@@ -92,6 +92,13 @@
         class="sidebar-link"
     >
         Warehouses
+    </a>
+
+    <a
+        href="{{ url_for('inventory_items') }}"
+        class="sidebar-link"
+    >
+        Items
     </a>
 
 {% endif %}

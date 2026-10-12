@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}
+Add Inventory Item | Company Operations ERP
+{% endblock %}
+
+{% block page_title %}
+Add Inventory Item
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+
+    <div class="col-xl-8">
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-body p-4">
+
+                <h4 class="mb-1">
+                    New Inventory Item
+                </h4>
+
+                <p class="text-muted mb-4">
+                    Add a new item to the inventory catalog.
+                </p>
+
+                <form method="POST">
+
+                    <div class="row">
+
+                        <div class="col-md-6 mb-3">
+
+                            <label class="form-label">
+                                Item Code
+                            </label>
+
+                            <input
+                                type="text"
+                                name="item_code"
+                                class="form-control"
+                                maxlength="50"
+                                value="{{ request.form.get('item_code', '') }}"
+                                placeholder="Example: KB-001"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="col-md-6 mb-3">
+
+                            <label class="form-label">
+                                Item Name
+                            </label>
+
+                            <input
+                                type="text"
+                                name="item_name"
+                                class="form-control"
+                                maxlength="150"
+                                value="{{ request.form.get('item_name', '') }}"
+                                placeholder="Example: USB Keyboard"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="col-md-6 mb-3">
+
+                            <label class="form-label">
+                                Category
+                            </label>
+
+                            <select
+                                name="category_id"
+                                class="form-select"
+                            >
+
+                                <option value="">
+                                    No Category
+                                </option>
+
+                                {% for category in categories %}
+
+                                    <option
+                                        value="{{ category.category_id }}"
+                                        {% if request.form.get('category_id') == category.category_id|string %}
+                                            selected
+                                        {% endif %}
+                                    >
+                                        {{ category.category_code }}
+                                        -
+                                        {{ category.category_name }}
+                                    </option>
+
+                                {% endfor %}
+
+                            </select>
+
+                        </div>
+
+
+                        <div class="col-md-6 mb-3">
+
+                            <label class="form-label">
+                                Unit of Measure
+                            </label>
+
+                            <select
+                                name="unit_of_measure"
+                                class="form-select"
+                                required
+                            >
+
+                                {% set selected_unit = request.form.get(
+                                    'unit_of_measure',
+                                    'pcs'
+                                ) %}
+
+                                <option value="pcs" {% if selected_unit == 'pcs' %}selected{% endif %}>
+                                    Pieces
+                                </option>
+
+                                <option value="box" {% if selected_unit == 'box' %}selected{% endif %}>
+                                    Box
+                                </option>
+
+                                <option value="pack" {% if selected_unit == 'pack' %}selected{% endif %}>
+                                    Pack
+                                </option>
+
+                                <option value="unit" {% if selected_unit == 'unit' %}selected{% endif %}>
+                                    Unit
+                                </option>
+
+                                <option value="meter" {% if selected_unit == 'meter' %}selected{% endif %}>
+                                    Meter
+                                </option>
+
+                                <option value="liter" {% if selected_unit == 'liter' %}selected{% endif %}>
+                                    Liter
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <div class="col-md-6 mb-3">
+
+                            <label class="form-label">
+                                Reorder Level
+                            </label>
+
+                            <input
+                                type="number"
+                                name="reorder_level"
+                                class="form-control"
+                                min="0"
+                                step="0.01"
+                                value="{{ request.form.get('reorder_level', '0') }}"
+                            >
+
+                            <div class="form-text">
+                                Low-stock warning threshold.
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-12 mb-4">
+
+                            <label class="form-label">
+                                Description
+                            </label>
+
+                            <textarea
+                                name="description"
+                                class="form-control"
+                                rows="4"
+                                maxlength="255"
+                            >{{ request.form.get('description', '') }}</textarea>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="d-flex gap-2">
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                        >
+                            Save Item
+                        </button>
+
+                        <a
+                            href="{{ url_for('inventory_items') }}"
+                            class="btn btn-outline-secondary"
+                        >
+                            Cancel
+                        </a>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

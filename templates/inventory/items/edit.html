@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}
+Edit Inventory Item | Company Operations ERP
+{% endblock %}
+
+{% block page_title %}
+Edit Inventory Item
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+
+    <div class="col-xl-8">
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-body p-4">
+
+                <h4 class="mb-1">
+                    Edit Inventory Item
+                </h4>
+
+                <p class="text-muted mb-4">
+                    Update inventory item information.
+                </p>
+
+                <form method="POST">
+
+                    <div class="row">
+
+                        <div class="col-md-6 mb-3">
+
+                            <label class="form-label">
+                                Item Code
+                            </label>
+
+                            <input
+                                type="text"
+                                name="item_code"
+                                class="form-control"
+                                maxlength="50"
+                                value="{{ request.form.get(
+                                    'item_code',
+                                    item.item_code
+                                ) }}"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="col-md-6 mb-3">
+
+                            <label class="form-label">
+                                Item Name
+                            </label>
+
+                            <input
+                                type="text"
+                                name="item_name"
+                                class="form-control"
+                                maxlength="150"
+                                value="{{ request.form.get(
+                                    'item_name',
+                                    item.item_name
+                                ) }}"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="col-md-6 mb-3">
+
+                            <label class="form-label">
+                                Category
+                            </label>
+
+                            <select
+                                name="category_id"
+                                class="form-select"
+                            >
+
+                                <option value="">
+                                    No Category
+                                </option>
+
+                                {% for category in categories %}
+
+                                    <option
+                                        value="{{ category.category_id }}"
+                                        {% if
+                                            request.form.get(
+                                                'category_id',
+                                                item.category_id|string
+                                            )
+                                            ==
+                                            category.category_id|string
+                                        %}
+                                            selected
+                                        {% endif %}
+                                    >
+                                        {{ category.category_code }}
+                                        -
+                                        {{ category.category_name }}
+
+                                        {% if not category.is_active %}
+                                            (Inactive)
+                                        {% endif %}
+                                    </option>
+
+                                {% endfor %}
+
+                            </select>
+
+                        </div>
+
+
+                        <div class="col-md-6 mb-3">
+
+                            <label class="form-label">
+                                Unit of Measure
+                            </label>
+
+                            <input
+                                type="text"
+                                name="unit_of_measure"
+                                class="form-control"
+                                maxlength="30"
+                                value="{{ request.form.get(
+                                    'unit_of_measure',
+                                    item.unit_of_measure
+                                ) }}"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="col-md-6 mb-3">
+
+                            <label class="form-label">
+                                Reorder Level
+                            </label>
+
+                            <input
+                                type="number"
+                                name="reorder_level"
+                                class="form-control"
+                                min="0"
+                                step="0.01"
+                                value="{{ request.form.get(
+                                    'reorder_level',
+                                    item.reorder_level
+                                ) }}"
+                            >
+
+                        </div>
+
+
+                        <div class="col-12 mb-4">
+
+                            <label class="form-label">
+                                Description
+                            </label>
+
+                            <textarea
+                                name="description"
+                                class="form-control"
+                                rows="4"
+                                maxlength="255"
+                            >{{ request.form.get(
+                                'description',
+                                item.description or ''
+                            ) }}</textarea>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="d-flex gap-2">
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                        >
+                            Save Changes
+                        </button>
+
+                        <a
+                            href="{{ url_for('inventory_items') }}"
+                            class="btn btn-outline-secondary"
+                        >
+                            Cancel
+                        </a>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
