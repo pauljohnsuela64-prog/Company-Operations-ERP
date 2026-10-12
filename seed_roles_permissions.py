@@ -23,7 +23,11 @@ PERMISSIONS = [
     ("departments.manage", "Manage departments"),
 
     ("inventory.view", "View inventory"),
-    ("inventory.manage", "Manage inventory"),
+
+    ("inventory.categories.manage", "Manage inventory categories"),
+    ("inventory.warehouses.manage", "Manage warehouses"),
+    ("inventory.items.manage", "Manage inventory items"),
+    ("inventory.stock.manage", "Manage inventory stock"),
 
     ("procurement.view", "View procurement records"),
     ("procurement.manage", "Manage procurement records"),
@@ -46,6 +50,20 @@ PERMISSIONS = [
     ("audit_logs.view", "View audit logs"),
 ]
 
+OBSOLETE_PERMISSIONS = [
+    "inventory.manage",
+]
+
+def remove_obsolete_permissions(cursor):
+    for permission_code in OBSOLETE_PERMISSIONS:
+        cursor.execute(
+            """
+            DELETE FROM permissions
+            WHERE permission_code = %s
+            """,
+            (permission_code,),
+        )
+
 
 ROLE_PERMISSION_MAP = {
     "Super Admin": [permission[0] for permission in PERMISSIONS],
@@ -61,10 +79,13 @@ ROLE_PERMISSION_MAP = {
     ],
 
     "Inventory Manager": [
-        "dashboard.view",
-        "inventory.view",
-        "inventory.manage",
-        "reports.view",
+    "dashboard.view",
+    "inventory.view",
+    "inventory.categories.manage",
+    "inventory.warehouses.manage",
+    "inventory.items.manage",
+    "inventory.stock.manage",
+    "reports.view",
     ],
 
     "Procurement Manager": [
@@ -95,6 +116,8 @@ ROLE_PERMISSION_MAP = {
         "dashboard.view",
     ],
 }
+
+
 
 
 def seed_roles(cursor):
@@ -161,10 +184,10 @@ def main():
         connection = get_connection()
         cursor = connection.cursor()
 
+        remove_obsolete_permissions(cursor)
         seed_roles(cursor)
         seed_permissions(cursor)
         assign_permissions(cursor)
-
         connection.commit()
 
         print("Roles and permissions seeded successfully.")
