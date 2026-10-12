@@ -241,3 +241,52 @@ def stock_out(
     finally:
         cursor.close()
         connection.close()
+
+
+
+def get_stock_movements():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            """
+            SELECT
+                sm.movement_id,
+                sm.movement_type,
+                sm.quantity,
+                sm.reference_type,
+                sm.notes,
+                sm.created_at,
+
+                i.item_code,
+                i.item_name,
+                i.unit_of_measure,
+
+                w.warehouse_code,
+                w.warehouse_name,
+
+                u.username AS created_by_username
+
+            FROM stock_movements sm
+
+            JOIN inventory_items i
+                ON sm.item_id = i.item_id
+
+            JOIN warehouses w
+                ON sm.warehouse_id = w.warehouse_id
+
+            LEFT JOIN users u
+                ON sm.created_by = u.user_id
+
+            ORDER BY
+                sm.created_at DESC,
+                sm.movement_id DESC
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+        cursor.close()
+        connection.close()

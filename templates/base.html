@@ -108,6 +108,14 @@
     Stock
 </a>
 
+
+<a
+    href="{{ url_for('stock_movement_history') }}"
+    class="sidebar-link"
+>
+    Movement History
+</a>
+
 {% endif %}
 
             {% if has_permission('procurement.view') %}

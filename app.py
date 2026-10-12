@@ -7,6 +7,7 @@ from dashboard_repository import get_dashboard_summary
 
 from stock_repository import (
     get_all_stock,
+    get_stock_movements,
     stock_in,
     stock_out,
 )
@@ -1572,6 +1573,17 @@ def inventory_stock_out():
         "inventory/stock/out.html",
         items=active_items,
         warehouses=active_warehouses,
+    )
+
+
+@app.route("/inventory/stock/movements")
+@permission_required("inventory.view")
+def stock_movement_history():
+    movements = get_stock_movements()
+
+    return render_template(
+        "inventory/stock/movements.html",
+        movements=movements,
     )
 
 
