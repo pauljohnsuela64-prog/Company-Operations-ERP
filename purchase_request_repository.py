@@ -402,3 +402,84 @@ def submit_purchase_request(request_id):
     finally:
         cursor.close()
         connection.close()
+
+
+
+def approve_purchase_request(
+    request_id,
+    approved_by,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            UPDATE purchase_requests
+            SET
+                status = 'APPROVED',
+                approved_by = %s,
+                approved_at = CURRENT_TIMESTAMP,
+                rejection_reason = NULL
+            WHERE request_id = %s
+              AND status = 'SUBMITTED'
+            """,
+            (
+                approved_by,
+                request_id,
+            ),
+        )
+
+        updated = cursor.rowcount == 1
+
+        connection.commit()
+
+        return updated
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def reject_purchase_request(
+    request_id,
+    rejection_reason,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            UPDATE purchase_requests
+            SET
+                status = 'REJECTED',
+                rejection_reason = %s,
+                approved_by = NULL,
+                approved_at = NULL
+            WHERE request_id = %s
+              AND status = 'SUBMITTED'
+            """,
+            (
+                rejection_reason,
+                request_id,
+            ),
+        )
+
+        updated = cursor.rowcount == 1
+
+        connection.commit()
+
+        return updated
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        connection.close()

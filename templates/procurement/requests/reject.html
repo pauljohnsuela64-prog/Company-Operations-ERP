@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}
+Reject {{ purchase_request.request_number }}
+{% endblock %}
+
+{% block page_title %}
+Reject Purchase Request
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+
+    <div class="col-lg-7">
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-body p-4">
+
+                <h4 class="mb-1">
+                    Reject {{ purchase_request.request_number }}
+                </h4>
+
+                <p class="text-muted mb-4">
+                    Enter the reason why this purchase request is being rejected.
+                </p>
+
+                <form method="POST">
+
+                    <div class="mb-4">
+
+                        <label class="form-label">
+                            Rejection Reason
+                        </label>
+
+                        <textarea
+                            name="rejection_reason"
+                            class="form-control"
+                            rows="5"
+                            maxlength="500"
+                            required
+                        >{{ request.form.get('rejection_reason', '') }}</textarea>
+
+                    </div>
+
+                    <div class="d-flex gap-2">
+
+                        <button
+                            type="submit"
+                            class="btn btn-danger"
+                        >
+                            Reject Request
+                        </button>
+
+                        <a
+                            href="{{ url_for(
+                                'view_purchase_request',
+                                request_id=purchase_request.request_id
+                            ) }}"
+                            class="btn btn-outline-secondary"
+                        >
+                            Cancel
+                        </a>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -7,12 +7,14 @@ from dashboard_repository import get_dashboard_summary
 
 from purchase_request_repository import (
     add_purchase_request_item,
+    approve_purchase_request,
     create_purchase_request,
     delete_purchase_request_item,
     get_all_purchase_requests,
     get_purchase_request_by_id,
     get_purchase_request_item_by_id,
     get_purchase_request_items,
+    reject_purchase_request,
     submit_purchase_request,
     update_purchase_request_item,
 )
@@ -2372,6 +2374,135 @@ def submit_purchase_request_route(request_id):
             "view_purchase_request",
             request_id=request_id,
         )
+    )
+
+@app.route(
+    "/procurement/requests/<int:request_id>/approve",
+    methods=["POST"],
+)
+@permission_required("procurement.requests.approve")
+def approve_purchase_request_route(request_id):
+    purchase_request = get_purchase_request_by_id(
+        request_id
+    )
+
+    if not purchase_request:
+        flash(
+            "Purchase request not found.",
+            "danger",
+        )
+        return redirect(
+            url_for("purchase_requests")
+        )
+
+    if purchase_request["status"] != "SUBMITTED":
+        flash(
+            "Only submitted purchase requests can be approved.",
+            "danger",
+        )
+        return redirect(
+            url_for(
+                "view_purchase_request",
+                request_id=request_id,
+            )
+        )
+
+    approved = approve_purchase_request(
+        request_id,
+        session["user_id"],
+    )
+
+    if approved:
+        flash(
+            "Purchase request approved successfully.",
+            "success",
+        )
+    else:
+        flash(
+            "Purchase request could not be approved.",
+            "danger",
+        )
+
+    return redirect(
+        url_for(
+            "view_purchase_request",
+            request_id=request_id,
+        )
+    )
+
+@app.route(
+    "/procurement/requests/<int:request_id>/reject",
+    methods=["GET", "POST"],
+)
+@permission_required("procurement.requests.approve")
+def reject_purchase_request_route(request_id):
+    purchase_request = get_purchase_request_by_id(
+        request_id
+    )
+
+    if not purchase_request:
+        flash(
+            "Purchase request not found.",
+            "danger",
+        )
+        return redirect(
+            url_for("purchase_requests")
+        )
+
+    if purchase_request["status"] != "SUBMITTED":
+        flash(
+            "Only submitted purchase requests can be rejected.",
+            "danger",
+        )
+        return redirect(
+            url_for(
+                "view_purchase_request",
+                request_id=request_id,
+            )
+        )
+
+    if request.method == "POST":
+        rejection_reason = request.form.get(
+            "rejection_reason",
+            "",
+        ).strip()
+
+        if not rejection_reason:
+            flash(
+                "Rejection reason is required.",
+                "danger",
+            )
+            return render_template(
+                "procurement/requests/reject.html",
+                purchase_request=purchase_request,
+            )
+
+        rejected = reject_purchase_request(
+            request_id,
+            rejection_reason,
+        )
+
+        if rejected:
+            flash(
+                "Purchase request rejected successfully.",
+                "success",
+            )
+        else:
+            flash(
+                "Purchase request could not be rejected.",
+                "danger",
+            )
+
+        return redirect(
+            url_for(
+                "view_purchase_request",
+                request_id=request_id,
+            )
+        )
+
+    return render_template(
+        "procurement/requests/reject.html",
+        purchase_request=purchase_request,
     )
 
 @app.route("/logout")

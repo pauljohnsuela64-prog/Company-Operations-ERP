@@ -61,6 +61,43 @@ Purchase Request
         Back to Requests
     </a>
 
+    {% if
+    purchase_request.status == 'SUBMITTED'
+    and has_permission('procurement.requests.approve')
+%}
+
+    <form
+        method="POST"
+        action="{{ url_for(
+            'approve_purchase_request_route',
+            request_id=purchase_request.request_id
+        ) }}"
+    >
+
+        <button
+            type="submit"
+            class="btn btn-success"
+            onclick="return confirm(
+                'Approve this purchase request?'
+            )"
+        >
+            Approve
+        </button>
+
+        <a
+    href="{{ url_for(
+        'reject_purchase_request_route',
+        request_id=purchase_request.request_id
+    ) }}"
+    class="btn btn-danger"
+>
+    Reject
+</a>
+
+    </form>
+
+{% endif %}
+
 </div>
 </div>
 
@@ -82,6 +119,25 @@ Purchase Request
                 </strong>
 
             </div>
+
+            {% if
+    purchase_request.status == 'REJECTED'
+    and purchase_request.rejection_reason
+%}
+
+    <div class="alert alert-danger mb-4">
+
+        <h6 class="alert-heading mb-2">
+            Rejection Reason
+        </h6>
+
+        <p class="mb-0">
+            {{ purchase_request.rejection_reason }}
+        </p>
+
+    </div>
+
+{% endif %}
 
 
             <div class="col-md-4 mb-3">
