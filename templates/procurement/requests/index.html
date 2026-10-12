@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+Purchase Requests | Company Operations ERP
+{% endblock %}
+
+
+{% block page_title %}
+Purchase Requests
+{% endblock %}
+
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            Purchase Requests
+        </h2>
+
+        <p class="text-muted mb-0">
+            Manage company requests for purchasing inventory items.
+        </p>
+
+    </div>
+
+
+    {% if has_permission('procurement.requests.create') %}
+
+    <a
+        href="{{ url_for('add_purchase_request') }}"
+        class="btn btn-primary"
+    >
+        New Purchase Request
+    </a>
+
+{% endif %}
+
+
+</div>
+
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Request No.</th>
+                        <th>Department</th>
+                        <th>Requested By</th>
+                        <th>Purpose</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th class="text-end">
+                            Actions
+                        </th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for purchase_request in purchase_requests %}
+
+                        <tr>
+
+                            <td>
+                                <strong>
+                                    {{ purchase_request.request_number }}
+                                </strong>
+                            </td>
+
+
+                            <td>
+
+                                {% if purchase_request.department_name %}
+
+                                    {{ purchase_request.department_name }}
+
+                                    <div class="small text-muted">
+                                        {{ purchase_request.department_code }}
+                                    </div>
+
+                                {% else %}
+
+                                    <span class="text-muted">
+                                        No Department
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+                                {{ purchase_request.requested_by_username }}
+                            </td>
+
+
+                            <td>
+                                {{ purchase_request.purpose or '-' }}
+                            </td>
+
+
+                            <td>
+
+                                {% if purchase_request.status == 'DRAFT' %}
+
+                                    <span class="badge text-bg-secondary">
+                                        Draft
+                                    </span>
+
+                                {% elif purchase_request.status == 'SUBMITTED' %}
+
+                                    <span class="badge text-bg-primary">
+                                        Submitted
+                                    </span>
+
+                                {% elif purchase_request.status == 'APPROVED' %}
+
+                                    <span class="badge text-bg-success">
+                                        Approved
+                                    </span>
+
+                                {% elif purchase_request.status == 'REJECTED' %}
+
+                                    <span class="badge text-bg-danger">
+                                        Rejected
+                                    </span>
+
+                                {% elif purchase_request.status == 'COMPLETED' %}
+
+                                    <span class="badge text-bg-success">
+                                        Completed
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge text-bg-dark">
+                                        {{ purchase_request.status }}
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+                                {{ purchase_request.created_at.strftime(
+                                    '%Y-%m-%d'
+                                ) }}
+                            </td>
+
+
+                            <td class="text-end">
+
+                                <a
+                                href="{{ url_for(
+                                'view_purchase_request',
+                                request_id=purchase_request.request_id
+                             ) }}"
+                                class="btn btn-sm btn-outline-primary"
+                                  >
+                                    View
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="7"
+                                class="text-center text-muted py-4"
+                            >
+                                No purchase requests found.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

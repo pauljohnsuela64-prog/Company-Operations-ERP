@@ -185,3 +185,55 @@ def set_inventory_item_active_status(
     finally:
         cursor.close()
         connection.close()
+
+
+
+def get_active_inventory_items():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            """
+            SELECT
+                item_id,
+                item_code,
+                item_name,
+                unit_of_measure
+            FROM inventory_items
+            WHERE is_active = TRUE
+            ORDER BY item_name
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
+
+def get_active_inventory_items():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            """
+            SELECT
+                item_id,
+                item_code,
+                item_name,
+                unit_of_measure
+            FROM inventory_items
+            WHERE is_active = TRUE
+            ORDER BY item_name
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+        cursor.close()
+        connection.close()

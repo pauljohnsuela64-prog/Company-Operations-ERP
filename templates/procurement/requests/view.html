@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ purchase_request.request_number }} | Company Operations ERP
+{% endblock %}
+
+{% block page_title %}
+Purchase Request
+{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            {{ purchase_request.request_number }}
+        </h2>
+
+        <p class="text-muted mb-0">
+            Purchase request details
+        </p>
+
+    </div>
+
+    <a
+        href="{{ url_for('purchase_requests') }}"
+        class="btn btn-outline-secondary"
+    >
+        Back to Requests
+    </a>
+
+</div>
+
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body p-4">
+
+        <div class="row">
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Request Number
+                </div>
+
+                <strong>
+                    {{ purchase_request.request_number }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Department
+                </div>
+
+                <strong>
+                    {{ purchase_request.department_name or 'No Department' }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Requested By
+                </div>
+
+                <strong>
+                    {{ purchase_request.requested_by_username }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Status
+                </div>
+
+                {% if purchase_request.status == 'DRAFT' %}
+
+                    <span class="badge text-bg-secondary">
+                        Draft
+                    </span>
+
+                {% elif purchase_request.status == 'SUBMITTED' %}
+
+                    <span class="badge text-bg-primary">
+                        Submitted
+                    </span>
+
+                {% elif purchase_request.status == 'APPROVED' %}
+
+                    <span class="badge text-bg-success">
+                        Approved
+                    </span>
+
+                {% elif purchase_request.status == 'REJECTED' %}
+
+                    <span class="badge text-bg-danger">
+                        Rejected
+                    </span>
+
+                {% else %}
+
+                    <span class="badge text-bg-dark">
+                        {{ purchase_request.status }}
+                    </span>
+
+                {% endif %}
+
+            </div>
+
+
+            <div class="col-md-8 mb-3">
+
+                <div class="text-muted small">
+                    Purpose
+                </div>
+
+                <strong>
+                    {{ purchase_request.purpose }}
+                </strong>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+
+        <div>
+
+            <h5 class="mb-0">
+                Requested Items
+            </h5>
+
+        </div>
+
+
+        {% if
+            purchase_request.status == 'DRAFT'
+            and has_permission(
+                'procurement.requests.create'
+            )
+        %}
+
+            <a
+    href="{{ url_for(
+            'add_purchase_request_item_route',
+            request_id=purchase_request.request_id
+            ) }}"
+            class="btn btn-sm btn-primary"
+>
+    Add Item
+            </a>
+        {% endif %}
+
+    </div>
+
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                    <th>Item Code</th>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th>Estimated Unit Cost</th>
+                    <th>Estimated Total</th>
+                    <th>Notes</th>
+
+                {% if
+                    purchase_request.status == 'DRAFT'
+                    and has_permission('procurement.requests.create')
+                %}
+                <th class="text-end">
+            Actions
+        </th>
+    {% endif %}
+</tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for item in items %}
+
+                        <tr>
+
+                            <td>
+                                {{ item.item_code }}
+                            </td>
+
+                            <td>
+                                {{ item.item_name }}
+                            </td>
+
+                            <td>
+                                {{ item.quantity }}
+                                {{ item.unit_of_measure }}
+                            </td>
+
+                            <td>
+
+                                {% if item.estimated_unit_cost is not none %}
+
+                                    ₱{{ "%.2f"|format(
+                                        item.estimated_unit_cost
+                                    ) }}
+
+                                {% else %}
+
+                                    -
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+
+                                {% if item.estimated_unit_cost is not none %}
+
+                                    ₱{{ "%.2f"|format(
+                                        item.quantity
+                                        *
+                                        item.estimated_unit_cost
+                                    ) }}
+
+                                {% else %}
+
+                                    -
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+                                {{ item.notes or '-' }}
+                            </td>
+
+                            {% if
+    purchase_request.status == 'DRAFT'
+    and has_permission('procurement.requests.create')
+%}
+
+    <td class="text-end">
+
+        {% if
+    purchase_request.status == 'DRAFT'
+    and has_permission('procurement.requests.create')
+%}
+
+    <td class="text-end">
+
+        <a
+            href="{{ url_for(
+                'edit_purchase_request_item_route',
+                request_id=purchase_request.request_id,
+                request_item_id=item.request_item_id
+            ) }}"
+            class="btn btn-sm btn-outline-primary"
+        >
+            Edit
+        </a>
+
+        <form
+            method="POST"
+            action="{{ url_for(
+                'delete_purchase_request_item_route',
+                request_id=purchase_request.request_id,
+                request_item_id=item.request_item_id
+            ) }}"
+            class="d-inline"
+        >
+
+            <button
+                type="submit"
+                class="btn btn-sm btn-outline-danger"
+                onclick="return confirm(
+                    'Remove this item from the purchase request?'
+                )"
+            >
+                Remove
+            </button>
+
+        </form>
+
+    </td>
+
+{% endif %}
+
+    </td>
+
+{% endif %}
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="{{ 7 if purchase_request.status == 'DRAFT' and has_permission('procurement.requests.create') else 6 }}"
+                                class="text-center text-muted py-4"
+                            >
+                                No items have been added to this request yet.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

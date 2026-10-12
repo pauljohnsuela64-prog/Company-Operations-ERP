@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}
+New Purchase Request | Company Operations ERP
+{% endblock %}
+
+{% block page_title %}
+New Purchase Request
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+
+    <div class="col-lg-8 col-xl-7">
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-body p-4">
+
+                <h4 class="mb-1">
+                    Create Purchase Request
+                </h4>
+
+                <p class="text-muted mb-4">
+                    Create a draft request for items needed by a department.
+                </p>
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Requested By
+                    </label>
+
+                    <input
+                        type="text"
+                        class="form-control"
+                        value="{{ session.username }}"
+                        disabled
+                    >
+
+                    <div class="form-text">
+                        Automatically recorded from your account.
+                    </div>
+
+                </div>
+
+
+                <form method="POST">
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Department
+                        </label>
+
+                        <select
+                            name="department_id"
+                            class="form-select"
+                            required
+                        >
+
+                            <option value="">
+                                Select a department
+                            </option>
+
+                            {% for department in departments %}
+
+                                <option
+                                    value="{{ department.department_id }}"
+                                    {% if request.form.get('department_id') == department.department_id|string %}
+                                        selected
+                                    {% endif %}
+                                >
+                                    {{ department.department_code }}
+                                    -
+                                    {{ department.department_name }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+                    <div class="mb-4">
+
+                        <label class="form-label">
+                            Purpose
+                        </label>
+
+                        <textarea
+                            name="purpose"
+                            class="form-control"
+                            rows="4"
+                            maxlength="255"
+                            placeholder="Example: Additional equipment for new IT workstations"
+                            required
+                        >{{ request.form.get('purpose', '') }}</textarea>
+
+                    </div>
+
+
+                    <div class="d-flex gap-2">
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                        >
+                            Create Draft Request
+                        </button>
+
+                        <a
+                            href="{{ url_for('purchase_requests') }}"
+                            class="btn btn-outline-secondary"
+                        >
+                            Cancel
+                        </a>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

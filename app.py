@@ -5,6 +5,16 @@ from dotenv import load_dotenv
 
 from dashboard_repository import get_dashboard_summary
 
+from purchase_request_repository import (
+    add_purchase_request_item,
+    create_purchase_request,
+    delete_purchase_request_item,
+    get_all_purchase_requests,
+    get_purchase_request_by_id,
+    get_purchase_request_item_by_id,
+    get_purchase_request_items,
+    update_purchase_request_item,
+)
 
 from supplier_repository import (
     create_supplier,
@@ -28,6 +38,7 @@ from inventory_item_repository import (
     get_inventory_item_by_id,
     set_inventory_item_active_status,
     update_inventory_item,
+    get_active_inventory_items,
 )
 
 from warehouse_repository import (
@@ -1813,6 +1824,484 @@ def change_supplier_status(supplier_id):
 
     return redirect(url_for("suppliers"))
 
+
+@app.route("/procurement/requests")
+@permission_required("procurement.view")
+def purchase_requests():
+    requests_list = get_all_purchase_requests()
+
+    return render_template(
+        "procurement/requests/index.html",
+        purchase_requests=requests_list,
+    )
+
+@app.route(
+    "/procurement/requests/add",
+    methods=["GET", "POST"],
+)
+@permission_required("procurement.requests.create")
+def add_purchase_request():
+    departments = get_active_departments()
+
+    if request.method == "POST":
+        department_id = request.form.get(
+            "department_id",
+            "",
+        ).strip()
+
+        purpose = request.form.get(
+            "purpose",
+            "",
+        ).strip()
+
+        if not department_id or not purpose:
+            flash(
+                "Department and purpose are required.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/requests/add.html",
+                departments=departments,
+            )
+
+        try:
+            department_id_value = int(
+                department_id
+            )
+        except ValueError:
+            flash(
+                "Invalid department.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/requests/add.html",
+                departments=departments,
+            )
+
+        department = get_department_by_id(
+            department_id_value
+        )
+
+        if (
+            not department
+            or not department["is_active"]
+        ):
+            flash(
+                "Selected department is invalid or inactive.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/requests/add.html",
+                departments=departments,
+            )
+
+        request_id, request_number = (
+            create_purchase_request(
+                session["user_id"],
+                department_id_value,
+                purpose,
+            )
+        )
+
+        flash(
+            f"Purchase request {request_number} created successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for("purchase_requests")
+        )
+
+    return render_template(
+        "procurement/requests/add.html",
+        departments=departments,
+    )
+
+@app.route(
+    "/procurement/requests/<int:request_id>"
+)
+@permission_required("procurement.view")
+def view_purchase_request(request_id):
+    purchase_request = get_purchase_request_by_id(
+        request_id
+    )
+
+    if not purchase_request:
+        flash(
+            "Purchase request not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("purchase_requests")
+        )
+
+    items = get_purchase_request_items(
+        request_id
+    )
+
+    return render_template(
+        "procurement/requests/view.html",
+        purchase_request=purchase_request,
+        items=items,
+    )
+
+
+
+
+
+@app.route(
+    "/procurement/requests/<int:request_id>/items/add",
+    methods=["GET", "POST"],
+)
+@permission_required("procurement.requests.create")
+def add_purchase_request_item_route(request_id):
+    purchase_request = get_purchase_request_by_id(request_id)
+
+    if not purchase_request:
+        flash(
+            "Purchase request not found.",
+            "danger",
+        )
+        return redirect(url_for("purchase_requests"))
+
+    if purchase_request["status"] != "DRAFT":
+        flash(
+            "Items can only be added to draft purchase requests.",
+            "danger",
+        )
+        return redirect(
+            url_for(
+                "view_purchase_request",
+                request_id=request_id,
+            )
+        )
+
+    inventory_items = get_active_inventory_items()
+
+    if request.method == "POST":
+        item_id = request.form.get("item_id", "").strip()
+        quantity = request.form.get("quantity", "").strip()
+
+        estimated_unit_cost = request.form.get(
+            "estimated_unit_cost",
+            "",
+        ).strip()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+        if not item_id or not quantity:
+            flash(
+                "Item and quantity are required.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/requests/add_item.html",
+                purchase_request=purchase_request,
+                inventory_items=inventory_items,
+            )
+
+        try:
+            item_id_value = int(item_id)
+            quantity_value = float(quantity)
+
+            if quantity_value <= 0:
+                raise ValueError
+
+        except ValueError:
+            flash(
+                "Quantity must be greater than zero.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/requests/add_item.html",
+                purchase_request=purchase_request,
+                inventory_items=inventory_items,
+            )
+
+        cost_value = None
+
+        if estimated_unit_cost:
+            try:
+                cost_value = float(estimated_unit_cost)
+
+                if cost_value < 0:
+                    raise ValueError
+
+            except ValueError:
+                flash(
+                    "Estimated unit cost must be zero or greater.",
+                    "danger",
+                )
+
+                return render_template(
+                    "procurement/requests/add_item.html",
+                    purchase_request=purchase_request,
+                    inventory_items=inventory_items,
+                )
+
+        add_purchase_request_item(
+            request_id,
+            item_id_value,
+            quantity_value,
+            cost_value,
+            notes or None,
+        )
+
+        flash(
+            "Item added to purchase request successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for(
+                "view_purchase_request",
+                request_id=request_id,
+            )
+        )
+
+    return render_template(
+        "procurement/requests/add_item.html",
+        purchase_request=purchase_request,
+        inventory_items=inventory_items,
+    )
+
+@app.route(
+    "/procurement/requests/<int:request_id>/items/<int:request_item_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required("procurement.requests.create")
+def edit_purchase_request_item_route(
+    request_id,
+    request_item_id,
+):
+    purchase_request = get_purchase_request_by_id(
+        request_id
+    )
+
+    if not purchase_request:
+        flash(
+            "Purchase request not found.",
+            "danger",
+        )
+        return redirect(
+            url_for("purchase_requests")
+        )
+
+    if purchase_request["status"] != "DRAFT":
+        flash(
+            "Items can only be edited while the purchase request is in Draft status.",
+            "danger",
+        )
+        return redirect(
+            url_for(
+                "view_purchase_request",
+                request_id=request_id,
+            )
+        )
+
+    request_item = get_purchase_request_item_by_id(
+        request_item_id
+    )
+
+    if (
+        not request_item
+        or request_item["request_id"] != request_id
+    ):
+        flash(
+            "Purchase request item not found.",
+            "danger",
+        )
+        return redirect(
+            url_for(
+                "view_purchase_request",
+                request_id=request_id,
+            )
+        )
+
+    inventory_items = get_active_inventory_items()
+
+    if request.method == "POST":
+        item_id = request.form.get(
+            "item_id",
+            "",
+        ).strip()
+
+        quantity = request.form.get(
+            "quantity",
+            "",
+        ).strip()
+
+        estimated_unit_cost = request.form.get(
+            "estimated_unit_cost",
+            "",
+        ).strip()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+        if not item_id or not quantity:
+            flash(
+                "Item and quantity are required.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/requests/edit_item.html",
+                purchase_request=purchase_request,
+                request_item=request_item,
+                inventory_items=inventory_items,
+            )
+
+        try:
+            item_id_value = int(item_id)
+            quantity_value = float(quantity)
+
+            if quantity_value <= 0:
+                raise ValueError
+
+        except ValueError:
+            flash(
+                "Quantity must be greater than zero.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/requests/edit_item.html",
+                purchase_request=purchase_request,
+                request_item=request_item,
+                inventory_items=inventory_items,
+            )
+
+        cost_value = None
+
+        if estimated_unit_cost:
+            try:
+                cost_value = float(
+                    estimated_unit_cost
+                )
+
+                if cost_value < 0:
+                    raise ValueError
+
+            except ValueError:
+                flash(
+                    "Estimated unit cost must be zero or greater.",
+                    "danger",
+                )
+
+                return render_template(
+                    "procurement/requests/edit_item.html",
+                    purchase_request=purchase_request,
+                    request_item=request_item,
+                    inventory_items=inventory_items,
+                )
+
+        update_purchase_request_item(
+            request_item_id,
+            item_id_value,
+            quantity_value,
+            cost_value,
+            notes or None,
+        )
+
+        flash(
+            "Purchase request item updated successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for(
+                "view_purchase_request",
+                request_id=request_id,
+            )
+        )
+
+    return render_template(
+        "procurement/requests/edit_item.html",
+        purchase_request=purchase_request,
+        request_item=request_item,
+        inventory_items=inventory_items,
+    )
+
+@app.route(
+    "/procurement/requests/<int:request_id>/items/<int:request_item_id>/delete",
+    methods=["POST"],
+)
+@permission_required("procurement.requests.create")
+def delete_purchase_request_item_route(
+    request_id,
+    request_item_id,
+):
+    purchase_request = get_purchase_request_by_id(
+        request_id
+    )
+
+    if not purchase_request:
+        flash(
+            "Purchase request not found.",
+            "danger",
+        )
+        return redirect(
+            url_for("purchase_requests")
+        )
+
+    if purchase_request["status"] != "DRAFT":
+        flash(
+            "Items can only be removed while the purchase request is in Draft status.",
+            "danger",
+        )
+        return redirect(
+            url_for(
+                "view_purchase_request",
+                request_id=request_id,
+            )
+        )
+
+    request_item = get_purchase_request_item_by_id(
+        request_item_id
+    )
+
+    if (
+        not request_item
+        or request_item["request_id"] != request_id
+    ):
+        flash(
+            "Purchase request item not found.",
+            "danger",
+        )
+        return redirect(
+            url_for(
+                "view_purchase_request",
+                request_id=request_id,
+            )
+        )
+
+    delete_purchase_request_item(
+        request_item_id
+    )
+
+    flash(
+        "Purchase request item removed successfully.",
+        "success",
+    )
+
+    return redirect(
+        url_for(
+            "view_purchase_request",
+            request_id=request_id,
+        )
+    )
 
 @app.route("/logout")
 @login_required
