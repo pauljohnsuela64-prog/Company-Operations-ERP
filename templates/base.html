@@ -116,18 +116,20 @@
     Movement History
 </a>
 
+{% if has_permission('procurement.view') %}
+
+    <div class="sidebar-section">
+        Procurement
+    </div>
+
+    <a
+        href="{{ url_for('suppliers') }}"
+        class="sidebar-link"
+    >
+        Suppliers
+    </a>
+
 {% endif %}
-
-            {% if has_permission('procurement.view') %}
-
-                <div class="sidebar-section">
-                    Procurement
-                </div>
-
-                <a href="#" class="sidebar-link">
-                    Procurement
-                </a>
-
             {% endif %}
 
 

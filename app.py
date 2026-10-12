@@ -5,6 +5,15 @@ from dotenv import load_dotenv
 
 from dashboard_repository import get_dashboard_summary
 
+
+from supplier_repository import (
+    create_supplier,
+    get_all_suppliers,
+    get_supplier_by_id,
+    set_supplier_active_status,
+    update_supplier,
+)
+
 from stock_repository import (
     get_all_stock,
     get_stock_movements,
@@ -1585,6 +1594,224 @@ def stock_movement_history():
         "inventory/stock/movements.html",
         movements=movements,
     )
+
+
+@app.route("/procurement/suppliers")
+@permission_required("procurement.view")
+def suppliers():
+    supplier_list = get_all_suppliers()
+
+    return render_template(
+        "procurement/suppliers/index.html",
+        suppliers=supplier_list,
+    )
+
+
+@app.route(
+    "/procurement/suppliers/add",
+    methods=["GET", "POST"],
+)
+@permission_required("procurement.suppliers.manage")
+def add_supplier():
+    if request.method == "POST":
+        supplier_code = request.form.get(
+            "supplier_code",
+            "",
+        ).strip().upper()
+
+        supplier_name = request.form.get(
+            "supplier_name",
+            "",
+        ).strip()
+
+        contact_person = request.form.get(
+            "contact_person",
+            "",
+        ).strip()
+
+        email = request.form.get(
+            "email",
+            "",
+        ).strip()
+
+        phone = request.form.get(
+            "phone",
+            "",
+        ).strip()
+
+        address = request.form.get(
+            "address",
+            "",
+        ).strip()
+
+        if not supplier_code or not supplier_name:
+            flash(
+                "Supplier code and supplier name are required.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/suppliers/add.html",
+            )
+
+        try:
+            create_supplier(
+                supplier_code,
+                supplier_name,
+                contact_person or None,
+                email or None,
+                phone or None,
+                address or None,
+            )
+
+        except Exception as error:
+            if getattr(error, "errno", None) == 1062:
+                flash(
+                    "Supplier code already exists.",
+                    "danger",
+                )
+
+                return render_template(
+                    "procurement/suppliers/add.html",
+                )
+
+            raise
+
+        flash(
+            "Supplier created successfully.",
+            "success",
+        )
+
+        return redirect(url_for("suppliers"))
+
+    return render_template(
+        "procurement/suppliers/add.html",
+    )
+
+
+@app.route(
+    "/procurement/suppliers/<int:supplier_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required("procurement.suppliers.manage")
+def edit_supplier(supplier_id):
+    supplier = get_supplier_by_id(supplier_id)
+
+    if not supplier:
+        flash("Supplier not found.", "danger")
+        return redirect(url_for("suppliers"))
+
+    if request.method == "POST":
+        supplier_code = request.form.get(
+            "supplier_code",
+            "",
+        ).strip().upper()
+
+        supplier_name = request.form.get(
+            "supplier_name",
+            "",
+        ).strip()
+
+        contact_person = request.form.get(
+            "contact_person",
+            "",
+        ).strip()
+
+        email = request.form.get(
+            "email",
+            "",
+        ).strip()
+
+        phone = request.form.get(
+            "phone",
+            "",
+        ).strip()
+
+        address = request.form.get(
+            "address",
+            "",
+        ).strip()
+
+        if not supplier_code or not supplier_name:
+            flash(
+                "Supplier code and supplier name are required.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/suppliers/edit.html",
+                supplier=supplier,
+            )
+
+        try:
+            update_supplier(
+                supplier_id,
+                supplier_code,
+                supplier_name,
+                contact_person or None,
+                email or None,
+                phone or None,
+                address or None,
+            )
+
+        except Exception as error:
+            if getattr(error, "errno", None) == 1062:
+                flash(
+                    "Supplier code already exists.",
+                    "danger",
+                )
+
+                return render_template(
+                    "procurement/suppliers/edit.html",
+                    supplier=supplier,
+                )
+
+            raise
+
+        flash(
+            "Supplier updated successfully.",
+            "success",
+        )
+
+        return redirect(url_for("suppliers"))
+
+    return render_template(
+        "procurement/suppliers/edit.html",
+        supplier=supplier,
+    )
+
+
+@app.route(
+    "/procurement/suppliers/<int:supplier_id>/status",
+    methods=["POST"],
+)
+@permission_required("procurement.suppliers.manage")
+def change_supplier_status(supplier_id):
+    supplier = get_supplier_by_id(supplier_id)
+
+    if not supplier:
+        flash("Supplier not found.", "danger")
+        return redirect(url_for("suppliers"))
+
+    new_status = not bool(supplier["is_active"])
+
+    set_supplier_active_status(
+        supplier_id,
+        new_status,
+    )
+
+    if new_status:
+        flash(
+            "Supplier activated successfully.",
+            "success",
+        )
+    else:
+        flash(
+            "Supplier deactivated successfully.",
+            "success",
+        )
+
+    return redirect(url_for("suppliers"))
 
 
 @app.route("/logout")
