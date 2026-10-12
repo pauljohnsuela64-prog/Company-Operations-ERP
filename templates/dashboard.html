@@ -27,7 +27,21 @@ Dashboard
 </div>
 
 
-<div class="row g-4">
+<!-- ===================================================== -->
+<!-- HUMAN RESOURCES -->
+<!-- ===================================================== -->
+
+{% if
+    has_permission('employees.view')
+    or has_permission('departments.view')
+%}
+
+<div class="mb-3">
+    <h5>Human Resources</h5>
+</div>
+
+
+<div class="row g-4 mb-5">
 
     <div class="col-md-6 col-xl-3">
 
@@ -44,12 +58,14 @@ Dashboard
                 </h2>
 
                 {% if has_permission('employees.view') %}
+
                     <a
                         href="{{ url_for('employees') }}"
                         class="small text-decoration-none"
                     >
                         View employees
                     </a>
+
                 {% endif %}
 
             </div>
@@ -129,6 +145,7 @@ Dashboard
                 </small>
 
                 {% if has_permission('departments.view') %}
+
                     <div class="mt-1">
 
                         <a
@@ -139,6 +156,7 @@ Dashboard
                         </a>
 
                     </div>
+
                 {% endif %}
 
             </div>
@@ -148,5 +166,159 @@ Dashboard
     </div>
 
 </div>
+
+{% endif %}
+
+
+<!-- ===================================================== -->
+<!-- INVENTORY -->
+<!-- ===================================================== -->
+
+{% if has_permission('inventory.view') %}
+
+<div class="mb-3">
+    <h5>Inventory</h5>
+</div>
+
+
+<div class="row g-4">
+
+    <div class="col-md-6 col-xl-3">
+
+        <div class="card dashboard-card shadow-sm h-100">
+
+            <div class="card-body">
+
+                <small class="text-muted">
+                    Inventory Items
+                </small>
+
+                <h2 class="mt-2 mb-1">
+                    {{ summary.total_inventory_items }}
+                </h2>
+
+                <a
+                    href="{{ url_for('inventory_items') }}"
+                    class="small text-decoration-none"
+                >
+                    View items
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-6 col-xl-3">
+
+        <div class="card dashboard-card shadow-sm h-100">
+
+            <div class="card-body">
+
+                <small class="text-muted">
+                    Low Stock Items
+                </small>
+
+                <h2 class="mt-2 mb-1">
+                    {{ summary.low_stock_items }}
+                </h2>
+
+                {% if summary.low_stock_items > 0 %}
+
+                    <span class="badge text-bg-warning">
+                        Needs Attention
+                    </span>
+
+                {% else %}
+
+                    <span class="badge text-bg-success">
+                        Good
+                    </span>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-6 col-xl-3">
+
+        <div class="card dashboard-card shadow-sm h-100">
+
+            <div class="card-body">
+
+                <small class="text-muted">
+                    Out of Stock
+                </small>
+
+                <h2 class="mt-2 mb-1">
+                    {{ summary.out_of_stock_items }}
+                </h2>
+
+                {% if summary.out_of_stock_items > 0 %}
+
+                    <span class="badge text-bg-danger">
+                        Attention Required
+                    </span>
+
+                {% else %}
+
+                    <span class="badge text-bg-success">
+                        No Issues
+                    </span>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-6 col-xl-3">
+
+        <div class="card dashboard-card shadow-sm h-100">
+
+            <div class="card-body">
+
+                <small class="text-muted">
+                    Warehouses
+                </small>
+
+                <h2 class="mt-2 mb-1">
+                    {{ summary.total_warehouses }}
+                </h2>
+
+                <small class="text-muted">
+                    {{ summary.active_warehouses }}
+                    active
+                </small>
+
+                <div class="mt-1">
+
+                    <a
+                        href="{{ url_for('warehouses') }}"
+                        class="small text-decoration-none"
+                    >
+                        View warehouses
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endif %}
 
 {% endblock %}
