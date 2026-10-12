@@ -24,6 +24,36 @@ Purchase Request
 
     </div>
 
+    <div class="d-flex gap-2">
+
+    {% if
+        purchase_request.status == 'DRAFT'
+        and has_permission('procurement.requests.create')
+    %}
+
+        <form
+            method="POST"
+            action="{{ url_for(
+                'submit_purchase_request_route',
+                request_id=purchase_request.request_id
+            ) }}"
+        >
+
+            <button
+                type="submit"
+                class="btn btn-success"
+                onclick="return confirm(
+                    'Submit this purchase request for approval? You will no longer be able to edit its items.'
+                )"
+            >
+                Submit Request
+            </button>
+
+        </form>
+
+    {% endif %}
+
+
     <a
         href="{{ url_for('purchase_requests') }}"
         class="btn btn-outline-secondary"
@@ -31,6 +61,7 @@ Purchase Request
         Back to Requests
     </a>
 
+</div>
 </div>
 
 

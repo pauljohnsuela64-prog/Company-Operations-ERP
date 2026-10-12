@@ -13,6 +13,7 @@ from purchase_request_repository import (
     get_purchase_request_by_id,
     get_purchase_request_item_by_id,
     get_purchase_request_items,
+    submit_purchase_request,
     update_purchase_request_item,
 )
 
@@ -2295,6 +2296,76 @@ def delete_purchase_request_item_route(
         "Purchase request item removed successfully.",
         "success",
     )
+
+    return redirect(
+        url_for(
+            "view_purchase_request",
+            request_id=request_id,
+        )
+    )
+
+
+@app.route(
+    "/procurement/requests/<int:request_id>/submit",
+    methods=["POST"],
+)
+@permission_required("procurement.requests.create")
+def submit_purchase_request_route(request_id):
+    purchase_request = get_purchase_request_by_id(
+        request_id
+    )
+
+    if not purchase_request:
+        flash(
+            "Purchase request not found.",
+            "danger",
+        )
+        return redirect(
+            url_for("purchase_requests")
+        )
+
+    if purchase_request["status"] != "DRAFT":
+        flash(
+            "Only draft purchase requests can be submitted.",
+            "danger",
+        )
+        return redirect(
+            url_for(
+                "view_purchase_request",
+                request_id=request_id,
+            )
+        )
+
+    items = get_purchase_request_items(
+        request_id
+    )
+
+    if not items:
+        flash(
+            "You cannot submit a purchase request without any items.",
+            "danger",
+        )
+        return redirect(
+            url_for(
+                "view_purchase_request",
+                request_id=request_id,
+            )
+        )
+
+    submitted = submit_purchase_request(
+        request_id
+    )
+
+    if not submitted:
+        flash(
+            "Purchase request could not be submitted.",
+            "danger",
+        )
+    else:
+        flash(
+            "Purchase request submitted successfully.",
+            "success",
+        )
 
     return redirect(
         url_for(

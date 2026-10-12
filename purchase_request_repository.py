@@ -370,3 +370,35 @@ def delete_purchase_request_item(request_item_id):
     finally:
         cursor.close()
         connection.close()
+
+
+def submit_purchase_request(request_id):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            UPDATE purchase_requests
+            SET
+                status = 'SUBMITTED',
+                submitted_at = CURRENT_TIMESTAMP
+            WHERE request_id = %s
+              AND status = 'DRAFT'
+            """,
+            (request_id,),
+        )
+
+        updated = cursor.rowcount == 1
+
+        connection.commit()
+
+        return updated
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        connection.close()
