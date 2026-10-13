@@ -357,3 +357,39 @@ def update_purchase_order_item_cost(
     finally:
         cursor.close()
         connection.close()
+
+
+# ==========================================================
+# SEND PURCHASE ORDER
+# Changes a Purchase Order from DRAFT -> SENT
+# ==========================================================
+
+def send_purchase_order(purchase_order_id):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            UPDATE purchase_orders
+            SET status = 'SENT'
+            WHERE purchase_order_id = %s
+              AND status = 'DRAFT'
+            """,
+            (purchase_order_id,),
+        )
+
+        # True means exactly one DRAFT PO was updated.
+        updated = cursor.rowcount == 1
+
+        connection.commit()
+
+        return updated
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        connection.close()

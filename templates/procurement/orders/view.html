@@ -33,6 +33,47 @@ Purchase Order
     </div>
 
 
+    <!-- # ========================================== -->
+<!-- # PAGE ACTION BUTTONS -->
+<!-- # ========================================== -->
+
+<div class="d-flex gap-2">
+
+
+    <!-- # SEND PURCHASE ORDER BUTTON -->
+    <!-- # Only appears while the PO is DRAFT -->
+    <!-- # User also needs procurement.orders.manage -->
+
+    {% if
+        purchase_order.status == 'DRAFT'
+        and has_permission('procurement.orders.manage')
+    %}
+
+        <form
+            method="POST"
+            action="{{ url_for(
+                'send_purchase_order_route',
+                purchase_order_id=purchase_order.purchase_order_id
+            ) }}"
+            onsubmit="return confirm(
+                'Send this purchase order to the supplier?'
+            );"
+        >
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Send Purchase Order
+            </button>
+
+        </form>
+
+    {% endif %}
+
+
+    <!-- # BACK BUTTON -->
+
     <a
         href="{{ url_for('purchase_orders') }}"
         class="btn btn-outline-secondary"

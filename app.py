@@ -11,6 +11,7 @@ from purchase_order_repository import (
     get_purchase_order_by_id,
     get_purchase_order_item_by_id,
     get_purchase_order_items,
+    send_purchase_order,
     update_purchase_order_item_cost,
 )
 
@@ -2811,6 +2812,75 @@ def edit_purchase_order_item_cost_route(
         purchase_order=purchase_order,
         purchase_order_item=purchase_order_item,
     )
+
+
+# ==========================================================
+# SEND PURCHASE ORDER ROUTE
+# Changes PO status from DRAFT -> SENT
+# ==========================================================
+
+@app.route(
+    "/procurement/orders/<int:purchase_order_id>/send",
+    methods=["POST"],
+)
+@permission_required("procurement.orders.manage")
+def send_purchase_order_route(purchase_order_id):
+
+    # # Get the Purchase Order first
+    purchase_order = get_purchase_order_by_id(
+        purchase_order_id
+    )
+
+    # # Make sure the PO exists
+    if not purchase_order:
+        flash(
+            "Purchase order not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("purchase_orders")
+        )
+
+    # # Only DRAFT purchase orders can be sent
+    if purchase_order["status"] != "DRAFT":
+        flash(
+            "Only draft purchase orders can be sent.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_purchase_order",
+                purchase_order_id=purchase_order_id,
+            )
+        )
+
+    # # Change DRAFT -> SENT
+    sent = send_purchase_order(
+        purchase_order_id
+    )
+
+    # # Show result message
+    if sent:
+        flash(
+            "Purchase order sent successfully.",
+            "success",
+        )
+    else:
+        flash(
+            "Purchase order could not be sent.",
+            "danger",
+        )
+
+    # # Return to the PO details page
+    return redirect(
+        url_for(
+            "view_purchase_order",
+            purchase_order_id=purchase_order_id,
+        )
+    )
+
 
 
 @app.route("/logout")
