@@ -1,0 +1,488 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+Expense Details
+{% endblock %}
+
+
+{% block page_title %}
+Expense Details
+{% endblock %}
+
+
+{% block content %}
+
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            {{ expense.expense_number }}
+        </h2>
+
+        <p class="text-muted mb-0">
+            Expense information and payment details.
+        </p>
+
+    </div>
+
+    <a
+        href="{{ url_for('expenses') }}"
+        class="btn btn-outline-secondary"
+    >
+        Back
+    </a>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # STATUS -->
+<!-- # ========================================== -->
+
+<div class="mb-4">
+
+    {% if expense.status == "DRAFT" %}
+
+        <span class="badge text-bg-secondary fs-6">
+            Draft
+        </span>
+
+    {% elif expense.status == "APPROVED" %}
+
+        <span class="badge text-bg-primary fs-6">
+            Approved
+        </span>
+
+    {% elif expense.status == "PAID" %}
+
+        <span class="badge text-bg-success fs-6">
+            Paid
+        </span>
+
+    {% elif expense.status == "CANCELLED" %}
+
+        <span class="badge text-bg-danger fs-6">
+            Cancelled
+        </span>
+
+    {% endif %}
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # EXPENSE ACTIONS -->
+<!-- # ========================================== -->
+
+<div class="mb-4">
+
+    {% if
+        expense.status == "DRAFT"
+        and has_permission("finance.expenses.approve")
+    %}
+
+        <form
+            method="POST"
+            action="{{ url_for(
+                'approve_expense_route',
+                expense_id=expense.expense_id
+            ) }}"
+            class="d-inline"
+        >
+
+            <button
+                type="submit"
+                class="btn btn-success"
+            >
+                Approve Expense
+            </button>
+
+        </form>
+
+    {% endif %}
+
+</div>
+
+
+
+
+
+<!-- # ========================================== -->
+<!-- # EXPENSE INFORMATION -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-header">
+        <strong>
+            Expense Information
+        </strong>
+    </div>
+
+    <div class="card-body">
+
+        <div class="row">
+
+
+            <!-- # EXPENSE DATE -->
+
+            <div class="col-md-6 mb-3">
+
+                <strong>
+                    Expense Date
+                </strong>
+
+                <div>
+                    {{ expense.expense_date }}
+                </div>
+
+            </div>
+
+
+            <!-- # CATEGORY -->
+
+            <div class="col-md-6 mb-3">
+
+                <strong>
+                    Category
+                </strong>
+
+                <div>
+                    {{ expense.category_code }}
+                    -
+                    {{ expense.category_name }}
+                </div>
+
+            </div>
+
+
+            <!-- # DESCRIPTION -->
+
+            <div class="col-12 mb-3">
+
+                <strong>
+                    Description
+                </strong>
+
+                <div>
+                    {{ expense.description }}
+                </div>
+
+            </div>
+
+
+            <!-- # AMOUNT -->
+
+            <div class="col-md-6 mb-3">
+
+                <strong>
+                    Amount
+                </strong>
+
+                <div class="fs-5">
+                    ₱{{ "{:,.2f}".format(expense.amount) }}
+                </div>
+
+            </div>
+
+
+            <!-- # PAYMENT METHOD -->
+
+            <div class="col-md-6 mb-3">
+
+                <strong>
+                    Payment Method
+                </strong>
+
+                <div>
+
+                    {% if expense.payment_method %}
+
+                        {{ expense.payment_method.replace(
+                            "_",
+                            " "
+                        ) }}
+
+                    {% else %}
+
+                        Not specified
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+
+            <!-- # REFERENCE NUMBER -->
+
+            <div class="col-md-6 mb-3">
+
+                <strong>
+                    Reference Number
+                </strong>
+
+                <div>
+                    {{ expense.reference_number or "-" }}
+                </div>
+
+            </div>
+
+
+            <!-- # CREATED BY -->
+
+            <div class="col-md-6 mb-3">
+
+                <strong>
+                    Created By
+                </strong>
+
+                <div>
+                    {{ expense.created_by_username }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # RELATED INFORMATION -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-header">
+        <strong>
+            Related Information
+        </strong>
+    </div>
+
+    <div class="card-body">
+
+        <div class="row">
+
+
+            <!-- # DEPARTMENT -->
+
+            <div class="col-md-4 mb-3">
+
+                <strong>
+                    Department
+                </strong>
+
+                <div>
+                    {{ expense.department_name or "-" }}
+                </div>
+
+            </div>
+
+
+            <!-- # SUPPLIER -->
+
+            <div class="col-md-4 mb-3">
+
+                <strong>
+                    Supplier
+                </strong>
+
+                <div>
+                    {{ expense.supplier_name or "-" }}
+                </div>
+
+            </div>
+
+
+            <!-- # PURCHASE ORDER -->
+
+            <div class="col-md-4 mb-3">
+
+                <strong>
+                    Purchase Order
+                </strong>
+
+                <div>
+                    {{ expense.po_number or "-" }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+
+<!-- # ========================================== -->
+<!-- # APPROVAL / PAYMENT INFORMATION -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-header">
+        <strong>
+            Approval & Payment
+        </strong>
+    </div>
+
+    <div class="card-body">
+
+        <div class="row">
+
+
+            <!-- # APPROVED BY -->
+
+            <div class="col-md-4 mb-3">
+
+                <strong>
+                    Approved By
+                </strong>
+
+                <div>
+                    {{ expense.approved_by_username or "-" }}
+                </div>
+
+            </div>
+
+
+            <!-- # APPROVED DATE -->
+
+            <div class="col-md-4 mb-3">
+
+                <strong>
+                    Approved At
+                </strong>
+
+                <div>
+                    {{ expense.approved_at or "-" }}
+                </div>
+
+            </div>
+
+
+            <!-- # PAID DATE -->
+
+            <div class="col-md-4 mb-3">
+
+                <strong>
+                    Paid At
+                </strong>
+
+                <div>
+                    {{ expense.paid_at or "-" }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+
+<!-- # MARK AS PAID -->
+
+{% if
+    expense.status == "APPROVED"
+    and has_permission("finance.expenses.pay")
+%}
+
+    <form
+        method="POST"
+        action="{{ url_for(
+            'mark_expense_as_paid_route',
+            expense_id=expense.expense_id
+        ) }}"
+        class="d-inline"
+    >
+
+        <button
+            type="submit"
+            class="btn btn-success"
+        >
+            Mark as Paid
+        </button>
+
+    </form>
+
+{% endif %}
+
+
+
+<!-- # CANCEL EXPENSE -->
+
+{% if
+    expense.status in ["DRAFT", "APPROVED"]
+    and has_permission("finance.expenses.manage")
+%}
+
+    <form
+        method="POST"
+        action="{{ url_for(
+            'cancel_expense_route',
+            expense_id=expense.expense_id
+        ) }}"
+        class="d-inline"
+    >
+
+        <button
+            type="submit"
+            class="btn btn-outline-danger"
+        >
+            Cancel Expense
+        </button>
+
+    </form>
+
+{% endif %}
+
+
+
+
+
+
+<!-- # ========================================== -->
+<!-- # NOTES -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-header">
+        <strong>
+            Notes
+        </strong>
+    </div>
+
+    <div class="card-body">
+
+        {{ expense.notes or "No notes." }}
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+{% endblock %}

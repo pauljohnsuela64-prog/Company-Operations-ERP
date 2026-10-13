@@ -32,19 +32,179 @@ Expenses
 
     </div>
 
+
+    <!-- # ADD EXPENSE BUTTON -->
+
+    {% if has_permission('finance.expenses.manage') %}
+
+        <a
+            href="{{ url_for('add_expense') }}"
+            class="btn btn-primary"
+        >
+            Add Expense
+        </a>
+
+    {% endif %}
+
 </div>
 
 
 <!-- # ========================================== -->
-<!-- # EXPENSES TABLE -->
+<!-- # EXPENSE TABLE -->
 <!-- # ========================================== -->
 
 <div class="card shadow-sm border-0">
 
     <div class="card-body">
 
-        <div class="text-center text-muted py-4">
-            No expenses found.
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+
+                <!-- # TABLE HEADER -->
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Expense No.
+                        </th>
+
+                        <th>
+                            Date
+                        </th>
+
+                        <th>
+                            Category
+                        </th>
+
+                        <th>
+                            Description
+                        </th>
+
+                        <th class="text-end">
+                            Amount
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                        <th class="text-end">
+                            Actions
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <!-- # TABLE BODY -->
+
+                <tbody>
+
+                    {% for expense in expenses %}
+
+                        <tr>
+
+                            <td>
+                                <strong>
+                                    {{ expense.expense_number }}
+                                </strong>
+                            </td>
+
+                            <td>
+                                {{ expense.expense_date }}
+                            </td>
+
+                            <td>
+                                {{ expense.category_name }}
+                            </td>
+
+                            <td>
+                                {{ expense.description }}
+                            </td>
+
+                            <td class="text-end">
+                                ₱{{ "{:,.2f}".format(expense.amount) }}
+                            </td>
+
+                            <td>
+
+                                {% if expense.status == "DRAFT" %}
+
+                                    <span class="badge text-bg-secondary">
+                                        Draft
+                                    </span>
+
+                                {% elif expense.status == "APPROVED" %}
+
+                                    <span class="badge text-bg-primary">
+                                        Approved
+                                    </span>
+
+                                {% elif expense.status == "PAID" %}
+
+                                    <span class="badge text-bg-success">
+                                        Paid
+                                    </span>
+
+                                {% elif expense.status == "CANCELLED" %}
+
+                                    <span class="badge text-bg-danger">
+                                        Cancelled
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge text-bg-secondary">
+                                        {{ expense.status }}
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <td class="text-end">
+
+                                <!-- # VIEW EXPENSE -->
+
+                                <a
+                                        href="{{ url_for(
+                                        'view_expense',
+                                        expense_id=expense.expense_id
+                                        ) }}"
+                                        class="btn btn-sm btn-outline-primary"
+                                        >
+                                    View
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="7"
+                                class="text-center text-muted py-4"
+                            >
+                                No expenses found.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
         </div>
 
     </div>
