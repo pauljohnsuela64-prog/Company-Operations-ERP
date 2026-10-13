@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+Receive {{ purchase_order.po_number }} | Company Operations ERP
+{% endblock %}
+
+
+{% block page_title %}
+Receive Items
+{% endblock %}
+
+
+{% block content %}
+
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            Receive {{ purchase_order.po_number }}
+        </h2>
+
+        <p class="text-muted mb-0">
+            Record items delivered by the supplier.
+        </p>
+
+    </div>
+
+
+    <a
+        href="{{ url_for('goods_receipts') }}"
+        class="btn btn-outline-secondary"
+    >
+        Back to Goods Receipts
+    </a>
+
+</div>
+
+
+
+<!-- # ========================================== -->
+<!-- # PURCHASE ORDER INFORMATION -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <div class="row">
+
+            <!-- # PO NUMBER -->
+
+            <div class="col-md-3 mb-3">
+
+                <div class="text-muted small">
+                    PO Number
+                </div>
+
+                <strong>
+                    {{ purchase_order.po_number }}
+                </strong>
+
+            </div>
+
+
+            <!-- # SUPPLIER -->
+
+            <div class="col-md-3 mb-3">
+
+                <div class="text-muted small">
+                    Supplier
+                </div>
+
+                <strong>
+                    {{ purchase_order.supplier_name }}
+                </strong>
+
+                <div class="small text-muted">
+                    {{ purchase_order.supplier_code }}
+                </div>
+
+            </div>
+
+
+            <!-- # STATUS -->
+
+            <div class="col-md-3 mb-3">
+
+                <div class="text-muted small">
+                    Status
+                </div>
+
+                {% if purchase_order.status == 'SENT' %}
+
+                    <span class="badge text-bg-primary">
+                        Sent
+                    </span>
+
+                {% elif purchase_order.status == 'PARTIALLY_RECEIVED' %}
+
+                    <span class="badge text-bg-warning">
+                        Partially Received
+                    </span>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- # EXPECTED DELIVERY -->
+
+            <div class="col-md-3 mb-3">
+
+                <div class="text-muted small">
+                    Expected Delivery
+                </div>
+
+                <strong>
+                    {{ purchase_order.expected_delivery_date or '-' }}
+                </strong>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- # ========================================== -->
+<!-- # GOODS RECEIPT FORM -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <!-- # ========================================== -->
+<!-- # GOODS RECEIPT FORM START -->
+<!-- # Everything between this and </form> -->
+<!-- # is sent to app.py when Save is clicked. -->
+<!-- # ========================================== -->
+
+<form method="POST">
+
+
+        <!-- # ====================================== -->
+        <!-- # WAREHOUSE SELECTION -->
+        <!-- # ====================================== -->
+
+        <div class="row mb-4">
+
+            <div class="col-md-6">
+
+                <label class="form-label">
+                    Receiving Warehouse
+                </label>
+
+                <select
+                    class="form-select"
+                    name="warehouse_id"
+                    required
+                >
+
+                    <option value="">
+                        Select warehouse
+                    </option>
+
+
+                    {% for warehouse in warehouses %}
+
+                        <option
+                            value="{{ warehouse.warehouse_id }}"
+                        >
+                            {{ warehouse.warehouse_code }}
+                            -
+                            {{ warehouse.warehouse_name }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+                <div class="form-text">
+                    Select where these delivered items will be stored.
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- # ====================================== -->
+        <!-- # ITEMS TABLE -->
+        <!-- # ====================================== -->
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle">
+
+
+                <!-- # TABLE HEADER -->
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Item Code
+                        </th>
+
+                        <th>
+                            Item
+                        </th>
+
+                        <th>
+                            Ordered
+                        </th>
+
+                        <th>
+                            Already Received
+                        </th>
+
+                        <th>
+                            Remaining
+                        </th>
+
+                        <th style="width: 180px;">
+                            Quantity Received
+                        </th>
+
+                        <th>
+                            Unit
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+
+                <!-- # TABLE BODY -->
+
+                <tbody>
+
+                    {% for item in items %}
+
+                        <tr>
+
+
+                            <!-- # ITEM CODE -->
+
+                            <td>
+                                {{ item.item_code }}
+                            </td>
+
+
+                            <!-- # ITEM NAME -->
+
+                            <td>
+                                {{ item.item_name }}
+                            </td>
+
+
+                            <!-- # ORDERED -->
+
+                            <td>
+                                {{ item.ordered_quantity }}
+                            </td>
+
+
+                            <!-- # ALREADY RECEIVED -->
+
+                            <td>
+                                {{ item.received_quantity }}
+                            </td>
+
+
+                            <!-- # REMAINING -->
+
+                            <td>
+
+                                <strong>
+                                    {{ item.remaining_quantity }}
+                                </strong>
+
+                            </td>
+
+
+                            <!-- # ================================== -->
+                            <!-- # QUANTITY BEING RECEIVED NOW -->
+                            <!-- # ================================== -->
+
+                            <td>
+
+                                <input
+                                    type="number"
+                                    class="form-control"
+                                    name="quantity_received_{{ item.purchase_order_item_id }}"
+                                    min="0"
+                                    max="{{ item.remaining_quantity }}"
+                                    step="0.01"
+                                    value="0"
+                                >
+
+                            </td>
+
+
+                            <!-- # UNIT -->
+
+                            <td>
+                                {{ item.unit_of_measure }}
+                            </td>
+
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="7"
+                                class="text-center text-muted py-4"
+                            >
+                                No items are waiting to be received.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+
+        <!-- # ====================================== -->
+        <!-- # RECEIPT NOTES -->
+        <!-- # ====================================== -->
+
+        <div class="row mt-4">
+
+            <div class="col-md-6">
+
+                <label class="form-label">
+                    Receipt Notes
+                </label>
+
+                <textarea
+                    class="form-control"
+                    name="notes"
+                    rows="3"
+                    placeholder="Optional notes about this delivery"
+                ></textarea>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- # ====================================== -->
+        <!-- # SAVE BUTTON -->
+        <!-- # ====================================== -->
+
+        <div class="mt-4">
+
+            <!--
+                # Disabled for now.
+
+                # Next step:
+                # We will connect this button to MySQL
+                # and Inventory stock.
+            -->
+
+            <!-- # ========================================== -->
+<!-- # SAVE GOODS RECEIPT -->
+<!-- # ========================================== -->
+
+<button
+    type="submit"
+    class="btn btn-success"
+    onclick="return confirm(
+        'Save this goods receipt and update inventory?'
+    );"
+>
+    Save Goods Receipt
+</button>
+
+            <span class="text-muted ms-2">
+                Database saving will be connected next.
+            </span>
+
+        </div>
+
+
+    </div>
+
+</div>
+
+
+{% endblock %}

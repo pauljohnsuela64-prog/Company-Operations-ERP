@@ -5,6 +5,14 @@ from dotenv import load_dotenv
 from datetime import date
 from dashboard_repository import get_dashboard_summary
 
+
+from goods_receipt_repository import (
+    create_goods_receipt,
+    get_receivable_purchase_order_by_id,
+    get_receivable_purchase_order_items,
+    get_receivable_purchase_orders,
+)
+
 from purchase_order_repository import (
     create_purchase_order_from_request,
     get_all_purchase_orders,
@@ -2882,6 +2890,240 @@ def send_purchase_order_route(purchase_order_id):
     )
 
 
+# ==========================================================
+# GOODS RECEIPTS LIST
+# Shows POs that can still receive supplier deliveries.
+# ==========================================================
+
+@app.route("/procurement/receipts")
+@permission_required("procurement.view")
+def goods_receipts():
+
+    # # Get SENT / PARTIALLY_RECEIVED purchase orders
+    purchase_orders = get_receivable_purchase_orders()
+
+    # # Display them on the Goods Receipts page
+    return render_template(
+        "procurement/receipts/index.html",
+        purchase_orders=purchase_orders,
+    )
+
+
+# ==========================================================
+# RECEIVE PURCHASE ORDER ITEMS
+#
+# GET:
+# Displays the receiving form.
+#
+# POST:
+# Creates the Goods Receipt and updates Inventory.
+# ==========================================================
+
+@app.route(
+    "/procurement/receipts/<int:purchase_order_id>/receive",
+    methods=["GET", "POST"],
+)
+@permission_required("procurement.receipts.manage")
+def receive_purchase_order(purchase_order_id):
+
+    # ======================================================
+    # GET PURCHASE ORDER
+    # ======================================================
+
+    purchase_order = get_receivable_purchase_order_by_id(
+        purchase_order_id
+    )
+
+    if not purchase_order:
+
+        flash(
+            "Purchase order is not available for receiving.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("goods_receipts")
+        )
+
+
+    # ======================================================
+    # GET REMAINING PO ITEMS
+    # ======================================================
+
+    items = get_receivable_purchase_order_items(
+        purchase_order_id
+    )
+
+
+    # ======================================================
+    # GET ACTIVE WAREHOUSES
+    # ======================================================
+
+    all_warehouses = get_all_warehouses()
+
+    warehouses = [
+        warehouse
+        for warehouse in all_warehouses
+        if warehouse["is_active"]
+    ]
+
+
+    # ======================================================
+    # FORM SUBMITTED
+    # ======================================================
+
+    if request.method == "POST":
+
+        # ==================================================
+        # GET WAREHOUSE
+        # ==================================================
+
+        warehouse_id = request.form.get(
+            "warehouse_id",
+            "",
+        ).strip()
+
+        if not warehouse_id:
+
+            flash(
+                "Receiving warehouse is required.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/receipts/receive.html",
+                purchase_order=purchase_order,
+                items=items,
+                warehouses=warehouses,
+            )
+
+
+        try:
+            warehouse_id_value = int(
+                warehouse_id
+            )
+
+        except ValueError:
+
+            flash(
+                "Invalid warehouse.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/receipts/receive.html",
+                purchase_order=purchase_order,
+                items=items,
+                warehouses=warehouses,
+            )
+
+
+        # ==================================================
+        # GET RECEIPT NOTES
+        # ==================================================
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+
+        # ==================================================
+        # BUILD RECEIVED ITEMS DICTIONARY
+        #
+        # Example:
+        #
+        # {
+        #     1: "5",
+        #     2: "0"
+        # }
+        # ==================================================
+
+        received_items = {}
+
+        for item in items:
+
+            purchase_order_item_id = item[
+                "purchase_order_item_id"
+            ]
+
+            field_name = (
+                f"quantity_received_"
+                f"{purchase_order_item_id}"
+            )
+
+            quantity = request.form.get(
+                field_name,
+                "0",
+            ).strip()
+
+            received_items[
+                purchase_order_item_id
+            ] = quantity
+
+
+        # ==================================================
+        # CREATE GOODS RECEIPT
+        #
+        # This function also:
+        # - updates Inventory stock
+        # - creates Stock Movement history
+        # - updates PO status
+        # ==================================================
+
+        try:
+
+            (
+                receipt_id,
+                receipt_number,
+                new_status,
+            ) = create_goods_receipt(
+                purchase_order_id=purchase_order_id,
+                warehouse_id=warehouse_id_value,
+                received_by=session["user_id"],
+                received_items=received_items,
+                notes=notes or None,
+            )
+
+        except ValueError as error:
+
+            flash(
+                str(error),
+                "danger",
+            )
+
+            return render_template(
+                "procurement/receipts/receive.html",
+                purchase_order=purchase_order,
+                items=items,
+                warehouses=warehouses,
+            )
+
+
+        # ==================================================
+        # SUCCESS
+        # ==================================================
+
+        flash(
+            f"Goods receipt {receipt_number} saved successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for("goods_receipts")
+        )
+
+
+    # ======================================================
+    # DISPLAY FORM
+    # ======================================================
+
+    return render_template(
+        "procurement/receipts/receive.html",
+        purchase_order=purchase_order,
+        items=items,
+        warehouses=warehouses,
+    )
 
 @app.route("/logout")
 @login_required
