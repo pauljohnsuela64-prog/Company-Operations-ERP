@@ -178,17 +178,37 @@
             {% endif %}
 
 
-            {% if has_permission('expenses.view') %}
+            <!-- # ========================================== -->
+<!-- # FINANCE -->
+<!-- # ========================================== -->
 
-                <div class="sidebar-section">
-                    Finance
-                </div>
+{% if has_permission('finance.view') %}
 
-                <a href="#" class="sidebar-link">
-                    Expenses
-                </a>
+    <div class="sidebar-section">
+        Finance
+    </div>
 
-            {% endif %}
+
+    <!-- # EXPENSES -->
+
+    <a
+        href="{{ url_for('expenses') }}"
+        class="sidebar-link"
+    >
+        Expenses
+    </a>
+
+
+    <!-- # EXPENSE CATEGORIES -->
+
+    <a
+        href="{{ url_for('expense_categories') }}"
+        class="sidebar-link"
+    >
+        Expense Categories
+    </a>
+
+{% endif %}
 
 
             {% if has_permission('reports.view') %}

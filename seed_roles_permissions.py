@@ -29,6 +29,27 @@ PERMISSIONS = [
     ("inventory.items.manage", "Manage inventory items"),
     ("inventory.stock.manage", "Manage inventory stock"),
 
+    # ==========================================================
+# FINANCE PERMISSIONS
+# ==========================================================
+
+("finance.view", "View Finance module"),
+(
+    "finance.categories.manage",
+    "Manage expense categories",
+),
+(
+    "finance.expenses.manage",
+    "Create and manage expenses",
+),
+(
+    "finance.expenses.approve",
+    "Approve expenses",
+),
+(
+    "finance.expenses.pay",
+    "Mark expenses as paid",
+),
     ("procurement.view", "View procurement records"),
 
     ("procurement.suppliers.manage", "Manage suppliers"),
@@ -121,7 +142,13 @@ ROLE_PERMISSION_MAP = {
         "expenses.view",
         "expenses.manage",
         "reports.view",
+        "finance.view",
+        "finance.categories.manage",
+        "finance.expenses.manage",
+        "finance.expenses.approve",
+        "finance.expenses.pay",
     ],
+    
 
     "Employee": [
         "dashboard.view",

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+Edit Expense Category
+{% endblock %}
+
+
+{% block page_title %}
+Edit Expense Category
+{% endblock %}
+
+
+{% block content %}
+
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            Edit Expense Category
+        </h2>
+
+        <p class="text-muted mb-0">
+            Update expense category information.
+        </p>
+
+    </div>
+
+    <a
+        href="{{ url_for('expense_categories') }}"
+        class="btn btn-outline-secondary"
+    >
+        Back
+    </a>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # EDIT FORM -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <form method="POST">
+
+
+            <!-- # CATEGORY CODE -->
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Category Code
+                </label>
+
+                <input
+                    type="text"
+                    name="category_code"
+                    class="form-control"
+                    maxlength="30"
+                    value="{{ category.category_code }}"
+                    required
+                >
+
+            </div>
+
+
+            <!-- # CATEGORY NAME -->
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Category Name
+                </label>
+
+                <input
+                    type="text"
+                    name="category_name"
+                    class="form-control"
+                    maxlength="100"
+                    value="{{ category.category_name }}"
+                    required
+                >
+
+            </div>
+
+
+            <!-- # DESCRIPTION -->
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Description
+                </label>
+
+                <textarea
+                    name="description"
+                    class="form-control"
+                    rows="3"
+                    maxlength="255"
+                >{{ category.description or "" }}</textarea>
+
+            </div>
+
+
+            <!-- # SAVE BUTTON -->
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Save Changes
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+{% endblock %}
