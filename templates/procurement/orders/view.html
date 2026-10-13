@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ purchase_order.po_number }} | Company Operations ERP
+{% endblock %}
+
+{% block page_title %}
+Purchase Order
+{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+        <h2 class="mb-1">
+            {{ purchase_order.po_number }}
+        </h2>
+
+        <p class="text-muted mb-0">
+            Purchase order details
+        </p>
+    </div>
+
+    <a
+        href="{{ url_for('purchase_orders') }}"
+        class="btn btn-outline-secondary"
+    >
+        Back to Purchase Orders
+    </a>
+
+</div>
+
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body p-4">
+
+        <div class="row">
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    PO Number
+                </div>
+
+                <strong>
+                    {{ purchase_order.po_number }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Source Purchase Request
+                </div>
+
+                <strong>
+                    {{ purchase_order.request_number or '-' }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Supplier
+                </div>
+
+                <strong>
+                    {{ purchase_order.supplier_name }}
+                </strong>
+
+                <div class="small text-muted">
+                    {{ purchase_order.supplier_code }}
+                </div>
+
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Status
+                </div>
+
+                {% if purchase_order.status == 'DRAFT' %}
+
+                    <span class="badge text-bg-secondary">
+                        Draft
+                    </span>
+
+                {% elif purchase_order.status == 'SENT' %}
+
+                    <span class="badge text-bg-primary">
+                        Sent
+                    </span>
+
+                {% elif purchase_order.status == 'PARTIALLY_RECEIVED' %}
+
+                    <span class="badge text-bg-warning">
+                        Partially Received
+                    </span>
+
+                {% elif purchase_order.status == 'RECEIVED' %}
+
+                    <span class="badge text-bg-success">
+                        Received
+                    </span>
+
+                {% elif purchase_order.status == 'CANCELLED' %}
+
+                    <span class="badge text-bg-danger">
+                        Cancelled
+                    </span>
+
+                {% else %}
+
+                    <span class="badge text-bg-dark">
+                        {{ purchase_order.status }}
+                    </span>
+
+                {% endif %}
+
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Order Date
+                </div>
+
+                <strong>
+                    {{ purchase_order.order_date or '-' }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Expected Delivery
+                </div>
+
+                <strong>
+                    {{ purchase_order.expected_delivery_date or '-' }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Created By
+                </div>
+
+                <strong>
+                    {{ purchase_order.created_by_username }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-8 mb-3">
+
+                <div class="text-muted small">
+                    Notes
+                </div>
+
+                <strong>
+                    {{ purchase_order.notes or '-' }}
+                </strong>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-header bg-white">
+
+        <h5 class="mb-0">
+            Purchase Order Items
+        </h5>
+
+    </div>
+
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Item Code</th>
+                        <th>Item</th>
+                        <th>Quantity</th>
+                        <th>Unit Cost</th>
+                        <th>Total</th>
+                        <th>Notes</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for item in items %}
+
+                        <tr>
+
+                            <td>
+                                {{ item.item_code }}
+                            </td>
+
+                            <td>
+                                {{ item.item_name }}
+                            </td>
+
+                            <td>
+                                {{ item.quantity }}
+                                {{ item.unit_of_measure }}
+                            </td>
+
+                            <td>
+                                ₱{{ "%.2f"|format(item.unit_cost) }}
+                            </td>
+
+                            <td>
+                                ₱{{ "%.2f"|format(
+                                    item.quantity * item.unit_cost
+                                ) }}
+                            </td>
+
+                            <td>
+                                {{ item.notes or '-' }}
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="6"
+                                class="text-center text-muted py-4"
+                            >
+                                No purchase order items found.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

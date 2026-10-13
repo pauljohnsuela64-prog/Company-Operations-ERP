@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}
+Purchase Orders | Company Operations ERP
+{% endblock %}
+
+{% block page_title %}
+Purchase Orders
+{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+        <h2 class="mb-1">
+            Purchase Orders
+        </h2>
+
+        <p class="text-muted mb-0">
+            Manage purchase orders sent to suppliers.
+        </p>
+    </div>
+
+</div>
+
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+                    <tr>
+                        <th>PO Number</th>
+                        <th>Purchase Request</th>
+                        <th>Supplier</th>
+                        <th>Order Date</th>
+                        <th>Expected Delivery</th>
+                        <th>Status</th>
+                        <th>Created By</th>
+                        <th class="text-end">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for order in purchase_orders %}
+
+                        <tr>
+
+                            <td>
+                                <strong>
+                                    {{ order.po_number }}
+                                </strong>
+                            </td>
+
+                            <td>
+                                {{ order.request_number or '-' }}
+                            </td>
+
+                            <td>
+                                {{ order.supplier_name }}
+
+                                <div class="small text-muted">
+                                    {{ order.supplier_code }}
+                                </div>
+                            </td>
+
+                            <td>
+                                {{ order.order_date or '-' }}
+                            </td>
+
+                            <td>
+                                {{ order.expected_delivery_date or '-' }}
+                            </td>
+
+                            <td>
+
+                                {% if order.status == 'DRAFT' %}
+                                    <span class="badge text-bg-secondary">
+                                        Draft
+                                    </span>
+
+                                {% elif order.status == 'SENT' %}
+                                    <span class="badge text-bg-primary">
+                                        Sent
+                                    </span>
+
+                                {% elif order.status == 'PARTIALLY_RECEIVED' %}
+                                    <span class="badge text-bg-warning">
+                                        Partially Received
+                                    </span>
+
+                                {% elif order.status == 'RECEIVED' %}
+                                    <span class="badge text-bg-success">
+                                        Received
+                                    </span>
+
+                                {% elif order.status == 'CANCELLED' %}
+                                    <span class="badge text-bg-danger">
+                                        Cancelled
+                                    </span>
+
+                                {% else %}
+                                    <span class="badge text-bg-dark">
+                                        {{ order.status }}
+                                    </span>
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+                                {{ order.created_by_username }}
+                            </td>
+
+                            <td class="text-end">
+
+                                <a
+                                        href="{{ url_for(
+                                        'view_purchase_order',
+                                        purchase_order_id=order.purchase_order_id
+                                        ) }}"
+                                        class="btn btn-sm btn-outline-primary"
+                                        >
+                                        View
+                                        </a>
+                            </td>
+
+                        </tr>
+
+                    {% else %}
+
+                        <tr>
+                            <td
+                                colspan="8"
+                                class="text-center text-muted py-4"
+                            >
+                                No purchase orders found.
+                            </td>
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

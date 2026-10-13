@@ -183,3 +183,27 @@ def set_supplier_active_status(
     finally:
         cursor.close()
         connection.close()
+
+
+def get_active_suppliers():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            """
+            SELECT
+                supplier_id,
+                supplier_code,
+                supplier_name
+            FROM suppliers
+            WHERE is_active = TRUE
+            ORDER BY supplier_name
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+        cursor.close()
+        connection.close()

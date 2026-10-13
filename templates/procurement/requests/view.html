@@ -10,6 +10,8 @@ Purchase Request
 
 {% block content %}
 
+
+<!-- PAGE HEADER -->
 <div class="d-flex justify-content-between align-items-center mb-4">
 
     <div>
@@ -24,90 +26,120 @@ Purchase Request
 
     </div>
 
+
+    <!-- ACTION BUTTONS -->
     <div class="d-flex gap-2">
 
-    {% if
-        purchase_request.status == 'DRAFT'
-        and has_permission('procurement.requests.create')
-    %}
+        <!-- SUBMIT DRAFT REQUEST -->
+        {% if
+            purchase_request.status == 'DRAFT'
+            and has_permission('procurement.requests.create')
+        %}
 
-        <form
-            method="POST"
-            action="{{ url_for(
-                'submit_purchase_request_route',
-                request_id=purchase_request.request_id
-            ) }}"
-        >
-
-            <button
-                type="submit"
-                class="btn btn-success"
-                onclick="return confirm(
-                    'Submit this purchase request for approval? You will no longer be able to edit its items.'
-                )"
+            <form
+                method="POST"
+                action="{{ url_for(
+                    'submit_purchase_request_route',
+                    request_id=purchase_request.request_id
+                ) }}"
             >
-                Submit Request
-            </button>
 
-        </form>
+                <button
+                    type="submit"
+                    class="btn btn-success"
+                    onclick="return confirm(
+                        'Submit this purchase request for approval? You will no longer be able to edit its items.'
+                    )"
+                >
+                    Submit Request
+                </button>
 
-    {% endif %}
+            </form>
+
+        {% endif %}
 
 
-    <a
-        href="{{ url_for('purchase_requests') }}"
-        class="btn btn-outline-secondary"
-    >
-        Back to Requests
-    </a>
+        <!-- APPROVE / REJECT SUBMITTED REQUEST -->
+        {% if
+            purchase_request.status == 'SUBMITTED'
+            and has_permission('procurement.requests.approve')
+        %}
 
-    {% if
-    purchase_request.status == 'SUBMITTED'
-    and has_permission('procurement.requests.approve')
-%}
+            <form
+                method="POST"
+                action="{{ url_for(
+                    'approve_purchase_request_route',
+                    request_id=purchase_request.request_id
+                ) }}"
+            >
 
-    <form
-        method="POST"
-        action="{{ url_for(
-            'approve_purchase_request_route',
-            request_id=purchase_request.request_id
-        ) }}"
-    >
+                <button
+                    type="submit"
+                    class="btn btn-success"
+                    onclick="return confirm(
+                        'Approve this purchase request?'
+                    )"
+                >
+                    Approve
+                </button>
 
-        <button
-            type="submit"
-            class="btn btn-success"
-            onclick="return confirm(
-                'Approve this purchase request?'
-            )"
-        >
-            Approve
-        </button>
+            </form>
 
+
+            <a
+                href="{{ url_for(
+                    'reject_purchase_request_route',
+                    request_id=purchase_request.request_id
+                ) }}"
+                class="btn btn-danger"
+            >
+                Reject
+            </a>
+
+        {% endif %}
+
+
+        <!-- CREATE PURCHASE ORDER -->
+        {% if
+            purchase_request.status == 'APPROVED'
+            and has_permission('procurement.orders.manage')
+        %}
+
+            <a
+                href="{{ url_for(
+                    'create_purchase_order',
+                    request_id=purchase_request.request_id
+                ) }}"
+                class="btn btn-primary"
+            >
+                Create Purchase Order
+            </a>
+
+        {% endif %}
+
+
+        <!-- BACK -->
         <a
-    href="{{ url_for(
-        'reject_purchase_request_route',
-        request_id=purchase_request.request_id
-    ) }}"
-    class="btn btn-danger"
->
-    Reject
-</a>
+            href="{{ url_for('purchase_requests') }}"
+            class="btn btn-outline-secondary"
+        >
+            Back to Requests
+        </a>
 
-    </form>
-
-{% endif %}
+    </div>
 
 </div>
-</div>
 
 
+
+<!-- PURCHASE REQUEST DETAILS -->
 <div class="card shadow-sm border-0 mb-4">
 
     <div class="card-body p-4">
 
         <div class="row">
 
+            <!-- REQUEST NUMBER -->
             <div class="col-md-4 mb-3">
 
                 <div class="text-muted small">
@@ -120,26 +152,8 @@ Purchase Request
 
             </div>
 
-            {% if
-    purchase_request.status == 'REJECTED'
-    and purchase_request.rejection_reason
-%}
 
-    <div class="alert alert-danger mb-4">
-
-        <h6 class="alert-heading mb-2">
-            Rejection Reason
-        </h6>
-
-        <p class="mb-0">
-            {{ purchase_request.rejection_reason }}
-        </p>
-
-    </div>
-
-{% endif %}
-
-
+            <!-- DEPARTMENT -->
             <div class="col-md-4 mb-3">
 
                 <div class="text-muted small">
@@ -153,6 +167,7 @@ Purchase Request
             </div>
 
 
+            <!-- REQUESTED BY -->
             <div class="col-md-4 mb-3">
 
                 <div class="text-muted small">
@@ -166,6 +181,7 @@ Purchase Request
             </div>
 
 
+            <!-- STATUS -->
             <div class="col-md-4 mb-3">
 
                 <div class="text-muted small">
@@ -196,6 +212,18 @@ Purchase Request
                         Rejected
                     </span>
 
+                {% elif purchase_request.status == 'COMPLETED' %}
+
+                    <span class="badge text-bg-success">
+                        Completed
+                    </span>
+
+                {% elif purchase_request.status == 'CANCELLED' %}
+
+                    <span class="badge text-bg-dark">
+                        Cancelled
+                    </span>
+
                 {% else %}
 
                     <span class="badge text-bg-dark">
@@ -207,6 +235,7 @@ Purchase Request
             </div>
 
 
+            <!-- PURPOSE -->
             <div class="col-md-8 mb-3">
 
                 <div class="text-muted small">
@@ -226,6 +255,30 @@ Purchase Request
 </div>
 
 
+
+<!-- REJECTION REASON -->
+{% if
+    purchase_request.status == 'REJECTED'
+    and purchase_request.rejection_reason
+%}
+
+    <div class="alert alert-danger mb-4">
+
+        <h6 class="alert-heading mb-2">
+            Rejection Reason
+        </h6>
+
+        <p class="mb-0">
+            {{ purchase_request.rejection_reason }}
+        </p>
+
+    </div>
+
+{% endif %}
+
+
+
+<!-- REQUESTED ITEMS -->
 <div class="card shadow-sm border-0">
 
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -239,22 +292,22 @@ Purchase Request
         </div>
 
 
+        <!-- ADD ITEM -->
         {% if
             purchase_request.status == 'DRAFT'
-            and has_permission(
-                'procurement.requests.create'
-            )
+            and has_permission('procurement.requests.create')
         %}
 
             <a
-    href="{{ url_for(
-            'add_purchase_request_item_route',
-            request_id=purchase_request.request_id
-            ) }}"
-            class="btn btn-sm btn-primary"
->
-    Add Item
+                href="{{ url_for(
+                    'add_purchase_request_item_route',
+                    request_id=purchase_request.request_id
+                ) }}"
+                class="btn btn-sm btn-primary"
+            >
+                Add Item
             </a>
+
         {% endif %}
 
     </div>
@@ -269,22 +322,44 @@ Purchase Request
                 <thead>
 
                     <tr>
-                    <th>Item Code</th>
-                    <th>Item</th>
-                    <th>Quantity</th>
-                    <th>Estimated Unit Cost</th>
-                    <th>Estimated Total</th>
-                    <th>Notes</th>
 
-                {% if
-                    purchase_request.status == 'DRAFT'
-                    and has_permission('procurement.requests.create')
-                %}
-                <th class="text-end">
-            Actions
-        </th>
-    {% endif %}
-</tr>
+                        <th>
+                            Item Code
+                        </th>
+
+                        <th>
+                            Item
+                        </th>
+
+                        <th>
+                            Quantity
+                        </th>
+
+                        <th>
+                            Estimated Unit Cost
+                        </th>
+
+                        <th>
+                            Estimated Total
+                        </th>
+
+                        <th>
+                            Notes
+                        </th>
+
+
+                        {% if
+                            purchase_request.status == 'DRAFT'
+                            and has_permission('procurement.requests.create')
+                        %}
+
+                            <th class="text-end">
+                                Actions
+                            </th>
+
+                        {% endif %}
+
+                    </tr>
 
                 </thead>
 
@@ -295,19 +370,29 @@ Purchase Request
 
                         <tr>
 
+                            <!-- ITEM CODE -->
                             <td>
                                 {{ item.item_code }}
                             </td>
 
+
+                            <!-- ITEM NAME -->
                             <td>
                                 {{ item.item_name }}
                             </td>
 
+
+                            <!-- QUANTITY -->
                             <td>
+
                                 {{ item.quantity }}
+
                                 {{ item.unit_of_measure }}
+
                             </td>
 
+
+                            <!-- UNIT COST -->
                             <td>
 
                                 {% if item.estimated_unit_cost is not none %}
@@ -324,6 +409,8 @@ Purchase Request
 
                             </td>
 
+
+                            <!-- ESTIMATED TOTAL -->
                             <td>
 
                                 {% if item.estimated_unit_cost is not none %}
@@ -342,64 +429,60 @@ Purchase Request
 
                             </td>
 
+
+                            <!-- NOTES -->
                             <td>
                                 {{ item.notes or '-' }}
                             </td>
 
+
+                            <!-- ACTIONS -->
                             {% if
-    purchase_request.status == 'DRAFT'
-    and has_permission('procurement.requests.create')
-%}
+                                purchase_request.status == 'DRAFT'
+                                and has_permission('procurement.requests.create')
+                            %}
 
-    <td class="text-end">
+                                <td class="text-end">
 
-        {% if
-    purchase_request.status == 'DRAFT'
-    and has_permission('procurement.requests.create')
-%}
+                                    <!-- EDIT -->
+                                    <a
+                                        href="{{ url_for(
+                                            'edit_purchase_request_item_route',
+                                            request_id=purchase_request.request_id,
+                                            request_item_id=item.request_item_id
+                                        ) }}"
+                                        class="btn btn-sm btn-outline-primary"
+                                    >
+                                        Edit
+                                    </a>
 
-    <td class="text-end">
 
-        <a
-            href="{{ url_for(
-                'edit_purchase_request_item_route',
-                request_id=purchase_request.request_id,
-                request_item_id=item.request_item_id
-            ) }}"
-            class="btn btn-sm btn-outline-primary"
-        >
-            Edit
-        </a>
+                                    <!-- REMOVE -->
+                                    <form
+                                        method="POST"
+                                        action="{{ url_for(
+                                            'delete_purchase_request_item_route',
+                                            request_id=purchase_request.request_id,
+                                            request_item_id=item.request_item_id
+                                        ) }}"
+                                        class="d-inline"
+                                    >
 
-        <form
-            method="POST"
-            action="{{ url_for(
-                'delete_purchase_request_item_route',
-                request_id=purchase_request.request_id,
-                request_item_id=item.request_item_id
-            ) }}"
-            class="d-inline"
-        >
+                                        <button
+                                            type="submit"
+                                            class="btn btn-sm btn-outline-danger"
+                                            onclick="return confirm(
+                                                'Remove this item from the purchase request?'
+                                            )"
+                                        >
+                                            Remove
+                                        </button>
 
-            <button
-                type="submit"
-                class="btn btn-sm btn-outline-danger"
-                onclick="return confirm(
-                    'Remove this item from the purchase request?'
-                )"
-            >
-                Remove
-            </button>
+                                    </form>
 
-        </form>
+                                </td>
 
-    </td>
-
-{% endif %}
-
-    </td>
-
-{% endif %}
+                            {% endif %}
 
                         </tr>
 
@@ -428,5 +511,6 @@ Purchase Request
     </div>
 
 </div>
+
 
 {% endblock %}

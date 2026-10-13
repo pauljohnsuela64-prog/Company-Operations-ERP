@@ -2,9 +2,15 @@ import os
 from functools import wraps
 
 from dotenv import load_dotenv
-
+from datetime import date
 from dashboard_repository import get_dashboard_summary
 
+from purchase_order_repository import (
+    create_purchase_order_from_request,
+    get_all_purchase_orders,
+    get_purchase_order_by_id,
+    get_purchase_order_items,
+)
 from purchase_request_repository import (
     add_purchase_request_item,
     approve_purchase_request,
@@ -25,6 +31,7 @@ from supplier_repository import (
     get_supplier_by_id,
     set_supplier_active_status,
     update_supplier,
+    get_active_suppliers,
 )
 
 from stock_repository import (
@@ -2504,6 +2511,202 @@ def reject_purchase_request_route(request_id):
         "procurement/requests/reject.html",
         purchase_request=purchase_request,
     )
+
+@app.route("/procurement/orders")
+@permission_required("procurement.view")
+def purchase_orders():
+    orders = get_all_purchase_orders()
+
+    return render_template(
+        "procurement/orders/index.html",
+        purchase_orders=orders,
+    )
+
+@app.route(
+    "/procurement/requests/<int:request_id>/create-order",
+    methods=["GET", "POST"],
+)
+@permission_required("procurement.orders.manage")
+def create_purchase_order(request_id):
+    purchase_request = get_purchase_request_by_id(
+        request_id
+    )
+
+    if not purchase_request:
+        flash(
+            "Purchase request not found.",
+            "danger",
+        )
+        return redirect(
+            url_for("purchase_requests")
+        )
+
+    if purchase_request["status"] != "APPROVED":
+        flash(
+            "Only approved purchase requests can become purchase orders.",
+            "danger",
+        )
+        return redirect(
+            url_for(
+                "view_purchase_request",
+                request_id=request_id,
+            )
+        )
+
+    suppliers = get_active_suppliers()
+
+    if request.method == "POST":
+        supplier_id = request.form.get(
+            "supplier_id",
+            "",
+        ).strip()
+
+        expected_delivery_date = request.form.get(
+            "expected_delivery_date",
+            "",
+        ).strip()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+        if not supplier_id:
+            flash(
+                "Supplier is required.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/orders/create.html",
+                purchase_request=purchase_request,
+                suppliers=suppliers,
+            )
+
+        try:
+            supplier_id_value = int(
+                supplier_id
+            )
+
+        except ValueError:
+            flash(
+                "Invalid supplier.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/orders/create.html",
+                purchase_request=purchase_request,
+                suppliers=suppliers,
+            )
+
+        supplier = get_supplier_by_id(
+            supplier_id_value
+        )
+
+        if (
+            not supplier
+            or not supplier["is_active"]
+        ):
+            flash(
+                "Selected supplier is invalid or inactive.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/orders/create.html",
+                purchase_request=purchase_request,
+                suppliers=suppliers,
+            )
+
+        delivery_date = None
+
+        if expected_delivery_date:
+            try:
+                delivery_date = date.fromisoformat(
+                    expected_delivery_date
+                )
+
+            except ValueError:
+                flash(
+                    "Expected delivery date is invalid. Please select a valid date.",
+                    "danger",
+                )
+
+                return render_template(
+                    "procurement/orders/create.html",
+                    purchase_request=purchase_request,
+                    suppliers=suppliers,
+                )
+
+        try:
+            purchase_order_id, po_number = (
+                create_purchase_order_from_request(
+                    request_id=request_id,
+                    supplier_id=supplier_id_value,
+                    created_by=session["user_id"],
+                    expected_delivery_date=delivery_date,
+                    notes=notes or None,
+                )
+            )
+
+        except ValueError as error:
+            flash(
+                str(error),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "view_purchase_request",
+                    request_id=request_id,
+                )
+            )
+
+        flash(
+            f"Purchase order {po_number} created successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for("purchase_orders")
+        )
+
+    return render_template(
+        "procurement/orders/create.html",
+        purchase_request=purchase_request,
+        suppliers=suppliers,
+    )
+
+
+@app.route(
+    "/procurement/orders/<int:purchase_order_id>"
+)
+@permission_required("procurement.view")
+def view_purchase_order(purchase_order_id):
+    purchase_order = get_purchase_order_by_id(
+        purchase_order_id
+    )
+
+    if not purchase_order:
+        flash(
+            "Purchase order not found.",
+            "danger",
+        )
+        return redirect(
+            url_for("purchase_orders")
+        )
+
+    items = get_purchase_order_items(
+        purchase_order_id
+    )
+
+    return render_template(
+        "procurement/orders/view.html",
+        purchase_order=purchase_order,
+        items=items,
+    )
+
 
 @app.route("/logout")
 @login_required
