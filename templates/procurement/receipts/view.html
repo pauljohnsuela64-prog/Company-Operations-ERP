@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+{{ receipt.receipt_number }} | Company Operations ERP
+{% endblock %}
+
+
+{% block page_title %}
+Goods Receipt
+{% endblock %}
+
+
+{% block content %}
+
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            {{ receipt.receipt_number }}
+        </h2>
+
+        <p class="text-muted mb-0">
+            Goods receipt details
+        </p>
+
+    </div>
+
+
+    <a
+        href="{{ url_for('goods_receipt_history') }}"
+        class="btn btn-outline-secondary"
+    >
+        Back to Receipt History
+    </a>
+
+</div>
+
+
+
+<!-- # ========================================== -->
+<!-- # RECEIPT INFORMATION -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body p-4">
+
+        <div class="row">
+
+
+            <!-- # RECEIPT NUMBER -->
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Receipt Number
+                </div>
+
+                <strong>
+                    {{ receipt.receipt_number }}
+                </strong>
+
+            </div>
+
+
+            <!-- # PURCHASE ORDER -->
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Purchase Order
+                </div>
+
+                <strong>
+                    {{ receipt.po_number }}
+                </strong>
+
+            </div>
+
+
+            <!-- # SUPPLIER -->
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Supplier
+                </div>
+
+                <strong>
+                    {{ receipt.supplier_name }}
+                </strong>
+
+                <div class="small text-muted">
+                    {{ receipt.supplier_code }}
+                </div>
+
+            </div>
+
+
+            <!-- # WAREHOUSE -->
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Warehouse
+                </div>
+
+                <strong>
+                    {{ receipt.warehouse_name }}
+                </strong>
+
+                <div class="small text-muted">
+                    {{ receipt.warehouse_code }}
+                </div>
+
+            </div>
+
+
+            <!-- # RECEIVED BY -->
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Received By
+                </div>
+
+                <strong>
+                    {{ receipt.received_by_username or '-' }}
+                </strong>
+
+            </div>
+
+
+            <!-- # RECEIVED AT -->
+
+            <div class="col-md-4 mb-3">
+
+                <div class="text-muted small">
+                    Received At
+                </div>
+
+                <strong>
+                    {{ receipt.received_at }}
+                </strong>
+
+            </div>
+
+
+            <!-- # NOTES -->
+
+            <div class="col-md-12">
+
+                <div class="text-muted small">
+                    Notes
+                </div>
+
+                <strong>
+                    {{ receipt.notes or '-' }}
+                </strong>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- # ========================================== -->
+<!-- # RECEIVED ITEMS -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-header bg-white">
+
+        <h5 class="mb-0">
+            Received Items
+        </h5>
+
+    </div>
+
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+
+                <!-- # TABLE HEADER -->
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Item Code
+                        </th>
+
+                        <th>
+                            Item
+                        </th>
+
+                        <th>
+                            Quantity Received
+                        </th>
+
+                        <th>
+                            Unit
+                        </th>
+
+                        <th>
+                            Unit Cost
+                        </th>
+
+                        <th>
+                            Total
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <!-- # TABLE BODY -->
+
+                <tbody>
+
+                    {% for item in items %}
+
+                        <tr>
+
+                            <!-- # ITEM CODE -->
+
+                            <td>
+                                {{ item.item_code }}
+                            </td>
+
+
+                            <!-- # ITEM NAME -->
+
+                            <td>
+                                {{ item.item_name }}
+                            </td>
+
+
+                            <!-- # QUANTITY RECEIVED -->
+
+                            <td>
+
+                                <strong>
+                                    {{ item.quantity_received }}
+                                </strong>
+
+                            </td>
+
+
+                            <!-- # UNIT -->
+
+                            <td>
+                                {{ item.unit_of_measure }}
+                            </td>
+
+
+                            <!-- # UNIT COST -->
+
+                            <td>
+                                ₱{{ "%.2f"|format(item.unit_cost) }}
+                            </td>
+
+
+                            <!-- # LINE TOTAL -->
+
+                            <td>
+
+                                ₱{{ "%.2f"|format(
+                                    item.quantity_received
+                                    *
+                                    item.unit_cost
+                                ) }}
+
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="6"
+                                class="text-center text-muted py-4"
+                            >
+                                No items found in this receipt.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+{% endblock %}

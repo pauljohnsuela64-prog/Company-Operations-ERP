@@ -879,3 +879,128 @@ def get_all_goods_receipts():
 
         cursor.close()
         connection.close()
+
+
+
+# ==========================================================
+# GET ONE GOODS RECEIPT
+#
+# Used by the Goods Receipt details page.
+# ==========================================================
+
+def get_goods_receipt_by_id(receipt_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                gr.receipt_id,
+                gr.receipt_number,
+                gr.purchase_order_id,
+                gr.warehouse_id,
+                gr.received_at,
+                gr.notes,
+                gr.created_at,
+
+                po.po_number,
+
+                s.supplier_code,
+                s.supplier_name,
+
+                w.warehouse_code,
+                w.warehouse_name,
+
+                u.username AS received_by_username
+
+            FROM goods_receipts gr
+
+            JOIN purchase_orders po
+                ON gr.purchase_order_id
+                = po.purchase_order_id
+
+            JOIN suppliers s
+                ON po.supplier_id
+                = s.supplier_id
+
+            JOIN warehouses w
+                ON gr.warehouse_id
+                = w.warehouse_id
+
+            LEFT JOIN users u
+                ON gr.received_by
+                = u.user_id
+
+            WHERE gr.receipt_id = %s
+
+            LIMIT 1
+            """,
+            (receipt_id,),
+        )
+
+        return cursor.fetchone()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# GET ITEMS INSIDE ONE GOODS RECEIPT
+#
+# Example:
+#
+# GR-000001
+# USB Keyboard | 5 pcs
+#
+# GR-000002
+# USB Keyboard | 15 pcs
+# ==========================================================
+
+def get_goods_receipt_items(receipt_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                gri.receipt_item_id,
+                gri.purchase_order_item_id,
+                gri.quantity_received,
+
+                poi.item_id,
+                poi.unit_cost,
+
+                i.item_code,
+                i.item_name,
+                i.unit_of_measure
+
+            FROM goods_receipt_items gri
+
+            JOIN purchase_order_items poi
+                ON gri.purchase_order_item_id
+                = poi.purchase_order_item_id
+
+            JOIN inventory_items i
+                ON poi.item_id
+                = i.item_id
+
+            WHERE gri.receipt_id = %s
+
+            ORDER BY
+                gri.receipt_item_id
+            """,
+            (receipt_id,),
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()

@@ -8,10 +8,12 @@ from dashboard_repository import get_dashboard_summary
 
 from goods_receipt_repository import (
     create_goods_receipt,
+    get_all_goods_receipts,
+    get_goods_receipt_by_id,
+    get_goods_receipt_items,
     get_receivable_purchase_order_by_id,
     get_receivable_purchase_order_items,
     get_receivable_purchase_orders,
-    get_all_goods_receipts
 )
 
 from purchase_order_repository import (
@@ -3142,6 +3144,47 @@ def goods_receipt_history():
     return render_template(
         "procurement/receipts/history.html",
         receipts=receipts,
+    )
+
+# ==========================================================
+# VIEW GOODS RECEIPT DETAILS
+#
+# Shows one receipt and the exact items received.
+# ==========================================================
+
+@app.route(
+    "/procurement/receipts/history/<int:receipt_id>"
+)
+@permission_required("procurement.view")
+def view_goods_receipt(receipt_id):
+
+    # # Get receipt information
+    receipt = get_goods_receipt_by_id(
+        receipt_id
+    )
+
+    # # Make sure receipt exists
+    if not receipt:
+
+        flash(
+            "Goods receipt not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("goods_receipt_history")
+        )
+
+    # # Get items inside this receipt
+    items = get_goods_receipt_items(
+        receipt_id
+    )
+
+    # # Display receipt details page
+    return render_template(
+        "procurement/receipts/view.html",
+        receipt=receipt,
+        items=items,
     )
 
 @app.route("/logout")

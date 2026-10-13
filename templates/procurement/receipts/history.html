@@ -94,6 +94,11 @@ Goods Receipt History
                         <th>
                             Notes
                         </th>
+                        
+
+                        <th class="text-end">
+                            Actions
+                        </th>
 
                     </tr>
 
@@ -177,6 +182,23 @@ Goods Receipt History
 
                             <td>
                                 {{ receipt.notes or '-' }}
+                            </td>
+
+
+                            <!-- # VIEW RECEIPT BUTTON -->
+
+                            <td class="text-end">
+
+                                <a
+                                    href="{{ url_for(
+                                    'view_goods_receipt',
+                                    receipt_id=receipt.receipt_id
+                                    ) }}"
+                                    class="btn btn-sm btn-outline-primary"
+                                >
+                                    View
+                                </a>
+
                             </td>
 
 
