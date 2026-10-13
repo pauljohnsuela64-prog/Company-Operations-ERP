@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+Goods Receipt History | Company Operations ERP
+{% endblock %}
+
+
+{% block page_title %}
+Goods Receipt History
+{% endblock %}
+
+
+{% block content %}
+
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            Goods Receipt History
+        </h2>
+
+        <p class="text-muted mb-0">
+            View all supplier deliveries recorded in the system.
+        </p>
+
+    </div>
+
+
+    <a
+        href="{{ url_for('goods_receipts') }}"
+        class="btn btn-outline-secondary"
+    >
+        Back to Goods Receipts
+    </a>
+
+</div>
+
+
+
+<!-- # ========================================== -->
+<!-- # RECEIPT HISTORY TABLE -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+
+                <!-- # TABLE HEADER -->
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Receipt Number
+                        </th>
+
+                        <th>
+                            Purchase Order
+                        </th>
+
+                        <th>
+                            Supplier
+                        </th>
+
+                        <th>
+                            Warehouse
+                        </th>
+
+                        <th>
+                            Quantity Received
+                        </th>
+
+                        <th>
+                            Received By
+                        </th>
+
+                        <th>
+                            Received At
+                        </th>
+
+                        <th>
+                            Notes
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+
+                <!-- # TABLE BODY -->
+
+                <tbody>
+
+                    {% for receipt in receipts %}
+
+                        <tr>
+
+
+                            <!-- # RECEIPT NUMBER -->
+
+                            <td>
+                                <strong>
+                                    {{ receipt.receipt_number }}
+                                </strong>
+                            </td>
+
+
+                            <!-- # PURCHASE ORDER -->
+
+                            <td>
+                                {{ receipt.po_number }}
+                            </td>
+
+
+                            <!-- # SUPPLIER -->
+
+                            <td>
+
+                                {{ receipt.supplier_name }}
+
+                                <div class="small text-muted">
+                                    {{ receipt.supplier_code }}
+                                </div>
+
+                            </td>
+
+
+                            <!-- # WAREHOUSE -->
+
+                            <td>
+
+                                {{ receipt.warehouse_name }}
+
+                                <div class="small text-muted">
+                                    {{ receipt.warehouse_code }}
+                                </div>
+
+                            </td>
+
+
+                            <!-- # TOTAL QUANTITY -->
+
+                            <td>
+                                {{ receipt.total_quantity_received }}
+                            </td>
+
+
+                            <!-- # RECEIVED BY -->
+
+                            <td>
+                                {{ receipt.received_by_username or '-' }}
+                            </td>
+
+
+                            <!-- # RECEIVED DATE -->
+
+                            <td>
+                                {{ receipt.received_at }}
+                            </td>
+
+
+                            <!-- # NOTES -->
+
+                            <td>
+                                {{ receipt.notes or '-' }}
+                            </td>
+
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="8"
+                                class="text-center text-muted py-4"
+                            >
+                                No goods receipts found.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+{% endblock %}

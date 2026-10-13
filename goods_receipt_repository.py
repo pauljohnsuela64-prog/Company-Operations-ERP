@@ -778,3 +778,104 @@ def create_goods_receipt(
 
         cursor.close()
         connection.close()
+
+
+
+# ==========================================================
+# GET ALL GOODS RECEIPTS
+#
+# Used for the Goods Receipt History page.
+#
+# Shows:
+# - Receipt number
+# - Purchase Order
+# - Supplier
+# - Warehouse
+# - Who received it
+# - Date received
+# - Total quantity received
+# ==========================================================
+
+def get_all_goods_receipts():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                gr.receipt_id,
+                gr.receipt_number,
+                gr.purchase_order_id,
+                gr.received_at,
+                gr.notes,
+                gr.created_at,
+
+                po.po_number,
+
+                s.supplier_code,
+                s.supplier_name,
+
+                w.warehouse_code,
+                w.warehouse_name,
+
+                u.username AS received_by_username,
+
+                COALESCE(
+                    SUM(gri.quantity_received),
+                    0
+                ) AS total_quantity_received
+
+            FROM goods_receipts gr
+
+            JOIN purchase_orders po
+                ON gr.purchase_order_id
+                = po.purchase_order_id
+
+            JOIN suppliers s
+                ON po.supplier_id
+                = s.supplier_id
+
+            JOIN warehouses w
+                ON gr.warehouse_id
+                = w.warehouse_id
+
+            LEFT JOIN users u
+                ON gr.received_by
+                = u.user_id
+
+            LEFT JOIN goods_receipt_items gri
+                ON gr.receipt_id
+                = gri.receipt_id
+
+            GROUP BY
+                gr.receipt_id,
+                gr.receipt_number,
+                gr.purchase_order_id,
+                gr.received_at,
+                gr.notes,
+                gr.created_at,
+
+                po.po_number,
+
+                s.supplier_code,
+                s.supplier_name,
+
+                w.warehouse_code,
+                w.warehouse_name,
+
+                u.username
+
+            ORDER BY
+                gr.received_at DESC,
+                gr.receipt_id DESC
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()

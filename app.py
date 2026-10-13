@@ -11,6 +11,7 @@ from goods_receipt_repository import (
     get_receivable_purchase_order_by_id,
     get_receivable_purchase_order_items,
     get_receivable_purchase_orders,
+    get_all_goods_receipts
 )
 
 from purchase_order_repository import (
@@ -3123,6 +3124,24 @@ def receive_purchase_order(purchase_order_id):
         purchase_order=purchase_order,
         items=items,
         warehouses=warehouses,
+    )
+
+
+# ==========================================================
+# GOODS RECEIPT HISTORY
+#
+# Shows all completed receipt records.
+# ==========================================================
+
+@app.route("/procurement/receipts/history")
+@permission_required("procurement.view")
+def goods_receipt_history():
+
+    receipts = get_all_goods_receipts()
+
+    return render_template(
+        "procurement/receipts/history.html",
+        receipts=receipts,
     )
 
 @app.route("/logout")
