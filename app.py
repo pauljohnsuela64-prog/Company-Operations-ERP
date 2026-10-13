@@ -14,7 +14,7 @@ from goods_receipt_repository import (
     get_receivable_purchase_order_by_id,
     get_receivable_purchase_order_items,
     get_receivable_purchase_orders,
-    get_goods_receipts_by_purchase_order
+    get_goods_receipts_by_purchase_order,
 )
 
 from purchase_order_repository import (
@@ -25,6 +25,7 @@ from purchase_order_repository import (
     get_purchase_order_items,
     send_purchase_order,
     update_purchase_order_item_cost,
+    cancel_purchase_order,
 )
 
 from purchase_request_repository import (
@@ -3191,6 +3192,45 @@ def view_goods_receipt(receipt_id):
         "procurement/receipts/view.html",
         receipt=receipt,
         items=items,
+    )
+
+
+# ==========================================================
+# CANCEL PURCHASE ORDER
+# ==========================================================
+
+@app.route(
+    "/procurement/orders/<int:purchase_order_id>/cancel",
+    methods=["POST"],
+)
+@permission_required("procurement.orders.manage")
+def cancel_purchase_order_route(purchase_order_id):
+
+    try:
+
+        # # Try to cancel the purchase order
+        cancel_purchase_order(
+            purchase_order_id
+        )
+
+        flash(
+            "Purchase order cancelled successfully.",
+            "success",
+        )
+
+    except ValueError as error:
+
+        # # Business-rule error
+        flash(
+            str(error),
+            "danger",
+        )
+
+    return redirect(
+        url_for(
+            "view_purchase_order",
+            purchase_order_id=purchase_order_id,
+        )
     )
 
 @app.route("/logout")

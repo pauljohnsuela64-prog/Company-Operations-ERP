@@ -393,3 +393,138 @@ def send_purchase_order(purchase_order_id):
     finally:
         cursor.close()
         connection.close()
+
+
+# ==========================================================
+# CANCEL PURCHASE ORDER
+#
+# A purchase order can only be cancelled when:
+#
+# 1. Status is DRAFT or SENT
+# 2. No goods receipt has been created yet
+#
+# PARTIALLY_RECEIVED and RECEIVED orders cannot be cancelled.
+# ==========================================================
+
+def cancel_purchase_order(purchase_order_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        # ==================================================
+        # START TRANSACTION
+        # ==================================================
+
+        connection.start_transaction()
+
+
+        # ==================================================
+        # LOCK PURCHASE ORDER
+        # ==================================================
+
+        cursor.execute(
+            """
+            SELECT
+                purchase_order_id,
+                po_number,
+                status
+            FROM purchase_orders
+            WHERE purchase_order_id = %s
+            FOR UPDATE
+            """,
+            (purchase_order_id,),
+        )
+
+        purchase_order = cursor.fetchone()
+
+
+        # ==================================================
+        # VALIDATION - PURCHASE ORDER EXISTS
+        # ==================================================
+
+        if not purchase_order:
+            raise ValueError(
+                "Purchase order not found."
+            )
+
+
+        # ==================================================
+        # VALIDATION - STATUS
+        # ==================================================
+
+        if purchase_order["status"] == "CANCELLED":
+            raise ValueError(
+                "Purchase order is already cancelled."
+            )
+
+        if purchase_order["status"] not in (
+            "DRAFT",
+            "SENT",
+        ):
+            raise ValueError(
+                "This purchase order can no longer be cancelled."
+            )
+
+
+        # ==================================================
+        # CHECK FOR GOODS RECEIPTS
+        # ==================================================
+
+        cursor.execute(
+            """
+            SELECT receipt_id
+            FROM goods_receipts
+            WHERE purchase_order_id = %s
+            LIMIT 1
+            """,
+            (purchase_order_id,),
+        )
+
+        receipt = cursor.fetchone()
+
+
+        # ==================================================
+        # VALIDATION - RECEIVING ALREADY STARTED
+        # ==================================================
+
+        if receipt:
+            raise ValueError(
+                "This purchase order cannot be cancelled "
+                "because receiving has already started."
+            )
+
+
+        # ==================================================
+        # DATABASE UPDATE
+        # ==================================================
+
+        cursor.execute(
+            """
+            UPDATE purchase_orders
+            SET status = 'CANCELLED'
+            WHERE purchase_order_id = %s
+            """,
+            (purchase_order_id,),
+        )
+
+
+        # ==================================================
+        # SAVE TRANSACTION
+        # ==================================================
+
+        connection.commit()
+
+        return True
+
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+
+    finally:
+
+        cursor.close()
+        connection.close()
