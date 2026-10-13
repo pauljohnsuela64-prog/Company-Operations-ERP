@@ -624,3 +624,123 @@ def cancel_expense(expense_id):
 
         cursor.close()
         connection.close()
+
+
+# ==========================================================
+# UPDATE EXPENSE
+#
+# Only DRAFT expenses can be edited.
+# ==========================================================
+
+def update_expense(
+    expense_id,
+    expense_date,
+    category_id,
+    department_id,
+    supplier_id,
+    purchase_order_id,
+    description,
+    amount,
+    reference_number,
+    payment_method,
+    notes,
+):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        # ==================================================
+        # START TRANSACTION
+        # ==================================================
+
+        connection.start_transaction()
+
+
+        # ==================================================
+        # LOCK EXPENSE
+        # ==================================================
+
+        cursor.execute(
+            """
+            SELECT
+                expense_id,
+                status
+            FROM expenses
+            WHERE expense_id = %s
+            FOR UPDATE
+            """,
+            (expense_id,),
+        )
+
+        expense = cursor.fetchone()
+
+
+        # ==================================================
+        # VALIDATION
+        # ==================================================
+
+        if not expense:
+            raise ValueError(
+                "Expense not found."
+            )
+
+        if expense["status"] != "DRAFT":
+            raise ValueError(
+                "Only draft expenses can be edited."
+            )
+
+
+        # ==================================================
+        # DATABASE UPDATE
+        # ==================================================
+
+        cursor.execute(
+            """
+            UPDATE expenses
+            SET
+                expense_date = %s,
+                category_id = %s,
+                department_id = %s,
+                supplier_id = %s,
+                purchase_order_id = %s,
+                description = %s,
+                amount = %s,
+                reference_number = %s,
+                payment_method = %s,
+                notes = %s
+            WHERE expense_id = %s
+            """,
+            (
+                expense_date,
+                category_id,
+                department_id,
+                supplier_id,
+                purchase_order_id,
+                description,
+                amount,
+                reference_number,
+                payment_method,
+                notes,
+                expense_id,
+            ),
+        )
+
+
+        # ==================================================
+        # COMMIT
+        # ==================================================
+
+        connection.commit()
+
+        return True
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()

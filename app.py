@@ -15,6 +15,7 @@ from expense_repository import (
     get_all_expenses,
     get_expense_by_id,
     mark_expense_as_paid,
+    update_expense,
 )
 
 from expense_category_repository import (
@@ -4155,6 +4156,445 @@ def cancel_expense_route(expense_id):
             "view_expense",
             expense_id=expense_id,
         )
+    )
+
+
+
+# ==========================================================
+# FINANCE - EDIT EXPENSE
+#
+# Only DRAFT expenses can be edited.
+# ==========================================================
+
+@app.route(
+    "/finance/expenses/<int:expense_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required("finance.expenses.manage")
+def edit_expense(expense_id):
+
+    # ======================================================
+    # GET EXPENSE
+    # ======================================================
+
+    expense = get_expense_by_id(expense_id)
+
+    if not expense:
+        flash(
+            "Expense not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("expenses")
+        )
+
+
+    # ======================================================
+    # ONLY DRAFT EXPENSES CAN BE EDITED
+    # ======================================================
+
+    if expense["status"] != "DRAFT":
+
+        flash(
+            "Only draft expenses can be edited.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_expense",
+                expense_id=expense_id,
+            )
+        )
+
+
+    # ======================================================
+    # FORM OPTIONS
+    # ======================================================
+
+    categories = get_active_expense_categories()
+    departments = get_active_departments()
+    suppliers = get_active_suppliers()
+
+    purchase_orders = [
+        purchase_order
+        for purchase_order in get_all_purchase_orders()
+        if purchase_order["status"] != "CANCELLED"
+    ]
+
+
+    if request.method == "POST":
+
+        # ==================================================
+        # FORM INPUT
+        # ==================================================
+
+        expense_date = request.form.get(
+            "expense_date",
+            "",
+        ).strip()
+
+        category_id = request.form.get(
+            "category_id",
+            "",
+        ).strip()
+
+        department_id = request.form.get(
+            "department_id",
+            "",
+        ).strip()
+
+        supplier_id = request.form.get(
+            "supplier_id",
+            "",
+        ).strip()
+
+        purchase_order_id = request.form.get(
+            "purchase_order_id",
+            "",
+        ).strip()
+
+        description = request.form.get(
+            "description",
+            "",
+        ).strip()
+
+        amount = request.form.get(
+            "amount",
+            "",
+        ).strip().replace(",", "")
+
+        reference_number = request.form.get(
+            "reference_number",
+            "",
+        ).strip()
+
+        payment_method = request.form.get(
+            "payment_method",
+            "",
+        ).strip()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+
+        # ==================================================
+        # REQUIRED FIELDS
+        # ==================================================
+
+        if (
+            not expense_date
+            or not category_id
+            or not description
+            or not amount
+        ):
+
+            flash(
+                "Date, category, description, and amount are required.",
+                "danger",
+            )
+
+            return render_template(
+                "finance/expenses/edit.html",
+                expense=expense,
+                categories=categories,
+                departments=departments,
+                suppliers=suppliers,
+                purchase_orders=purchase_orders,
+            )
+
+
+        # ==================================================
+        # AMOUNT VALIDATION
+        # ==================================================
+
+        try:
+
+            amount_value = Decimal(amount)
+
+            if amount_value <= 0:
+                raise InvalidOperation
+
+        except (InvalidOperation, ValueError):
+
+            flash(
+                "Amount must be greater than zero.",
+                "danger",
+            )
+
+            return render_template(
+                "finance/expenses/edit.html",
+                expense=expense,
+                categories=categories,
+                departments=departments,
+                suppliers=suppliers,
+                purchase_orders=purchase_orders,
+            )
+
+
+        # ==================================================
+        # CATEGORY VALIDATION
+        # ==================================================
+
+        try:
+            category_id_value = int(category_id)
+
+        except ValueError:
+
+            flash(
+                "Invalid expense category.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_expense",
+                    expense_id=expense_id,
+                )
+            )
+
+        category = get_expense_category_by_id(
+            category_id_value
+        )
+
+        if not category or not category["is_active"]:
+
+            flash(
+                "Selected expense category is invalid or inactive.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_expense",
+                    expense_id=expense_id,
+                )
+            )
+
+
+        # ==================================================
+        # OPTIONAL DEPARTMENT
+        # ==================================================
+
+        department_id_value = None
+
+        if department_id:
+
+            try:
+                department_id_value = int(department_id)
+
+            except ValueError:
+
+                flash("Invalid department.", "danger")
+
+                return redirect(
+                    url_for(
+                        "edit_expense",
+                        expense_id=expense_id,
+                    )
+                )
+
+            department = get_department_by_id(
+                department_id_value
+            )
+
+            if not department or not department["is_active"]:
+
+                flash(
+                    "Selected department is invalid or inactive.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_expense",
+                        expense_id=expense_id,
+                    )
+                )
+
+
+        # ==================================================
+        # OPTIONAL SUPPLIER
+        # ==================================================
+
+        supplier_id_value = None
+
+        if supplier_id:
+
+            try:
+                supplier_id_value = int(supplier_id)
+
+            except ValueError:
+
+                flash("Invalid supplier.", "danger")
+
+                return redirect(
+                    url_for(
+                        "edit_expense",
+                        expense_id=expense_id,
+                    )
+                )
+
+            supplier = get_supplier_by_id(
+                supplier_id_value
+            )
+
+            if not supplier or not supplier["is_active"]:
+
+                flash(
+                    "Selected supplier is invalid or inactive.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_expense",
+                        expense_id=expense_id,
+                    )
+                )
+
+
+        # ==================================================
+        # OPTIONAL PURCHASE ORDER
+        # ==================================================
+
+        purchase_order_id_value = None
+
+        if purchase_order_id:
+
+            try:
+                purchase_order_id_value = int(
+                    purchase_order_id
+                )
+
+            except ValueError:
+
+                flash(
+                    "Invalid purchase order.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_expense",
+                        expense_id=expense_id,
+                    )
+                )
+
+            purchase_order = get_purchase_order_by_id(
+                purchase_order_id_value
+            )
+
+            if (
+                not purchase_order
+                or purchase_order["status"] == "CANCELLED"
+            ):
+
+                flash(
+                    "Selected purchase order is invalid or cancelled.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_expense",
+                        expense_id=expense_id,
+                    )
+                )
+
+
+        # ==================================================
+        # PAYMENT METHOD VALIDATION
+        # ==================================================
+
+        allowed_payment_methods = {
+            "CASH",
+            "BANK_TRANSFER",
+            "CHECK",
+            "CARD",
+            "OTHER",
+        }
+
+        if (
+            payment_method
+            and payment_method not in allowed_payment_methods
+        ):
+
+            flash(
+                "Invalid payment method.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_expense",
+                    expense_id=expense_id,
+                )
+            )
+
+
+        # ==================================================
+        # DATABASE UPDATE
+        # ==================================================
+
+        try:
+
+            update_expense(
+                expense_id,
+                expense_date,
+                category_id_value,
+                department_id_value,
+                supplier_id_value,
+                purchase_order_id_value,
+                description,
+                amount_value,
+                reference_number or None,
+                payment_method or None,
+                notes or None,
+            )
+
+        except ValueError as error:
+
+            flash(
+                str(error),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "view_expense",
+                    expense_id=expense_id,
+                )
+            )
+
+
+        flash(
+            "Expense updated successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for(
+                "view_expense",
+                expense_id=expense_id,
+            )
+        )
+
+
+    # ======================================================
+    # SHOW EDIT FORM
+    # ======================================================
+
+    return render_template(
+        "finance/expenses/edit.html",
+        expense=expense,
+        categories=categories,
+        departments=departments,
+        suppliers=suppliers,
+        purchase_orders=purchase_orders,
     )
 
 

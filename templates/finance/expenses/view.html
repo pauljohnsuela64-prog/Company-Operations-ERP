@@ -454,6 +454,26 @@ Expense Details
 {% endif %}
 
 
+<!-- # EDIT DRAFT EXPENSE -->
+
+{% if
+    expense.status == "DRAFT"
+    and has_permission("finance.expenses.manage")
+%}
+
+    <a
+        href="{{ url_for(
+            'edit_expense',
+            expense_id=expense.expense_id
+        ) }}"
+        class="btn btn-outline-primary"
+    >
+        Edit Expense
+    </a>
+
+{% endif %}
+
+
 
 
 
