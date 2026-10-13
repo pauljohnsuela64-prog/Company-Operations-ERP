@@ -228,6 +228,7 @@ def create_goods_receipt(
             SELECT
                 purchase_order_id,
                 po_number,
+                request_id,
                 status
             FROM purchase_orders
             WHERE purchase_order_id = %s
@@ -742,7 +743,36 @@ def create_goods_receipt(
                 new_status,
                 purchase_order_id,
             ),
+
+            
         )
+
+
+        # ==========================================================
+# COMPLETE ORIGINAL PURCHASE REQUEST
+#
+# When the Purchase Order is fully received,
+# close the original approved Purchase Request too.
+# ==========================================================
+
+        if (
+                new_status == "RECEIVED"
+                and purchase_order["request_id"] is not None
+):
+
+                cursor.execute(
+                """
+                UPDATE purchase_requests
+                SET status = 'COMPLETED'
+                WHERE request_id = %s
+                AND status = 'APPROVED'
+                """,
+            (
+                purchase_order["request_id"],
+            ),
+        )
+
+        
 
 
         # ==================================================
