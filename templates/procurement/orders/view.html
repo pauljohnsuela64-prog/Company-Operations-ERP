@@ -502,5 +502,118 @@ Purchase Order
 
 </div>
 
+<!-- # ========================================== -->
+<!-- # GOODS RECEIPT HISTORY -->
+<!-- # THIS BELONGS ON THE PURCHASE ORDER PAGE -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mt-4">
+
+    <div class="card-header bg-white">
+
+        <h5 class="mb-0">
+            Goods Receipt History
+        </h5>
+
+    </div>
+
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Receipt Number</th>
+                        <th>Warehouse</th>
+                        <th>Quantity Received</th>
+                        <th>Received By</th>
+                        <th>Received At</th>
+                        <th>Notes</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for receipt in receipts %}
+
+                        <tr>
+
+                            <td>
+                                <strong>
+                                    {{ receipt.receipt_number }}
+                                </strong>
+                            </td>
+
+                            <td>
+                                {{ receipt.warehouse_name }}
+
+                                <div class="small text-muted">
+                                    {{ receipt.warehouse_code }}
+                                </div>
+                            </td>
+
+                            <td>
+                                {{ receipt.total_quantity_received }}
+                            </td>
+
+                            <td>
+                                {{ receipt.received_by_username or '-' }}
+                            </td>
+
+                            <td>
+                                {{ receipt.received_at }}
+                            </td>
+
+                            <td>
+                                {{ receipt.notes or '-' }}
+                            </td>
+
+                            <td class="text-end">
+
+                                <a
+                                    href="{{ url_for(
+                                        'view_goods_receipt',
+                                        receipt_id=receipt.receipt_id
+                                    ) }}"
+                                    class="btn btn-sm btn-outline-primary"
+                                >
+                                    View
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="7"
+                                class="text-center text-muted py-4"
+                            >
+                                No goods receipts recorded for this purchase order.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
 
 {% endblock %}

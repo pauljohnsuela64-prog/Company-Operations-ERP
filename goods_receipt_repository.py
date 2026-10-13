@@ -1004,3 +1004,85 @@ def get_goods_receipt_items(receipt_id):
 
         cursor.close()
         connection.close()
+
+
+
+
+# ==========================================================
+# GET GOODS RECEIPTS FOR ONE PURCHASE ORDER
+#
+# Used on the Purchase Order details page.
+#
+# Example:
+#
+# PO-000001
+#   GR-000001
+#   GR-000002
+# ==========================================================
+
+def get_goods_receipts_by_purchase_order(
+    purchase_order_id,
+):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                gr.receipt_id,
+                gr.receipt_number,
+                gr.received_at,
+                gr.notes,
+
+                w.warehouse_code,
+                w.warehouse_name,
+
+                u.username AS received_by_username,
+
+                COALESCE(
+                    SUM(gri.quantity_received),
+                    0
+                ) AS total_quantity_received
+
+            FROM goods_receipts gr
+
+            JOIN warehouses w
+                ON gr.warehouse_id
+                = w.warehouse_id
+
+            LEFT JOIN users u
+                ON gr.received_by
+                = u.user_id
+
+            LEFT JOIN goods_receipt_items gri
+                ON gr.receipt_id
+                = gri.receipt_id
+
+            WHERE gr.purchase_order_id = %s
+
+            GROUP BY
+                gr.receipt_id,
+                gr.receipt_number,
+                gr.received_at,
+                gr.notes,
+
+                w.warehouse_code,
+                w.warehouse_name,
+
+                u.username
+
+            ORDER BY
+                gr.received_at DESC,
+                gr.receipt_id DESC
+            """,
+            (purchase_order_id,),
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()

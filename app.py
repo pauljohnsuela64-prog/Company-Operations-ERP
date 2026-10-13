@@ -14,6 +14,7 @@ from goods_receipt_repository import (
     get_receivable_purchase_order_by_id,
     get_receivable_purchase_order_items,
     get_receivable_purchase_orders,
+    get_goods_receipts_by_purchase_order
 )
 
 from purchase_order_repository import (
@@ -2716,10 +2717,15 @@ def view_purchase_order(purchase_order_id):
         purchase_order_id
     )
 
+    receipts = get_goods_receipts_by_purchase_order(
+    purchase_order_id
+)
+
     return render_template(
         "procurement/orders/view.html",
         purchase_order=purchase_order,
         items=items,
+        receipts=receipts,
     )
 
 
