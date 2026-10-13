@@ -9,8 +9,11 @@ from purchase_order_repository import (
     create_purchase_order_from_request,
     get_all_purchase_orders,
     get_purchase_order_by_id,
+    get_purchase_order_item_by_id,
     get_purchase_order_items,
+    update_purchase_order_item_cost,
 )
+
 from purchase_request_repository import (
     add_purchase_request_item,
     approve_purchase_request,
@@ -2705,6 +2708,108 @@ def view_purchase_order(purchase_order_id):
         "procurement/orders/view.html",
         purchase_order=purchase_order,
         items=items,
+    )
+
+
+@app.route(
+    "/procurement/orders/<int:purchase_order_id>/items/<int:purchase_order_item_id>/edit-cost",
+    methods=["GET", "POST"],
+)
+@permission_required("procurement.orders.manage")
+def edit_purchase_order_item_cost_route(
+    purchase_order_id,
+    purchase_order_item_id,
+):
+    purchase_order = get_purchase_order_by_id(
+        purchase_order_id
+    )
+
+    if not purchase_order:
+        flash(
+            "Purchase order not found.",
+            "danger",
+        )
+        return redirect(
+            url_for("purchase_orders")
+        )
+
+    if purchase_order["status"] != "DRAFT":
+        flash(
+            "Unit cost can only be edited while the purchase order is in Draft status.",
+            "danger",
+        )
+        return redirect(
+            url_for(
+                "view_purchase_order",
+                purchase_order_id=purchase_order_id,
+            )
+        )
+
+    purchase_order_item = get_purchase_order_item_by_id(
+        purchase_order_item_id
+    )
+
+    if (
+        not purchase_order_item
+        or purchase_order_item["purchase_order_id"]
+        != purchase_order_id
+    ):
+        flash(
+            "Purchase order item not found.",
+            "danger",
+        )
+        return redirect(
+            url_for(
+                "view_purchase_order",
+                purchase_order_id=purchase_order_id,
+            )
+        )
+
+    if request.method == "POST":
+        unit_cost = request.form.get(
+            "unit_cost",
+            "",
+        ).strip()
+
+        try:
+            unit_cost_value = float(unit_cost)
+
+            if unit_cost_value < 0:
+                raise ValueError
+
+        except ValueError:
+            flash(
+                "Unit cost must be zero or greater.",
+                "danger",
+            )
+
+            return render_template(
+                "procurement/orders/edit_cost.html",
+                purchase_order=purchase_order,
+                purchase_order_item=purchase_order_item,
+            )
+
+        update_purchase_order_item_cost(
+            purchase_order_item_id,
+            unit_cost_value,
+        )
+
+        flash(
+            "Purchase order item cost updated successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for(
+                "view_purchase_order",
+                purchase_order_id=purchase_order_id,
+            )
+        )
+
+    return render_template(
+        "procurement/orders/edit_cost.html",
+        purchase_order=purchase_order,
+        purchase_order_item=purchase_order_item,
     )
 
 

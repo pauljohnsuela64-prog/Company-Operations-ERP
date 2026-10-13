@@ -1,18 +1,27 @@
 {% extends "base.html" %}
 
+
 {% block title %}
 {{ purchase_order.po_number }} | Company Operations ERP
 {% endblock %}
+
 
 {% block page_title %}
 Purchase Order
 {% endblock %}
 
+
 {% block content %}
+
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
 
 <div class="d-flex justify-content-between align-items-center mb-4">
 
     <div>
+
         <h2 class="mb-1">
             {{ purchase_order.po_number }}
         </h2>
@@ -20,7 +29,9 @@ Purchase Order
         <p class="text-muted mb-0">
             Purchase order details
         </p>
+
     </div>
+
 
     <a
         href="{{ url_for('purchase_orders') }}"
@@ -32,11 +43,19 @@ Purchase Order
 </div>
 
 
+
+<!-- # ========================================== -->
+<!-- # PURCHASE ORDER INFORMATION CARD -->
+<!-- # ========================================== -->
+
 <div class="card shadow-sm border-0 mb-4">
 
     <div class="card-body p-4">
 
         <div class="row">
+
+
+            <!-- # PO NUMBER -->
 
             <div class="col-md-4 mb-3">
 
@@ -51,6 +70,9 @@ Purchase Order
             </div>
 
 
+
+            <!-- # SOURCE PURCHASE REQUEST -->
+
             <div class="col-md-4 mb-3">
 
                 <div class="text-muted small">
@@ -63,6 +85,9 @@ Purchase Order
 
             </div>
 
+
+
+            <!-- # SUPPLIER -->
 
             <div class="col-md-4 mb-3">
 
@@ -81,11 +106,15 @@ Purchase Order
             </div>
 
 
+
+            <!-- # STATUS -->
+
             <div class="col-md-4 mb-3">
 
                 <div class="text-muted small">
                     Status
                 </div>
+
 
                 {% if purchase_order.status == 'DRAFT' %}
 
@@ -93,11 +122,13 @@ Purchase Order
                         Draft
                     </span>
 
+
                 {% elif purchase_order.status == 'SENT' %}
 
                     <span class="badge text-bg-primary">
                         Sent
                     </span>
+
 
                 {% elif purchase_order.status == 'PARTIALLY_RECEIVED' %}
 
@@ -105,17 +136,20 @@ Purchase Order
                         Partially Received
                     </span>
 
+
                 {% elif purchase_order.status == 'RECEIVED' %}
 
                     <span class="badge text-bg-success">
                         Received
                     </span>
 
+
                 {% elif purchase_order.status == 'CANCELLED' %}
 
                     <span class="badge text-bg-danger">
                         Cancelled
                     </span>
+
 
                 {% else %}
 
@@ -127,6 +161,9 @@ Purchase Order
 
             </div>
 
+
+
+            <!-- # ORDER DATE -->
 
             <div class="col-md-4 mb-3">
 
@@ -141,6 +178,9 @@ Purchase Order
             </div>
 
 
+
+            <!-- # EXPECTED DELIVERY -->
+
             <div class="col-md-4 mb-3">
 
                 <div class="text-muted small">
@@ -153,6 +193,9 @@ Purchase Order
 
             </div>
 
+
+
+            <!-- # CREATED BY -->
 
             <div class="col-md-4 mb-3">
 
@@ -167,6 +210,9 @@ Purchase Order
             </div>
 
 
+
+            <!-- # PO NOTES -->
+
             <div class="col-md-8 mb-3">
 
                 <div class="text-muted small">
@@ -179,12 +225,18 @@ Purchase Order
 
             </div>
 
+
         </div>
 
     </div>
 
 </div>
 
+
+
+<!-- # ========================================== -->
+<!-- # PURCHASE ORDER ITEMS CARD -->
+<!-- # ========================================== -->
 
 <div class="card shadow-sm border-0">
 
@@ -203,62 +255,191 @@ Purchase Order
 
             <table class="table table-hover align-middle mb-0">
 
+
+                <!-- # ====================================== -->
+                <!-- # TABLE HEADER -->
+                <!-- # Everything inside <thead> describes -->
+                <!-- # the names at the TOP of each column. -->
+                <!-- # ====================================== -->
+
                 <thead>
 
                     <tr>
-                        <th>Item Code</th>
-                        <th>Item</th>
-                        <th>Quantity</th>
-                        <th>Unit Cost</th>
-                        <th>Total</th>
-                        <th>Notes</th>
+
+                        <th>
+                            Item Code
+                        </th>
+
+                        <th>
+                            Item
+                        </th>
+
+                        <th>
+                            Quantity
+                        </th>
+
+                        <th>
+                            Unit Cost
+                        </th>
+
+                        <th>
+                            Total
+                        </th>
+
+                        <th>
+                            Notes
+                        </th>
+
+
+                        <!-- # ACTIONS COLUMN HEADER -->
+                        <!-- # Only visible while PO is DRAFT -->
+
+                        {% if
+                            purchase_order.status == 'DRAFT'
+                            and has_permission('procurement.orders.manage')
+                        %}
+
+                            <th class="text-end">
+                                Actions
+                            </th>
+
+                        {% endif %}
+
                     </tr>
 
                 </thead>
 
 
+
+                <!-- # ====================================== -->
+                <!-- # TABLE BODY -->
+                <!-- # Actual database records appear here. -->
+                <!-- # ====================================== -->
+
                 <tbody>
+
+
+                    <!-- # LOOP THROUGH EVERY PO ITEM -->
 
                     {% for item in items %}
 
+
+                        <!-- # ONE TABLE ROW / ONE ITEM -->
+
                         <tr>
+
+
+                            <!-- # ITEM CODE -->
 
                             <td>
                                 {{ item.item_code }}
                             </td>
 
+
+
+                            <!-- # ITEM NAME -->
+
                             <td>
                                 {{ item.item_name }}
                             </td>
 
+
+
+                            <!-- # QUANTITY -->
+
                             <td>
+
                                 {{ item.quantity }}
                                 {{ item.unit_of_measure }}
+
                             </td>
 
-                            <td>
-                                ₱{{ "%.2f"|format(item.unit_cost) }}
-                            </td>
+
+
+                            <!-- # UNIT COST -->
 
                             <td>
+
                                 ₱{{ "%.2f"|format(
-                                    item.quantity * item.unit_cost
+                                    item.unit_cost
                                 ) }}
+
                             </td>
+
+
+
+                            <!-- # TOTAL -->
+                            <!-- # Quantity × Unit Cost -->
+
+                            <td>
+
+                                ₱{{ "%.2f"|format(
+                                    item.quantity
+                                    *
+                                    item.unit_cost
+                                ) }}
+
+                            </td>
+
+
+
+                            <!-- # NOTES -->
 
                             <td>
                                 {{ item.notes or '-' }}
                             </td>
+
+
+
+                            <!-- # ================================== -->
+                            <!-- # ACTION BUTTONS -->
+                            <!-- # This matches the Actions header -->
+                            <!-- # above. -->
+                            <!-- # ================================== -->
+
+                            {% if
+                                purchase_order.status == 'DRAFT'
+                                and has_permission(
+                                    'procurement.orders.manage'
+                                )
+                            %}
+
+                                <td class="text-end">
+
+
+                                    <!-- # EDIT COST BUTTON -->
+
+                                    <a
+                                        href="{{ url_for(
+                                            'edit_purchase_order_item_cost_route',
+                                            purchase_order_id=purchase_order.purchase_order_id,
+                                            purchase_order_item_id=item.purchase_order_item_id
+                                        ) }}"
+                                        class="btn btn-sm btn-outline-primary"
+                                    >
+                                        Edit Cost
+                                    </a>
+
+
+                                </td>
+
+                            {% endif %}
+
 
                         </tr>
 
 
                     {% else %}
 
+
+                        <!-- # ====================================== -->
+                        <!-- # DISPLAYED IF THERE ARE NO PO ITEMS -->
+                        <!-- # ====================================== -->
+
                         <tr>
 
                             <td
-                                colspan="6"
+                                colspan="{{ 7 if purchase_order.status == 'DRAFT' and has_permission('procurement.orders.manage') else 6 }}"
                                 class="text-center text-muted py-4"
                             >
                                 No purchase order items found.
@@ -266,7 +447,9 @@ Purchase Order
 
                         </tr>
 
+
                     {% endfor %}
+
 
                 </tbody>
 
@@ -277,5 +460,6 @@ Purchase Order
     </div>
 
 </div>
+
 
 {% endblock %}

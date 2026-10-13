@@ -297,3 +297,63 @@ def get_purchase_order_items(purchase_order_id):
     finally:
         cursor.close()
         connection.close()
+
+
+def get_purchase_order_item_by_id(purchase_order_item_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            """
+            SELECT
+                purchase_order_item_id,
+                purchase_order_id,
+                request_item_id,
+                item_id,
+                quantity,
+                unit_cost,
+                notes
+            FROM purchase_order_items
+            WHERE purchase_order_item_id = %s
+            LIMIT 1
+            """,
+            (purchase_order_item_id,),
+        )
+
+        return cursor.fetchone()
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def update_purchase_order_item_cost(
+    purchase_order_item_id,
+    unit_cost,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            UPDATE purchase_order_items
+            SET unit_cost = %s
+            WHERE purchase_order_item_id = %s
+            """,
+            (
+                unit_cost,
+                purchase_order_item_id,
+            ),
+        )
+
+        connection.commit()
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        connection.close()
