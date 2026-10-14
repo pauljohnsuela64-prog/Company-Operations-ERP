@@ -11,9 +11,13 @@ from finance_export import generate_finance_report_excel
 
 
 from it_asset_repository import (
+    assign_it_asset,
     create_it_asset,
     get_active_it_asset_categories,
     get_all_it_assets,
+    get_it_asset_by_id,
+    unassign_it_asset,
+    update_it_asset,
 )
 
 from budget_repository import (
@@ -5910,6 +5914,440 @@ def add_it_asset():
         categories=categories,
         departments=departments,
         employees=employees,
+    )
+
+# ==========================================================
+# IT MANAGEMENT - VIEW ASSET
+# ==========================================================
+
+@app.route(
+    "/it/assets/<int:asset_id>"
+)
+@permission_required("it_assets.view")
+def view_it_asset(asset_id):
+
+    asset = get_it_asset_by_id(
+        asset_id
+    )
+
+    if not asset:
+
+        flash(
+            "IT asset not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("it_assets")
+        )
+
+    employees = get_all_employees()
+
+    return render_template(
+        "it_assets/view.html",
+        asset=asset,
+        employees=employees,
+    )
+
+
+# ==========================================================
+# IT MANAGEMENT - EDIT ASSET
+# ==========================================================
+
+@app.route(
+    "/it/assets/<int:asset_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required("it_assets.view")
+def edit_it_asset(asset_id):
+
+    asset = get_it_asset_by_id(
+        asset_id
+    )
+
+    if not asset:
+
+        flash(
+            "IT asset not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("it_assets")
+        )
+
+    categories = get_active_it_asset_categories()
+    departments = get_active_departments()
+
+    if request.method == "POST":
+
+        asset_tag = request.form.get(
+            "asset_tag",
+            "",
+        ).strip().upper()
+
+        asset_name = request.form.get(
+            "asset_name",
+            "",
+        ).strip()
+
+        category_id = request.form.get(
+            "category_id",
+            "",
+        ).strip()
+
+        brand = request.form.get(
+            "brand",
+            "",
+        ).strip()
+
+        model = request.form.get(
+            "model",
+            "",
+        ).strip()
+
+        serial_number = request.form.get(
+            "serial_number",
+            "",
+        ).strip()
+
+        department_id = request.form.get(
+            "department_id",
+            "",
+        ).strip()
+
+        purchase_date = request.form.get(
+            "purchase_date",
+            "",
+        ).strip()
+
+        purchase_cost = request.form.get(
+            "purchase_cost",
+            "",
+        ).strip()
+
+        warranty_expiry = request.form.get(
+            "warranty_expiry",
+            "",
+        ).strip()
+
+        condition_status = request.form.get(
+            "condition_status",
+            "GOOD",
+        ).strip().upper()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+
+        # ==================================================
+        # REQUIRED FIELDS
+        # ==========================================================
+
+        if (
+            not asset_tag
+            or not asset_name
+            or not category_id
+        ):
+
+            flash(
+                "Asset tag, asset name, and category are required.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_it_asset",
+                    asset_id=asset_id,
+                )
+            )
+
+
+        # ==================================================
+        # ID VALIDATION
+        # ==========================================================
+
+        try:
+
+            category_id_value = int(
+                category_id
+            )
+
+            department_id_value = (
+                int(department_id)
+                if department_id
+                else None
+            )
+
+        except ValueError:
+
+            flash(
+                "Invalid category or department.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_it_asset",
+                    asset_id=asset_id,
+                )
+            )
+
+
+        # ==================================================
+        # COST VALIDATION
+        # ==========================================================
+
+        purchase_cost_value = None
+
+        if purchase_cost:
+
+            try:
+
+                purchase_cost_value = Decimal(
+                    purchase_cost.replace(",", "")
+                )
+
+                if purchase_cost_value < 0:
+                    raise ValueError
+
+            except (
+                InvalidOperation,
+                ValueError,
+            ):
+
+                flash(
+                    "Purchase cost must be zero or greater.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_it_asset",
+                        asset_id=asset_id,
+                    )
+                )
+
+
+        # ==================================================
+        # CONDITION VALIDATION
+        # ==========================================================
+
+        allowed_conditions = {
+            "NEW",
+            "GOOD",
+            "FAIR",
+            "POOR",
+            "DAMAGED",
+        }
+
+        if condition_status not in allowed_conditions:
+
+            flash(
+                "Invalid asset condition.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_it_asset",
+                    asset_id=asset_id,
+                )
+            )
+
+
+        # ==================================================
+        # UPDATE
+        # ==========================================================
+
+        try:
+
+            update_it_asset(
+                asset_id=asset_id,
+                asset_tag=asset_tag,
+                asset_name=asset_name,
+                category_id=category_id_value,
+                brand=brand or None,
+                model=model or None,
+                serial_number=serial_number or None,
+                department_id=department_id_value,
+                purchase_date=purchase_date or None,
+                purchase_cost=purchase_cost_value,
+                warranty_expiry=warranty_expiry or None,
+                condition_status=condition_status,
+                notes=notes or None,
+            )
+
+        except Exception as error:
+
+            if getattr(error, "errno", None) == 1062:
+
+                flash(
+                    "Asset tag or serial number already exists.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_it_asset",
+                        asset_id=asset_id,
+                    )
+                )
+
+            raise
+
+
+        flash(
+            "IT asset updated successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for(
+                "view_it_asset",
+                asset_id=asset_id,
+            )
+        )
+
+    return render_template(
+        "it_assets/edit.html",
+        asset=asset,
+        categories=categories,
+        departments=departments,
+    )
+
+
+# ==========================================================
+# IT MANAGEMENT - ASSIGN ASSET
+# ==========================================================
+
+@app.route(
+    "/it/assets/<int:asset_id>/assign",
+    methods=["POST"],
+)
+@permission_required("it_assets.view")
+def assign_it_asset_route(asset_id):
+
+    employee_id = request.form.get(
+        "employee_id",
+        "",
+    ).strip()
+
+    if not employee_id:
+
+        flash(
+            "Select an employee.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_it_asset",
+                asset_id=asset_id,
+            )
+        )
+
+    try:
+        employee_id_value = int(
+            employee_id
+        )
+
+    except ValueError:
+
+        flash(
+            "Invalid employee.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_it_asset",
+                asset_id=asset_id,
+            )
+        )
+
+    employee = get_employee_by_id(
+        employee_id_value
+    )
+
+    if not employee:
+
+        flash(
+            "Employee not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_it_asset",
+                asset_id=asset_id,
+            )
+        )
+
+    try:
+
+        assign_it_asset(
+            asset_id=asset_id,
+            employee_id=employee_id_value,
+            department_id=employee["department_id"],
+        )
+
+        flash(
+            "IT asset assigned successfully.",
+            "success",
+        )
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+    return redirect(
+        url_for(
+            "view_it_asset",
+            asset_id=asset_id,
+        )
+    )
+
+
+# ==========================================================
+# IT MANAGEMENT - UNASSIGN ASSET
+# ==========================================================
+
+@app.route(
+    "/it/assets/<int:asset_id>/unassign",
+    methods=["POST"],
+)
+@permission_required("it_assets.view")
+def unassign_it_asset_route(asset_id):
+
+    try:
+
+        unassign_it_asset(
+            asset_id
+        )
+
+        flash(
+            "IT asset unassigned successfully.",
+            "success",
+        )
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+    return redirect(
+        url_for(
+            "view_it_asset",
+            asset_id=asset_id,
+        )
     )
 
 

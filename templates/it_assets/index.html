@@ -47,6 +47,8 @@ IT Assets
 
             <table class="table table-hover align-middle mb-0">
 
+                <!-- # TABLE HEADER -->
+
                 <thead>
 
                     <tr>
@@ -57,9 +59,13 @@ IT Assets
                         <th>Assigned To</th>
                         <th>Status</th>
                         <th>Condition</th>
+                        <th>Actions</th>
                     </tr>
 
                 </thead>
+
+
+                <!-- # TABLE BODY -->
 
                 <tbody>
 
@@ -67,11 +73,18 @@ IT Assets
 
                         <tr>
 
+                            <!-- # ASSET TAG -->
+
                             <td>
+
                                 <strong>
                                     {{ asset.asset_tag }}
                                 </strong>
+
                             </td>
+
+
+                            <!-- # ASSET -->
 
                             <td>
 
@@ -90,17 +103,29 @@ IT Assets
 
                             </td>
 
+
+                            <!-- # CATEGORY -->
+
                             <td>
                                 {{ asset.category_name }}
                             </td>
+
+
+                            <!-- # DEPARTMENT -->
 
                             <td>
                                 {{ asset.department_name or "-" }}
                             </td>
 
+
+                            <!-- # ASSIGNED TO -->
+
                             <td>
                                 {{ asset.assigned_employee_name or "-" }}
                             </td>
+
+
+                            <!-- # STATUS -->
 
                             <td>
 
@@ -138,18 +163,51 @@ IT Assets
 
                             </td>
 
+
+                            <!-- # CONDITION -->
+
                             <td>
                                 {{ asset.condition_status.title() }}
                             </td>
 
+
+                            <!-- # ACTIONS -->
+
+                            <td>
+
+                                <a
+                                    href="{{ url_for(
+                                        'view_it_asset',
+                                        asset_id=asset.asset_id
+                                    ) }}"
+                                    class="btn btn-sm btn-outline-secondary me-1"
+                                >
+                                    View
+                                </a>
+
+                                <a
+                                    href="{{ url_for(
+                                        'edit_it_asset',
+                                        asset_id=asset.asset_id
+                                    ) }}"
+                                    class="btn btn-sm btn-outline-primary"
+                                >
+                                    Edit
+                                </a>
+
+                            </td>
+
                         </tr>
 
+
                     {% else %}
+
+                        <!-- # EMPTY STATE -->
 
                         <tr>
 
                             <td
-                                colspan="7"
+                                colspan="8"
                                 class="text-center text-muted py-4"
                             >
                                 No IT assets found.

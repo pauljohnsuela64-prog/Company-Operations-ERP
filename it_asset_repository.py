@@ -293,3 +293,221 @@ def create_it_asset(
 
         cursor.close()
         connection.close()
+
+
+# ==========================================================
+# UPDATE IT ASSET
+# ==========================================================
+
+def update_it_asset(
+    asset_id,
+    asset_tag,
+    asset_name,
+    category_id,
+    brand,
+    model,
+    serial_number,
+    department_id,
+    purchase_date,
+    purchase_cost,
+    warranty_expiry,
+    condition_status,
+    notes,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        connection.start_transaction()
+
+        cursor.execute(
+            """
+            SELECT asset_id
+            FROM it_assets
+            WHERE asset_id = %s
+            FOR UPDATE
+            """,
+            (asset_id,),
+        )
+
+        if not cursor.fetchone():
+            raise ValueError(
+                "IT asset was not found."
+            )
+
+        cursor.execute(
+            """
+            UPDATE it_assets
+            SET
+                asset_tag = %s,
+                asset_name = %s,
+                category_id = %s,
+                brand = %s,
+                model = %s,
+                serial_number = %s,
+                department_id = %s,
+                purchase_date = %s,
+                purchase_cost = %s,
+                warranty_expiry = %s,
+                condition_status = %s,
+                notes = %s
+
+            WHERE asset_id = %s
+            """,
+            (
+                asset_tag,
+                asset_name,
+                category_id,
+                brand,
+                model,
+                serial_number,
+                department_id,
+                purchase_date,
+                purchase_cost,
+                warranty_expiry,
+                condition_status,
+                notes,
+                asset_id,
+            ),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# ASSIGN IT ASSET
+# ==========================================================
+
+def assign_it_asset(
+    asset_id,
+    employee_id,
+    department_id,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        connection.start_transaction()
+
+        cursor.execute(
+            """
+            SELECT
+                asset_id,
+                status
+
+            FROM it_assets
+
+            WHERE asset_id = %s
+
+            FOR UPDATE
+            """,
+            (asset_id,),
+        )
+
+        asset = cursor.fetchone()
+
+        if not asset:
+            raise ValueError(
+                "IT asset was not found."
+            )
+
+        if asset[1] in (
+            "RETIRED",
+            "LOST",
+        ):
+            raise ValueError(
+                "Retired or lost assets cannot be assigned."
+            )
+
+        cursor.execute(
+            """
+            UPDATE it_assets
+            SET
+                assigned_employee_id = %s,
+                department_id = %s,
+                status = 'ASSIGNED'
+
+            WHERE asset_id = %s
+            """,
+            (
+                employee_id,
+                department_id,
+                asset_id,
+            ),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# UNASSIGN IT ASSET
+# ==========================================================
+
+def unassign_it_asset(asset_id):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        connection.start_transaction()
+
+        cursor.execute(
+            """
+            SELECT asset_id
+            FROM it_assets
+            WHERE asset_id = %s
+            FOR UPDATE
+            """,
+            (asset_id,),
+        )
+
+        if not cursor.fetchone():
+            raise ValueError(
+                "IT asset was not found."
+            )
+
+        cursor.execute(
+            """
+            UPDATE it_assets
+            SET
+                assigned_employee_id = NULL,
+                status = 'AVAILABLE'
+
+            WHERE asset_id = %s
+            """,
+            (asset_id,),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()

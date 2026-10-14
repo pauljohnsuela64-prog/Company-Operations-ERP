@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}
+IT Asset Details
+{% endblock %}
+
+
+{% block content %}
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            {{ asset.asset_tag }}
+        </h2>
+
+        <p class="text-muted mb-0">
+            {{ asset.asset_name }}
+        </p>
+
+    </div>
+
+
+    <div>
+
+        <a
+            href="{{ url_for(
+                'edit_it_asset',
+                asset_id=asset.asset_id
+            ) }}"
+            class="btn btn-primary"
+        >
+            Edit
+        </a>
+
+        <a
+            href="{{ url_for('it_assets') }}"
+            class="btn btn-outline-secondary ms-2"
+        >
+            Back
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # STATUS -->
+<!-- # ========================================== -->
+
+<div class="mb-4">
+
+    {% if asset.status == "AVAILABLE" %}
+
+        <span class="badge bg-success">
+            Available
+        </span>
+
+    {% elif asset.status == "ASSIGNED" %}
+
+        <span class="badge bg-primary">
+            Assigned
+        </span>
+
+    {% elif asset.status == "MAINTENANCE" %}
+
+        <span class="badge bg-warning text-dark">
+            Maintenance
+        </span>
+
+    {% elif asset.status == "RETIRED" %}
+
+        <span class="badge bg-secondary">
+            Retired
+        </span>
+
+    {% else %}
+
+        <span class="badge bg-danger">
+            Lost
+        </span>
+
+    {% endif %}
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # ASSET INFORMATION -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Asset Information
+        </h5>
+
+        <div class="row g-3">
+
+            <div class="col-md-4">
+                <strong>Category</strong>
+                <div class="text-muted">
+                    {{ asset.category_name }}
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <strong>Brand</strong>
+                <div class="text-muted">
+                    {{ asset.brand or "-" }}
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <strong>Model</strong>
+                <div class="text-muted">
+                    {{ asset.model or "-" }}
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <strong>Serial Number</strong>
+                <div class="text-muted">
+                    {{ asset.serial_number or "-" }}
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <strong>Condition</strong>
+                <div class="text-muted">
+                    {{ asset.condition_status.title() }}
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <strong>Department</strong>
+                <div class="text-muted">
+                    {{ asset.department_name or "-" }}
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <strong>Purchase Date</strong>
+                <div class="text-muted">
+                    {{ asset.purchase_date or "-" }}
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <strong>Purchase Cost</strong>
+                <div class="text-muted">
+
+                    {% if asset.purchase_cost is not none %}
+
+                        ₱{{ "{:,.2f}".format(
+                            asset.purchase_cost
+                        ) }}
+
+                    {% else %}
+
+                        -
+
+                    {% endif %}
+
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <strong>Warranty Expiry</strong>
+                <div class="text-muted">
+                    {{ asset.warranty_expiry or "-" }}
+                </div>
+            </div>
+
+            <div class="col-12">
+                <strong>Notes</strong>
+                <div class="text-muted">
+                    {{ asset.notes or "No notes provided." }}
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # ASSIGNMENT -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Asset Assignment
+        </h5>
+
+
+        {% if asset.assigned_employee_id %}
+
+            <div class="mb-3">
+
+                <strong>
+                    Assigned To
+                </strong>
+
+                <div class="text-muted">
+                    {{ asset.assigned_employee_name }}
+                </div>
+
+            </div>
+
+
+            <form
+                method="POST"
+                action="{{ url_for(
+                    'unassign_it_asset_route',
+                    asset_id=asset.asset_id
+                ) }}"
+            >
+
+                <button
+                    type="submit"
+                    class="btn btn-outline-danger"
+                >
+                    Unassign Asset
+                </button>
+
+            </form>
+
+        {% else %}
+
+            <form
+                method="POST"
+                action="{{ url_for(
+                    'assign_it_asset_route',
+                    asset_id=asset.asset_id
+                ) }}"
+            >
+
+                <div class="row g-3 align-items-end">
+
+                    <div class="col-md-6">
+
+                        <label class="form-label">
+                            Assign Employee
+                        </label>
+
+                        <select
+                            name="employee_id"
+                            class="form-select"
+                            required
+                        >
+
+                            <option value="">
+                                Select Employee
+                            </option>
+
+                            {% for employee in employees %}
+
+                                <option value="{{ employee.employee_id }}">
+
+                                    {{ employee.employee_number }}
+                                    -
+                                    {{ employee.first_name }}
+                                    {{ employee.last_name }}
+
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+                    <div class="col-md-3">
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                        >
+                            Assign Asset
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </form>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}
