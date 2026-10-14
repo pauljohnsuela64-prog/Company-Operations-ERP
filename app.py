@@ -12,10 +12,13 @@ from finance_export import generate_finance_report_excel
 
 from it_asset_repository import (
     assign_it_asset,
+    complete_it_asset_maintenance,
     create_it_asset,
+    create_it_asset_maintenance,
     get_active_it_asset_categories,
     get_all_it_assets,
     get_it_asset_by_id,
+    get_it_asset_maintenance_history,
     unassign_it_asset,
     update_it_asset,
 )
@@ -5926,9 +5929,17 @@ def add_it_asset():
 @permission_required("it_assets.view")
 def view_it_asset(asset_id):
 
+    
+
     asset = get_it_asset_by_id(
         asset_id
     )
+
+    maintenance_history = (
+    get_it_asset_maintenance_history(
+        asset_id
+    )
+)
 
     if not asset:
 
@@ -5944,10 +5955,12 @@ def view_it_asset(asset_id):
     employees = get_all_employees()
 
     return render_template(
-        "it_assets/view.html",
-        asset=asset,
-        employees=employees,
-    )
+    "it_assets/view.html",
+    asset=asset,
+    employees=employees,
+    maintenance_history=maintenance_history,
+)
+
 
 
 # ==========================================================
@@ -6349,6 +6362,222 @@ def unassign_it_asset_route(asset_id):
             asset_id=asset_id,
         )
     )
+
+
+# ==========================================================
+# IT MANAGEMENT - ADD ASSET MAINTENANCE
+# ==========================================================
+
+@app.route(
+    "/it/assets/<int:asset_id>/maintenance/add",
+    methods=["GET", "POST"],
+)
+@permission_required("it_assets.view")
+def add_it_asset_maintenance(asset_id):
+
+    asset = get_it_asset_by_id(
+        asset_id
+    )
+
+    if not asset:
+
+        flash(
+            "IT asset not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("it_assets")
+        )
+
+    if request.method == "POST":
+
+        maintenance_type = request.form.get(
+            "maintenance_type",
+            "",
+        ).strip()
+
+        description = request.form.get(
+            "description",
+            "",
+        ).strip()
+
+        vendor = request.form.get(
+            "vendor",
+            "",
+        ).strip()
+
+        cost = request.form.get(
+            "cost",
+            "",
+        ).strip()
+
+        start_date = request.form.get(
+            "start_date",
+            "",
+        ).strip()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+
+        # ==================================================
+        # VALIDATION
+        # ==========================================================
+
+        if (
+            not maintenance_type
+            or not description
+            or not start_date
+        ):
+
+            flash(
+                "Maintenance type, description, and "
+                "start date are required.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "add_it_asset_maintenance",
+                    asset_id=asset_id,
+                )
+            )
+
+        cost_value = None
+
+        if cost:
+
+            try:
+
+                cost_value = Decimal(
+                    cost.replace(",", "")
+                )
+
+                if cost_value < 0:
+                    raise ValueError
+
+            except (
+                InvalidOperation,
+                ValueError,
+            ):
+
+                flash(
+                    "Maintenance cost must be zero or greater.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "add_it_asset_maintenance",
+                        asset_id=asset_id,
+                    )
+                )
+
+
+        # ==================================================
+        # CREATE RECORD
+        # ==========================================================
+
+        try:
+
+            create_it_asset_maintenance(
+                asset_id=asset_id,
+                maintenance_type=maintenance_type,
+                description=description,
+                vendor=vendor or None,
+                cost=cost_value,
+                start_date=start_date,
+                notes=notes or None,
+                created_by=session["user_id"],
+            )
+
+            flash(
+                "Maintenance record created successfully.",
+                "success",
+            )
+
+        except ValueError as error:
+
+            flash(
+                str(error),
+                "danger",
+            )
+
+        return redirect(
+            url_for(
+                "view_it_asset",
+                asset_id=asset_id,
+            )
+        )
+
+
+    return render_template(
+        "it_assets/add_maintenance.html",
+        asset=asset,
+    )
+
+
+# ==========================================================
+# IT MANAGEMENT - COMPLETE MAINTENANCE
+# ==========================================================
+
+@app.route(
+    "/it/assets/maintenance/<int:maintenance_id>/complete",
+    methods=["POST"],
+)
+@permission_required("it_assets.view")
+def complete_it_asset_maintenance_route(
+    maintenance_id,
+):
+
+    completed_date = request.form.get(
+        "completed_date",
+        "",
+    ).strip()
+
+    if not completed_date:
+
+        flash(
+            "Completion date is required.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("it_assets")
+        )
+
+    try:
+
+        asset_id = complete_it_asset_maintenance(
+            maintenance_id,
+            completed_date,
+        )
+
+        flash(
+            "Maintenance completed successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for(
+                "view_it_asset",
+                asset_id=asset_id,
+            )
+        )
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+        return redirect(
+            url_for("it_assets")
+        )
 
 
 @app.route("/logout")

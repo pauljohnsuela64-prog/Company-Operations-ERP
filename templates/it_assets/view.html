@@ -222,6 +222,9 @@ IT Asset Details
             </div>
 
 
+            
+
+
             <form
                 method="POST"
                 action="{{ url_for(
@@ -298,9 +301,200 @@ IT Asset Details
 
                 </div>
 
+                
+
             </form>
 
+            
+
+            
+
         {% endif %}
+
+
+
+        <!-- # ========================================== -->
+<!-- # MAINTENANCE HISTORY -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mt-4">
+
+    <div class="card-body">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+
+            <h5 class="mb-0">
+                Maintenance History
+            </h5>
+
+            {% if asset.status not in ["RETIRED", "LOST", "MAINTENANCE"] %}
+
+                <a
+                    href="{{ url_for(
+                        'add_it_asset_maintenance',
+                        asset_id=asset.asset_id
+                    ) }}"
+                    class="btn btn-sm btn-primary"
+                >
+                    Add Maintenance
+                </a>
+
+            {% endif %}
+
+        </div>
+
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Start</th>
+                        <th>Completed</th>
+                        <th>Vendor</th>
+                        <th>Cost</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for maintenance in maintenance_history %}
+
+                        <tr>
+
+                            <td>
+                                {{ maintenance.maintenance_type }}
+                            </td>
+
+                            <td>
+                                {{ maintenance.description }}
+                            </td>
+
+                            <td>
+                                {{ maintenance.start_date }}
+                            </td>
+
+                            <td>
+                                {{ maintenance.completed_date or "-" }}
+                            </td>
+
+                            <td>
+                                {{ maintenance.vendor or "-" }}
+                            </td>
+
+                            <td>
+
+                                {% if maintenance.cost is not none %}
+
+                                    ₱{{ "{:,.2f}".format(
+                                        maintenance.cost
+                                    ) }}
+
+                                {% else %}
+
+                                    -
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+
+                                {% if maintenance.status == "OPEN" %}
+
+                                    <span class="badge bg-warning text-dark">
+                                        Open
+                                    </span>
+
+                                {% elif maintenance.status == "COMPLETED" %}
+
+                                    <span class="badge bg-success">
+                                        Completed
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge bg-secondary">
+                                        Cancelled
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+
+                                {% if maintenance.status == "OPEN" %}
+
+                                    <form
+                                        method="POST"
+                                        action="{{ url_for(
+                                            'complete_it_asset_maintenance_route',
+                                            maintenance_id=maintenance.maintenance_id
+                                        ) }}"
+                                        class="d-flex gap-2"
+                                    >
+
+                                        <input
+                                            type="date"
+                                            name="completed_date"
+                                            class="form-control form-control-sm"
+                                            required
+                                        >
+
+                                        <button
+                                            type="submit"
+                                            class="btn btn-sm btn-success"
+                                        >
+                                            Complete
+                                        </button>
+
+                                    </form>
+
+                                {% else %}
+
+                                    -
+
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="8"
+                                class="text-center text-muted py-4"
+                            >
+                                No maintenance history found.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
 
     </div>
 
