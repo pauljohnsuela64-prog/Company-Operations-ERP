@@ -11,6 +11,8 @@ from budget_repository import (
     create_department_budget,
     get_all_department_budgets,
     get_department_budget_by_department_and_year,
+    get_department_budget_by_id,
+    update_department_budget,
 )
 
 from expense_repository import (
@@ -4991,6 +4993,253 @@ def add_department_budget():
 
     return render_template(
         "finance/budgets/add.html",
+        departments=departments,
+    )
+
+
+# ==========================================================
+# FINANCE - EDIT DEPARTMENT BUDGET
+# ==========================================================
+
+@app.route(
+    "/finance/budgets/<int:budget_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required("finance.expenses.manage")
+def edit_department_budget(budget_id):
+
+    # ======================================================
+    # GET EXISTING BUDGET
+    # ======================================================
+
+    budget = get_department_budget_by_id(
+        budget_id
+    )
+
+    if not budget:
+
+        flash(
+            "Department budget was not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("department_budgets")
+        )
+
+
+    # ======================================================
+    # GET ACTIVE DEPARTMENTS
+    # ======================================================
+
+    departments = get_active_departments()
+
+
+    # ======================================================
+    # FORM SUBMISSION
+    # ======================================================
+
+    if request.method == "POST":
+
+        department_id = request.form.get(
+            "department_id",
+            "",
+        ).strip()
+
+        budget_year = request.form.get(
+            "budget_year",
+            "",
+        ).strip()
+
+        budget_amount = request.form.get(
+            "budget_amount",
+            "",
+        ).strip()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+
+        # ==================================================
+        # REQUIRED FIELDS
+        # ==================================================
+
+        if (
+            not department_id
+            or not budget_year
+            or not budget_amount
+        ):
+
+            flash(
+                "Department, year, and budget amount are required.",
+                "danger",
+            )
+
+            return render_template(
+                "finance/budgets/edit.html",
+                budget=budget,
+                departments=departments,
+            )
+
+
+        # ==================================================
+        # DEPARTMENT VALIDATION
+        # ==================================================
+
+        try:
+            department_id = int(department_id)
+
+        except ValueError:
+
+            flash(
+                "Invalid department.",
+                "danger",
+            )
+
+            return render_template(
+                "finance/budgets/edit.html",
+                budget=budget,
+                departments=departments,
+            )
+
+
+        # ==================================================
+        # YEAR VALIDATION
+        # ==================================================
+
+        try:
+            budget_year = int(budget_year)
+
+        except ValueError:
+
+            flash(
+                "Budget year must be a valid year.",
+                "danger",
+            )
+
+            return render_template(
+                "finance/budgets/edit.html",
+                budget=budget,
+                departments=departments,
+            )
+
+
+        # ==================================================
+        # AMOUNT VALIDATION
+        # ==================================================
+
+        try:
+
+            budget_amount = Decimal(
+                budget_amount.replace(",", "")
+            )
+
+        except InvalidOperation:
+
+            flash(
+                "Budget amount must be a valid number.",
+                "danger",
+            )
+
+            return render_template(
+                "finance/budgets/edit.html",
+                budget=budget,
+                departments=departments,
+            )
+
+        if budget_amount <= 0:
+
+            flash(
+                "Budget amount must be greater than zero.",
+                "danger",
+            )
+
+            return render_template(
+                "finance/budgets/edit.html",
+                budget=budget,
+                departments=departments,
+            )
+
+
+        # ==================================================
+        # DUPLICATE DEPARTMENT / YEAR CHECK
+        # ==================================================
+
+        duplicate_budget = (
+            get_department_budget_by_department_and_year(
+                department_id,
+                budget_year,
+            )
+        )
+
+        if (
+            duplicate_budget
+            and duplicate_budget["budget_id"]
+            != budget_id
+        ):
+
+            flash(
+                "This department already has a budget "
+                "for the selected year.",
+                "danger",
+            )
+
+            return render_template(
+                "finance/budgets/edit.html",
+                budget=budget,
+                departments=departments,
+            )
+
+
+        # ==================================================
+        # DATABASE UPDATE
+        # ==================================================
+
+        try:
+
+            update_department_budget(
+                budget_id=budget_id,
+                department_id=department_id,
+                budget_year=budget_year,
+                budget_amount=budget_amount,
+                notes=notes or None,
+            )
+
+        except ValueError as error:
+
+            flash(
+                str(error),
+                "danger",
+            )
+
+            return redirect(
+                url_for("department_budgets")
+            )
+
+
+        # ==================================================
+        # SUCCESS
+        # ==================================================
+
+        flash(
+            "Department budget updated successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for("department_budgets")
+        )
+
+
+    # ======================================================
+    # SHOW EDIT FORM
+    # ======================================================
+
+    return render_template(
+        "finance/budgets/edit.html",
+        budget=budget,
         departments=departments,
     )
 
