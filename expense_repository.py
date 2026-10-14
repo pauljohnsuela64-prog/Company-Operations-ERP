@@ -1080,6 +1080,7 @@ def get_finance_summary_by_year(year):
 # GET FILTERED EXPENSES
 #
 # Optional filters:
+# - Search
 # - Status
 # - Expense Category
 # - Year
@@ -1089,6 +1090,7 @@ def get_filtered_expenses(
     status=None,
     category_id=None,
     year=None,
+    search_text=None,
 ):
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
@@ -1163,6 +1165,35 @@ def get_filtered_expenses(
 
 
         # ==================================================
+        # SEARCH FILTER
+        # ==========================================================
+
+        if search_text:
+
+            search_value = f"%{search_text}%"
+
+            query += """
+                AND (
+                    e.expense_number LIKE %s
+                    OR e.description LIKE %s
+                    OR e.reference_number LIKE %s
+                    OR s.supplier_name LIKE %s
+                    OR po.po_number LIKE %s
+                )
+            """
+
+            parameters.extend(
+                [
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                ]
+            )
+
+
+        # ==================================================
         # STATUS FILTER
         # ==========================================================
 
@@ -1227,4 +1258,114 @@ def get_filtered_expenses(
 
         cursor.close()
         connection.close()
+
+
+
+# ==========================================================
+# SEARCH EXPENSES
+#
+# Searches by:
+# - Expense number
+# - Description
+# - Reference number
+# - Supplier name
+# - Purchase order number
+# ==========================================================
+
+def search_expenses(search_text):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        search_value = f"%{search_text}%"
+
+        cursor.execute(
+            """
+            SELECT
+                e.expense_id,
+                e.expense_number,
+                e.expense_date,
+
+                e.category_id,
+                ec.category_code,
+                ec.category_name,
+
+                e.department_id,
+                d.department_name,
+
+                e.supplier_id,
+                s.supplier_name,
+
+                e.purchase_order_id,
+                po.po_number,
+
+                e.description,
+                e.amount,
+                e.reference_number,
+                e.payment_method,
+                e.status,
+
+                e.created_by,
+                creator.username AS created_by_username,
+
+                e.approved_by,
+                approver.username AS approved_by_username,
+
+                e.approved_at,
+                e.paid_at,
+                e.notes,
+                e.created_at,
+                e.updated_at
+
+            FROM expenses e
+
+            INNER JOIN expense_categories ec
+                ON e.category_id = ec.category_id
+
+            LEFT JOIN departments d
+                ON e.department_id = d.department_id
+
+            LEFT JOIN suppliers s
+                ON e.supplier_id = s.supplier_id
+
+            LEFT JOIN purchase_orders po
+                ON e.purchase_order_id = po.purchase_order_id
+
+            INNER JOIN users creator
+                ON e.created_by = creator.user_id
+
+            LEFT JOIN users approver
+                ON e.approved_by = approver.user_id
+
+            WHERE
+                e.expense_number LIKE %s
+                OR e.description LIKE %s
+                OR e.reference_number LIKE %s
+                OR s.supplier_name LIKE %s
+                OR po.po_number LIKE %s
+
+            ORDER BY
+                e.expense_date DESC,
+                e.expense_id DESC
+            """,
+            (
+                search_value,
+                search_value,
+                search_value,
+                search_value,
+                search_value,
+            ),
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+
+
 

@@ -21,6 +21,7 @@ from expense_repository import (
     mark_expense_as_paid,
     update_expense,
     get_filtered_expenses,
+    search_expenses,
 )
 
 from expense_category_repository import (
@@ -3416,6 +3417,11 @@ def expenses():
     # FILTER INPUT
     # ======================================================
 
+    search_text = request.args.get(
+        "search",
+        "",
+    ).strip()
+
     selected_status = request.args.get(
         "status",
         "",
@@ -3484,11 +3490,21 @@ def expenses():
     # GET EXPENSE RECORDS
     # ======================================================
 
-    expense_list = get_filtered_expenses(
-        status=selected_status or None,
-        category_id=category_id_value,
-        year=year_value,
-    )
+    if search_text:
+
+        expense_list = search_expenses(
+            search_text
+        )
+
+    else:
+
+        expense_list = get_filtered_expenses(
+            status=selected_status or None,
+            category_id=category_id_value,
+            year=year_value,
+            search_text=search_text or None,
+        )
+
 
     categories = get_all_expense_categories()
 
@@ -3501,6 +3517,7 @@ def expenses():
         "finance/expenses/index.html",
         expenses=expense_list,
         categories=categories,
+        search_text=search_text,
         selected_status=selected_status,
         selected_category=selected_category,
         selected_year=selected_year,
