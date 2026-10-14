@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+Finance Summary
+{% endblock %}
+
+
+{% block page_title %}
+Finance Summary
+{% endblock %}
+
+
+{% block content %}
+
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER / YEAR FILTER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-end mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            Finance Summary
+        </h2>
+
+        <p class="text-muted mb-0">
+            Overview of company expense activity.
+        </p>
+
+    </div>
+
+
+    <!-- # YEAR FILTER -->
+
+    <form
+        method="GET"
+        action="{{ url_for('finance_summary') }}"
+        class="d-flex align-items-end gap-2"
+    >
+
+        <div>
+
+            <label class="form-label mb-1">
+                Year
+            </label>
+
+            <select
+                name="year"
+                class="form-select"
+            >
+
+                {% for year in range(
+                    current_year,
+                    current_year - 5,
+                    -1
+                ) %}
+
+                    <option
+                        value="{{ year }}"
+                        {% if year == selected_year %}
+                            selected
+                        {% endif %}
+                    >
+                        {{ year }}
+                    </option>
+
+                {% endfor %}
+
+            </select>
+
+        </div>
+
+        <button
+            type="submit"
+            class="btn btn-primary"
+        >
+            Apply
+        </button>
+
+    </form>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # SUMMARY CARDS -->
+<!-- # ========================================== -->
+
+<div class="row g-4">
+
+
+    <!-- # TOTAL EXPENSES -->
+
+    <div class="col-md-6 col-xl-4">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Total Expenses
+                </div>
+
+                <h3 class="mt-2 mb-1">
+                    ₱{{ "{:,.2f}".format(
+                        summary.total_amount
+                    ) }}
+                </h3>
+
+                <small class="text-muted">
+                    {{ summary.total_expenses }}
+                    expense record(s)
+                </small>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # DRAFT -->
+
+    <div class="col-md-6 col-xl-4">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Draft
+                </div>
+
+                <h3 class="mt-2 mb-1">
+                    ₱{{ "{:,.2f}".format(
+                        summary.draft_amount
+                    ) }}
+                </h3>
+
+                <small class="text-muted">
+                    {{ summary.draft_count }}
+                    draft expense(s)
+                </small>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # APPROVED -->
+
+    <div class="col-md-6 col-xl-4">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Approved
+                </div>
+
+                <h3 class="mt-2 mb-1">
+                    ₱{{ "{:,.2f}".format(
+                        summary.approved_amount
+                    ) }}
+                </h3>
+
+                <small class="text-muted">
+                    {{ summary.approved_count }}
+                    approved expense(s)
+                </small>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # PAID -->
+
+    <div class="col-md-6 col-xl-4">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Paid
+                </div>
+
+                <h3 class="mt-2 mb-1">
+                    ₱{{ "{:,.2f}".format(
+                        summary.paid_amount
+                    ) }}
+                </h3>
+
+                <small class="text-muted">
+                    {{ summary.paid_count }}
+                    paid expense(s)
+                </small>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # CANCELLED -->
+
+    <div class="col-md-6 col-xl-4">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Cancelled
+                </div>
+
+                <h3 class="mt-2 mb-1">
+                    ₱{{ "{:,.2f}".format(
+                        summary.cancelled_amount
+                    ) }}
+                </h3>
+
+                <small class="text-muted">
+                    {{ summary.cancelled_count }}
+                    cancelled expense(s)
+                </small>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # MONTHLY PAID EXPENSES -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mt-4">
+
+    <div class="card-header">
+
+        <strong>
+            Monthly Paid Expenses - {{ current_year }}
+        </strong>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+
+                <!-- # TABLE HEADER -->
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Month
+                        </th>
+
+                        <th class="text-center">
+                            Expenses
+                        </th>
+
+                        <th class="text-end">
+                            Total Paid
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <!-- # TABLE BODY -->
+
+                <tbody>
+
+                    {% for month in monthly_paid_expenses %}
+
+                        <tr>
+
+                            <td>
+                                {{ month.month_name }}
+                            </td>
+
+                            <td class="text-center">
+                                {{ month.expense_count }}
+                            </td>
+
+                            <td class="text-end">
+
+                                ₱{{ "{:,.2f}".format(
+                                    month.total_amount
+                                ) }}
+
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="3"
+                                class="text-center text-muted py-4"
+                            >
+                                No paid expenses found for
+                                {{ current_year }}.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # PAID EXPENSES BY CATEGORY -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mt-4">
+
+    <div class="card-header">
+
+        <strong>
+            Paid Expenses by Category - {{ current_year }}
+        </strong>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+
+                <!-- # TABLE HEADER -->
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Category
+                        </th>
+
+                        <th class="text-center">
+                            Expenses
+                        </th>
+
+                        <th class="text-end">
+                            Total Paid
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <!-- # TABLE BODY -->
+
+                <tbody>
+
+                    {% for category in paid_expenses_by_category %}
+
+                        <tr>
+
+                            <td>
+
+                                <strong>
+                                    {{ category.category_code }}
+                                </strong>
+
+                                -
+
+                                {{ category.category_name }}
+
+                            </td>
+
+                            <td class="text-center">
+                                {{ category.expense_count }}
+                            </td>
+
+                            <td class="text-end">
+
+                                ₱{{ "{:,.2f}".format(
+                                    category.total_amount
+                                ) }}
+
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="3"
+                                class="text-center text-muted py-4"
+                            >
+                                No paid expense category data
+                                found for {{ current_year }}.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+{% endblock %}

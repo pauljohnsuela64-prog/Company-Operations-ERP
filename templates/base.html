@@ -178,7 +178,7 @@
             {% endif %}
 
 
-            <!-- # ========================================== -->
+  <!-- # ========================================== -->
 <!-- # FINANCE -->
 <!-- # ========================================== -->
 
@@ -188,8 +188,12 @@
         Finance
     </div>
 
-
-    <!-- # EXPENSES -->
+    <a
+        href="{{ url_for('finance_summary') }}"
+        class="sidebar-link"
+    >
+        Summary
+    </a>
 
     <a
         href="{{ url_for('expenses') }}"
@@ -197,9 +201,6 @@
     >
         Expenses
     </a>
-
-
-    <!-- # EXPENSE CATEGORIES -->
 
     <a
         href="{{ url_for('expense_categories') }}"

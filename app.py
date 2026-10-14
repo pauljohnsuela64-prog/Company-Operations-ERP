@@ -14,6 +14,10 @@ from expense_repository import (
     create_expense,
     get_all_expenses,
     get_expense_by_id,
+    get_finance_summary,
+    get_finance_summary_by_year,
+    get_monthly_paid_expenses,
+    get_paid_expenses_by_category,
     mark_expense_as_paid,
     update_expense,
 )
@@ -4595,6 +4599,68 @@ def edit_expense(expense_id):
         departments=departments,
         suppliers=suppliers,
         purchase_orders=purchase_orders,
+    )
+
+
+
+# ==========================================================
+# FINANCE - SUMMARY
+# ==========================================================
+
+@app.route("/finance")
+@permission_required("finance.view")
+def finance_summary():
+
+    # ======================================================
+    # SELECTED YEAR
+    # ======================================================
+
+    current_year = date.today().year
+
+    selected_year = request.args.get(
+        "year",
+        str(current_year),
+    ).strip()
+
+    try:
+
+        selected_year = int(selected_year)
+
+    except ValueError:
+
+        selected_year = current_year
+
+
+    # ======================================================
+    # SUMMARY DATA
+    # ======================================================
+
+    summary = get_finance_summary_by_year(
+    selected_year
+)
+
+    monthly_paid_expenses = get_monthly_paid_expenses(
+        selected_year
+    )
+
+    paid_expenses_by_category = (
+        get_paid_expenses_by_category(
+            selected_year
+        )
+    )
+
+
+    # ======================================================
+    # SHOW FINANCE SUMMARY
+    # ======================================================
+
+    return render_template(
+        "finance/index.html",
+        summary=summary,
+        monthly_paid_expenses=monthly_paid_expenses,
+        paid_expenses_by_category=paid_expenses_by_category,
+        selected_year=selected_year,
+        current_year=current_year,
     )
 
 

@@ -744,3 +744,332 @@ def update_expense(
 
         cursor.close()
         connection.close()
+
+
+# ==========================================================
+# FINANCE SUMMARY
+#
+# Returns counts and totals for expense statuses.
+# ==========================================================
+
+def get_finance_summary():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+
+                COUNT(*) AS total_expenses,
+
+                COALESCE(
+                    SUM(amount),
+                    0
+                ) AS total_amount,
+
+                SUM(
+                    CASE
+                        WHEN status = 'DRAFT'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS draft_count,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN status = 'DRAFT'
+                            THEN amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS draft_amount,
+
+                SUM(
+                    CASE
+                        WHEN status = 'APPROVED'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS approved_count,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN status = 'APPROVED'
+                            THEN amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS approved_amount,
+
+                SUM(
+                    CASE
+                        WHEN status = 'PAID'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS paid_count,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN status = 'PAID'
+                            THEN amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS paid_amount,
+
+                SUM(
+                    CASE
+                        WHEN status = 'CANCELLED'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS cancelled_count,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN status = 'CANCELLED'
+                            THEN amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS cancelled_amount
+
+            FROM expenses
+            """
+        )
+
+        return cursor.fetchone()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# MONTHLY PAID EXPENSE SUMMARY
+#
+# Returns total PAID expenses grouped by month
+# for a selected year.
+# ==========================================================
+
+def get_monthly_paid_expenses(year):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                MONTH(expense_date) AS month_number,
+                MONTHNAME(expense_date) AS month_name,
+                COUNT(*) AS expense_count,
+                COALESCE(
+                    SUM(amount),
+                    0
+                ) AS total_amount
+
+            FROM expenses
+
+            WHERE status = 'PAID'
+              AND YEAR(expense_date) = %s
+
+            GROUP BY
+                MONTH(expense_date),
+                MONTHNAME(expense_date)
+
+            ORDER BY
+                MONTH(expense_date)
+            """,
+            (year,),
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# PAID EXPENSE CATEGORY BREAKDOWN
+#
+# Returns PAID expenses grouped by expense category
+# for a selected year.
+# ==========================================================
+
+def get_paid_expenses_by_category(year):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                ec.category_id,
+                ec.category_code,
+                ec.category_name,
+
+                COUNT(e.expense_id) AS expense_count,
+
+                COALESCE(
+                    SUM(e.amount),
+                    0
+                ) AS total_amount
+
+            FROM expenses e
+
+            INNER JOIN expense_categories ec
+                ON e.category_id = ec.category_id
+
+            WHERE e.status = 'PAID'
+              AND YEAR(e.expense_date) = %s
+
+            GROUP BY
+                ec.category_id,
+                ec.category_code,
+                ec.category_name
+
+            ORDER BY
+                total_amount DESC,
+                ec.category_name
+            """,
+            (year,),
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+
+# ==========================================================
+# FINANCE SUMMARY BY YEAR
+#
+# Returns counts and totals for expense statuses
+# for one selected year.
+# ==========================================================
+
+def get_finance_summary_by_year(year):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+
+                COUNT(*) AS total_expenses,
+
+                COALESCE(
+                    SUM(amount),
+                    0
+                ) AS total_amount,
+
+                SUM(
+                    CASE
+                        WHEN status = 'DRAFT'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS draft_count,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN status = 'DRAFT'
+                            THEN amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS draft_amount,
+
+                SUM(
+                    CASE
+                        WHEN status = 'APPROVED'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS approved_count,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN status = 'APPROVED'
+                            THEN amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS approved_amount,
+
+                SUM(
+                    CASE
+                        WHEN status = 'PAID'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS paid_count,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN status = 'PAID'
+                            THEN amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS paid_amount,
+
+                SUM(
+                    CASE
+                        WHEN status = 'CANCELLED'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS cancelled_count,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN status = 'CANCELLED'
+                            THEN amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS cancelled_amount
+
+            FROM expenses
+
+            WHERE YEAR(expense_date) = %s
+            """,
+            (year,),
+        )
+
+        return cursor.fetchone()
+
+    finally:
+
+        cursor.close()
+        connection.close()
