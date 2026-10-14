@@ -10,6 +10,7 @@ from decimal import Decimal, InvalidOperation
 from budget_repository import (
     create_department_budget,
     get_all_department_budgets,
+    get_budget_summary,
     get_department_budget_by_department_and_year,
     get_department_budget_by_id,
     update_department_budget,
@@ -4782,10 +4783,40 @@ def finance_summary():
 def department_budgets():
 
     # ======================================================
+    # SELECTED YEAR
+    # ======================================================
+
+    current_year = date.today().year
+
+    selected_year = request.args.get(
+        "year",
+        str(current_year),
+    ).strip()
+
+    try:
+        selected_year = int(selected_year)
+
+    except ValueError:
+        selected_year = current_year
+
+
+    # ======================================================
     # GET BUDGET RECORDS
     # ======================================================
 
-    budget_list = get_all_department_budgets()
+    budget_list = get_all_department_budgets(
+        year=selected_year
+    )
+
+
+    # ======================================================
+    # GET BUDGET SUMMARY
+    # ======================================================
+
+    budget_summary = get_budget_summary(
+        selected_year
+    )
+
 
     # ======================================================
     # SHOW BUDGET PAGE
@@ -4794,6 +4825,9 @@ def department_budgets():
     return render_template(
         "finance/budgets/index.html",
         budgets=budget_list,
+        budget_summary=budget_summary,
+        selected_year=selected_year,
+        current_year=current_year,
     )
 
 # ==========================================================

@@ -32,10 +32,7 @@ Add Department Budget
 
     <div class="card-body">
 
-        <form
-            method="POST"
-            action="{{ url_for('add_department_budget') }}"
-        >
+        <form method="POST" action="{{ url_for('add_department_budget') }}">
 
             <div class="row g-3">
 
@@ -48,11 +45,7 @@ Add Department Budget
                         Department
                     </label>
 
-                    <select
-                        name="department_id"
-                        class="form-select"
-                        required
-                    >
+                    <select name="department_id" class="form-select" required>
 
                         <option value="">
                             Select Department
@@ -60,11 +53,9 @@ Add Department Budget
 
                         {% for department in departments %}
 
-                            <option
-                                value="{{ department.department_id }}"
-                            >
-                                {{ department.department_name }}
-                            </option>
+                        <option value="{{ department.department_id }}">
+                            {{ department.department_name }}
+                        </option>
 
                         {% endfor %}
 
@@ -81,15 +72,8 @@ Add Department Budget
                         Budget Year
                     </label>
 
-                    <input
-                        type="number"
-                        name="budget_year"
-                        class="form-control"
-                        placeholder="2026"
-                        min="2000"
-                        max="2100"
-                        required
-                    >
+                    <input type="number" name="budget_year" class="form-control" placeholder="2026" min="2000"
+                        max="2100" required>
 
                 </div>
 
@@ -102,15 +86,8 @@ Add Department Budget
                         Budget Amount
                     </label>
 
-                    <input
-                        type="number"
-                        name="budget_amount"
-                        class="form-control"
-                        placeholder="500000.00"
-                        min="0.01"
-                        step="0.01"
-                        required
-                    >
+                    <input type="number" name="budget_amount" class="form-control" placeholder="500000.00" min="0.01"
+                        step="0.01" required>
 
                 </div>
 
@@ -123,13 +100,8 @@ Add Department Budget
                         Notes
                     </label>
 
-                    <textarea
-                        name="notes"
-                        class="form-control"
-                        rows="3"
-                        maxlength="255"
-                        placeholder="Optional notes..."
-                    ></textarea>
+                    <textarea name="notes" class="form-control" rows="3" maxlength="255"
+                        placeholder="Optional notes..."></textarea>
 
                 </div>
 
@@ -140,17 +112,11 @@ Add Department Budget
 
             <div class="mt-4">
 
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                >
+                <button type="submit" class="btn btn-primary">
                     Save Budget
                 </button>
 
-                <a
-                    href="{{ url_for('department_budgets') }}"
-                    class="btn btn-outline-secondary ms-2"
-                >
+                <a href="{{ url_for('department_budgets') }}" class="btn btn-outline-secondary ms-2">
                     Cancel
                 </a>
 

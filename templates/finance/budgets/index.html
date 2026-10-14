@@ -8,12 +8,13 @@ Department Budgets
 {% block content %}
 
 <!-- # ========================================== -->
-<!-- # PAGE HEADER -->
+<!-- # PAGE HEADER / YEAR FILTER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-end mb-4">
 
     <div>
+
         <h2 class="mb-1">
             Department Budgets
         </h2>
@@ -21,16 +22,179 @@ Department Budgets
         <p class="text-muted mb-0">
             Monitor annual department budgets and spending.
         </p>
+
     </div>
 
-    <!-- # ADD BUDGET BUTTON -->
 
-<a
-    href="{{ url_for('add_department_budget') }}"
-    class="btn btn-primary"
->
-    Add Budget
-</a>
+    <div class="d-flex align-items-end gap-2">
+
+        <!-- # YEAR FILTER -->
+
+        <form
+            method="GET"
+            action="{{ url_for('department_budgets') }}"
+            class="d-flex align-items-end gap-2"
+        >
+
+            <div>
+
+                <label class="form-label mb-1">
+                    Year
+                </label>
+
+                <select
+                    name="year"
+                    class="form-select"
+                >
+
+                    {% for year in range(
+                        current_year,
+                        current_year - 5,
+                        -1
+                    ) %}
+
+                        <option
+                            value="{{ year }}"
+                            {% if year == selected_year %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ year }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="btn btn-outline-primary"
+            >
+                Apply
+            </button>
+
+        </form>
+
+
+        <!-- # ADD BUDGET BUTTON -->
+
+        <a
+            href="{{ url_for('add_department_budget') }}"
+            class="btn btn-primary"
+        >
+            Add Budget
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # BUDGET SUMMARY CARDS -->
+<!-- # ========================================== -->
+
+<div class="row g-3 mb-4">
+
+    <!-- # TOTAL BUDGET -->
+
+    <div class="col-md-3">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted mb-1">
+                    Total Budget
+                </div>
+
+                <h4 class="mb-0">
+                    ₱{{ "{:,.2f}".format(
+                        budget_summary.total_budget
+                    ) }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # TOTAL SPENT -->
+
+    <div class="col-md-3">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted mb-1">
+                    Total Spent
+                </div>
+
+                <h4 class="mb-0">
+                    ₱{{ "{:,.2f}".format(
+                        budget_summary.total_spent
+                    ) }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # TOTAL REMAINING -->
+
+    <div class="col-md-3">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted mb-1">
+                    Total Remaining
+                </div>
+
+                <h4 class="mb-0">
+                    ₱{{ "{:,.2f}".format(
+                        budget_summary.total_remaining
+                    ) }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # DEPARTMENTS -->
+
+    <div class="col-md-3">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted mb-1">
+                    Departments
+                </div>
+
+                <h4 class="mb-0">
+                    {{ budget_summary.department_count }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
 
 </div>
 
@@ -58,6 +222,7 @@ Department Budgets
                         <th>Spent</th>
                         <th>Remaining</th>
                         <th>Usage</th>
+                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
 
@@ -70,112 +235,180 @@ Department Budgets
 
                     {% for budget in budgets %}
 
-                        {% set budget_amount =
-                            budget.budget_amount|float %}
+                    {% set budget_amount =
+                    budget.budget_amount|float %}
 
-                        {% set spent_amount =
-                            budget.spent_amount|float %}
-
-                        {% if budget_amount > 0 %}
-
-                            {% set usage_percentage =
-                                (
-                                    spent_amount
-                                    / budget_amount
-                                    * 100
-                                )
-                            %}
-
-                        {% else %}
-
-                            {% set usage_percentage = 0 %}
-
-                        {% endif %}
+                    {% set spent_amount =
+                    budget.spent_amount|float %}
 
 
-                        <tr>
+                    <!-- # CALCULATE USAGE -->
 
-                            <!-- # DEPARTMENT -->
+                    {% if budget_amount > 0 %}
 
-                            <td>
-                                {{ budget.department_name }}
-                            </td>
-
-
-                            <!-- # YEAR -->
-
-                            <td>
-                                {{ budget.budget_year }}
-                            </td>
-
-
-                            <!-- # BUDGET AMOUNT -->
-
-                            <td>
-                                ₱{{ "{:,.2f}".format(
-                                    budget.budget_amount
-                                ) }}
-                            </td>
-
-
-                            <!-- # SPENT -->
-
-                            <td>
-                                ₱{{ "{:,.2f}".format(
-                                    budget.spent_amount
-                                ) }}
-                            </td>
-
-
-                            <!-- # REMAINING -->
-
-                            <td>
-                                ₱{{ "{:,.2f}".format(
-                                    budget.remaining_amount
-                                ) }}
-                            </td>
-
-
-                            <!-- # BUDGET USAGE -->
-
-                            <td>
-                                {{ "{:.1f}".format(
-                                    usage_percentage
-                                ) }}%
-                            </td>
-
-                            <!-- # ACTIONS -->
-
-                            <td>
-
-                                <a
-                                    href="{{ url_for(
-                                    'edit_department_budget',
-                                    budget_id=budget.budget_id
-                                    ) }}"
-                                    class="btn btn-sm btn-outline-primary"
-                                    >
-                                    Edit
-                                </a>
-
-                            </td>
-
-                        </tr>
+                    {% set usage_percentage =
+                    (
+                    spent_amount
+                    / budget_amount
+                    * 100
+                    )
+                    %}
 
                     {% else %}
 
-                        <!-- # EMPTY STATE -->
+                    {% set usage_percentage = 0 %}
 
-                        <tr>
+                    {% endif %}
 
-                            <td
-                                colspan="7"
-                                class="text-center text-muted py-4"
-                            >
-                                No department budgets found.
-                            </td>
 
-                        </tr>
+                    <!-- # LIMIT PROGRESS BAR TO 100% -->
+
+                    {% if usage_percentage > 100 %}
+
+                    {% set progress_width = 100 %}
+
+                    {% else %}
+
+                    {% set progress_width =
+                    usage_percentage %}
+
+                    {% endif %}
+
+
+                    <tr>
+
+                        <!-- # DEPARTMENT -->
+
+                        <td>
+                            {{ budget.department_name }}
+                        </td>
+
+
+                        <!-- # YEAR -->
+
+                        <td>
+                            {{ budget.budget_year }}
+                        </td>
+
+
+                        <!-- # BUDGET -->
+
+                        <td>
+                            ₱{{ "{:,.2f}".format(
+                            budget.budget_amount
+                            ) }}
+                        </td>
+
+
+                        <!-- # SPENT -->
+
+                        <td>
+                            ₱{{ "{:,.2f}".format(
+                            budget.spent_amount
+                            ) }}
+                        </td>
+
+
+                        <!-- # REMAINING -->
+
+                        <td>
+                            ₱{{ "{:,.2f}".format(
+                            budget.remaining_amount
+                            ) }}
+                        </td>
+
+
+                        <!-- # USAGE / PROGRESS BAR -->
+
+                        <td style="min-width: 160px;">
+
+                            <div class="mb-1">
+
+                                {{ "{:.1f}".format(
+                                usage_percentage
+                                ) }}%
+
+                            </div>
+
+
+                            <div class="progress" style="height: 8px;">
+
+                                {% if usage_percentage >= 100 %}
+
+                                <div class="progress-bar bg-danger budget-progress-bar"
+                                    data-progress="{{ progress_width }}"></div>
+
+                                {% elif usage_percentage >= 80 %}
+
+                                <div class="progress-bar bg-warning budget-progress-bar"
+                                    data-progress="{{ progress_width }}"></div>
+
+                                {% else %}
+
+                                <div class="progress-bar bg-success budget-progress-bar"
+                                    data-progress="{{ progress_width }}"></div>
+
+                                {% endif %}
+
+                            </div>
+
+                        </td>
+
+
+                        <!-- # BUDGET STATUS -->
+
+                        <td>
+
+                            {% if usage_percentage >= 100 %}
+
+                            <span class="badge bg-danger">
+                                Over Budget
+                            </span>
+
+                            {% elif usage_percentage >= 80 %}
+
+                            <span class="badge bg-warning text-dark">
+                                Warning
+                            </span>
+
+                            {% else %}
+
+                            <span class="badge bg-success">
+                                Normal
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <!-- # ACTIONS -->
+
+                        <td>
+
+                            <a href="{{ url_for(
+                                        'edit_department_budget',
+                                        budget_id=budget.budget_id
+                                    ) }}" class="btn btn-sm btn-outline-primary">
+                                Edit
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+
+                    {% else %}
+
+                    <!-- # EMPTY STATE -->
+
+                    <tr>
+
+                        <td colspan="8" class="text-center text-muted py-4">
+                            No department budgets found.
+                        </td>
+
+                    </tr>
 
                     {% endfor %}
 
@@ -188,5 +421,47 @@ Department Budgets
     </div>
 
 </div>
+
+
+<!-- # ========================================== -->
+<!-- # BUDGET PROGRESS BAR SCRIPT -->
+<!-- # ========================================== -->
+
+<script>
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        function () {
+
+            const progressBars =
+                document.querySelectorAll(
+                    ".budget-progress-bar"
+                );
+
+            progressBars.forEach(
+                function (bar) {
+
+                    let progress =
+                        parseFloat(
+                            bar.dataset.progress
+                        ) || 0;
+
+                    progress = Math.max(
+                        0,
+                        Math.min(
+                            progress,
+                            100
+                        )
+                    );
+
+                    bar.style.width =
+                        progress + "%";
+                }
+            );
+
+        }
+    );
+
+</script>
 
 {% endblock %}

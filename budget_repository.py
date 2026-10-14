@@ -13,14 +13,28 @@ from database import get_connection
 # - Remaining budget
 # ==========================================================
 
-def get_all_department_budgets():
+# ==========================================================
+# GET DEPARTMENT BUDGETS
+#
+# Optional filter:
+# - Budget Year
+#
+# Also calculates:
+# - Paid expenses
+# - Remaining budget
+# ==========================================================
+
+def get_all_department_budgets(year=None):
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
     try:
 
-        cursor.execute(
-            """
+        # ==================================================
+        # BASE QUERY
+        # ==========================================================
+
+        query = """
             SELECT
                 b.budget_id,
                 b.department_id,
@@ -82,10 +96,43 @@ def get_all_department_budgets():
                 AND expense_totals.expense_year
                     = b.budget_year
 
+            WHERE 1 = 1
+        """
+
+        parameters = []
+
+
+        # ==================================================
+        # YEAR FILTER
+        # ==========================================================
+
+        if year is not None:
+
+            query += """
+                AND b.budget_year = %s
+            """
+
+            parameters.append(year)
+
+
+        # ==================================================
+        # SORTING
+        # ==========================================================
+
+        query += """
             ORDER BY
                 b.budget_year DESC,
                 d.department_name ASC
-            """
+        """
+
+
+        # ==================================================
+        # EXECUTE QUERY
+        # ==========================================================
+
+        cursor.execute(
+            query,
+            tuple(parameters),
         )
 
         return cursor.fetchall()
@@ -345,6 +392,94 @@ def update_department_budget(
         connection.rollback()
         raise
 
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# GET BUDGET SUMMARY BY YEAR
+#
+# Calculates:
+# - Number of department budgets
+# - Total budget
+# - Total spent
+# - Total remaining
+# ==========================================================
+
+def get_budget_summary(year):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+
+                COUNT(*) AS department_count,
+
+                COALESCE(
+                    SUM(b.budget_amount),
+                    0
+                ) AS total_budget,
+
+                COALESCE(
+                    SUM(
+                        COALESCE(
+                            expense_totals.spent_amount,
+                            0
+                        )
+                    ),
+                    0
+                ) AS total_spent,
+
+                COALESCE(
+                    SUM(
+                        b.budget_amount
+                        -
+                        COALESCE(
+                            expense_totals.spent_amount,
+                            0
+                        )
+                    ),
+                    0
+                ) AS total_remaining
+
+            FROM department_budgets b
+
+            LEFT JOIN (
+                SELECT
+                    department_id,
+                    YEAR(expense_date) AS expense_year,
+                    SUM(amount) AS spent_amount
+
+                FROM expenses
+
+                WHERE
+                    status = 'PAID'
+                    AND department_id IS NOT NULL
+
+                GROUP BY
+                    department_id,
+                    YEAR(expense_date)
+
+            ) expense_totals
+
+                ON expense_totals.department_id
+                    = b.department_id
+
+                AND expense_totals.expense_year
+                    = b.budget_year
+
+            WHERE b.budget_year = %s
+            """,
+            (year,),
+        )
+
+        return cursor.fetchone()
 
     finally:
 

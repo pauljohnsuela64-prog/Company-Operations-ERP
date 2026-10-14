@@ -32,13 +32,10 @@ Edit Department Budget
 
     <div class="card-body">
 
-        <form
-            method="POST"
-            action="{{ url_for(
+        <form method="POST" action="{{ url_for(
                 'edit_department_budget',
                 budget_id=budget.budget_id
-            ) }}"
-        >
+            ) }}">
 
             <div class="row g-3">
 
@@ -51,25 +48,14 @@ Edit Department Budget
                         Department
                     </label>
 
-                    <select
-                        name="department_id"
-                        class="form-select"
-                        required
-                    >
+                    <select name="department_id" class="form-select" required>
 
                         {% for department in departments %}
 
-                            <option
-                                value="{{ department.department_id }}"
-                                {% if
-                                    department.department_id
-                                    == budget.department_id
-                                %}
-                                    selected
-                                {% endif %}
-                            >
-                                {{ department.department_name }}
-                            </option>
+                        <option value="{{ department.department_id }}" {% if
+                            department.department_id==budget.department_id %} selected {% endif %}>
+                            {{ department.department_name }}
+                        </option>
 
                         {% endfor %}
 
@@ -86,15 +72,8 @@ Edit Department Budget
                         Budget Year
                     </label>
 
-                    <input
-                        type="number"
-                        name="budget_year"
-                        class="form-control"
-                        value="{{ budget.budget_year }}"
-                        min="2000"
-                        max="2100"
-                        required
-                    >
+                    <input type="number" name="budget_year" class="form-control" value="{{ budget.budget_year }}"
+                        min="2000" max="2100" required>
 
                 </div>
 
@@ -107,15 +86,8 @@ Edit Department Budget
                         Budget Amount
                     </label>
 
-                    <input
-                        type="number"
-                        name="budget_amount"
-                        class="form-control"
-                        value="{{ budget.budget_amount }}"
-                        min="0.01"
-                        step="0.01"
-                        required
-                    >
+                    <input type="number" name="budget_amount" class="form-control" value="{{ budget.budget_amount }}"
+                        min="0.01" step="0.01" required>
 
                 </div>
 
@@ -128,12 +100,8 @@ Edit Department Budget
                         Notes
                     </label>
 
-                    <textarea
-                        name="notes"
-                        class="form-control"
-                        rows="3"
-                        maxlength="255"
-                    >{{ budget.notes or "" }}</textarea>
+                    <textarea name="notes" class="form-control" rows="3"
+                        maxlength="255">{{ budget.notes or "" }}</textarea>
 
                 </div>
 
@@ -144,17 +112,11 @@ Edit Department Budget
 
             <div class="mt-4">
 
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                >
+                <button type="submit" class="btn btn-primary">
                     Save Changes
                 </button>
 
-                <a
-                    href="{{ url_for('department_budgets') }}"
-                    class="btn btn-outline-secondary ms-2"
-                >
+                <a href="{{ url_for('department_budgets') }}" class="btn btn-outline-secondary ms-2">
                     Cancel
                 </a>
 
