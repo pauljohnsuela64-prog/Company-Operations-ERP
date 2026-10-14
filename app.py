@@ -13,6 +13,8 @@ from budget_repository import (
     get_budget_summary,
     get_department_budget_by_department_and_year,
     get_department_budget_by_id,
+    get_department_budget_details_by_id,
+    get_paid_expenses_for_budget,
     update_department_budget,
 )
 
@@ -5275,6 +5277,82 @@ def edit_department_budget(budget_id):
         "finance/budgets/edit.html",
         budget=budget,
         departments=departments,
+    )
+
+
+# ==========================================================
+# FINANCE - VIEW DEPARTMENT BUDGET
+# ==========================================================
+
+@app.route(
+    "/finance/budgets/<int:budget_id>"
+)
+@permission_required("finance.view")
+def view_department_budget(budget_id):
+
+    # ======================================================
+    # GET BUDGET DETAILS
+    # ======================================================
+
+    budget = get_department_budget_details_by_id(
+        budget_id
+    )
+
+    if not budget:
+
+        flash(
+            "Department budget was not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("department_budgets")
+        )
+
+
+    # ======================================================
+    # GET PAID EXPENSES
+    # ======================================================
+
+    paid_expenses = get_paid_expenses_for_budget(
+        budget_id
+    )
+
+
+    # ======================================================
+    # CALCULATE USAGE
+    # ======================================================
+
+    budget_amount = float(
+        budget["budget_amount"]
+    )
+
+    spent_amount = float(
+        budget["spent_amount"]
+    )
+
+    if budget_amount > 0:
+
+        usage_percentage = (
+            spent_amount
+            / budget_amount
+            * 100
+        )
+
+    else:
+
+        usage_percentage = 0
+
+
+    # ======================================================
+    # SHOW BUDGET DETAILS PAGE
+    # ======================================================
+
+    return render_template(
+        "finance/budgets/view.html",
+        budget=budget,
+        paid_expenses=paid_expenses,
+        usage_percentage=usage_percentage,
     )
 
 

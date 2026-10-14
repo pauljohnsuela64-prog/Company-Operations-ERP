@@ -485,3 +485,174 @@ def get_budget_summary(year):
 
         cursor.close()
         connection.close()
+
+
+# ==========================================================
+# GET PAID EXPENSES FOR DEPARTMENT BUDGET
+#
+# Uses the budget's:
+# - Department
+# - Budget Year
+#
+# Only PAID expenses count as actual spending.
+# ==========================================================
+
+def get_paid_expenses_for_budget(budget_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                e.expense_id,
+                e.expense_number,
+                e.expense_date,
+
+                e.category_id,
+                ec.category_code,
+                ec.category_name,
+
+                e.description,
+                e.amount,
+                e.reference_number,
+                e.payment_method,
+                e.status,
+
+                e.supplier_id,
+                s.supplier_name,
+
+                e.purchase_order_id,
+                po.po_number
+
+            FROM department_budgets b
+
+            INNER JOIN expenses e
+                ON e.department_id = b.department_id
+
+                AND YEAR(e.expense_date)
+                    = b.budget_year
+
+                AND e.status = 'PAID'
+
+            INNER JOIN expense_categories ec
+                ON e.category_id = ec.category_id
+
+            LEFT JOIN suppliers s
+                ON e.supplier_id = s.supplier_id
+
+            LEFT JOIN purchase_orders po
+                ON e.purchase_order_id
+                    = po.purchase_order_id
+
+            WHERE b.budget_id = %s
+
+            ORDER BY
+                e.expense_date DESC,
+                e.expense_id DESC
+            """,
+            (budget_id,),
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# GET DEPARTMENT BUDGET DETAILS BY ID
+#
+# Returns:
+# - Department
+# - Budget year
+# - Budget amount
+# - Paid spending
+# - Remaining amount
+# ==========================================================
+
+def get_department_budget_details_by_id(budget_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                b.budget_id,
+                b.department_id,
+                d.department_name,
+
+                b.budget_year,
+                b.budget_amount,
+                b.notes,
+
+                b.created_by,
+                u.username AS created_by_username,
+
+                b.created_at,
+                b.updated_at,
+
+                COALESCE(
+                    expense_totals.spent_amount,
+                    0
+                ) AS spent_amount,
+
+                (
+                    b.budget_amount
+                    -
+                    COALESCE(
+                        expense_totals.spent_amount,
+                        0
+                    )
+                ) AS remaining_amount
+
+            FROM department_budgets b
+
+            INNER JOIN departments d
+                ON b.department_id = d.department_id
+
+            INNER JOIN users u
+                ON b.created_by = u.user_id
+
+            LEFT JOIN (
+                SELECT
+                    department_id,
+                    YEAR(expense_date) AS expense_year,
+                    SUM(amount) AS spent_amount
+
+                FROM expenses
+
+                WHERE
+                    status = 'PAID'
+                    AND department_id IS NOT NULL
+
+                GROUP BY
+                    department_id,
+                    YEAR(expense_date)
+
+            ) expense_totals
+
+                ON expense_totals.department_id
+                    = b.department_id
+
+                AND expense_totals.expense_year
+                    = b.budget_year
+
+            WHERE b.budget_id = %s
+
+            LIMIT 1
+            """,
+            (budget_id,),
+        )
+
+        return cursor.fetchone()
+
+    finally:
+
+        cursor.close()
+        connection.close()

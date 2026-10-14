@@ -30,11 +30,7 @@ Department Budgets
 
         <!-- # YEAR FILTER -->
 
-        <form
-            method="GET"
-            action="{{ url_for('department_budgets') }}"
-            class="d-flex align-items-end gap-2"
-        >
+        <form method="GET" action="{{ url_for('department_budgets') }}" class="d-flex align-items-end gap-2">
 
             <div>
 
@@ -42,25 +38,17 @@ Department Budgets
                     Year
                 </label>
 
-                <select
-                    name="year"
-                    class="form-select"
-                >
+                <select name="year" class="form-select">
 
                     {% for year in range(
-                        current_year,
-                        current_year - 5,
-                        -1
+                    current_year,
+                    current_year - 5,
+                    -1
                     ) %}
 
-                        <option
-                            value="{{ year }}"
-                            {% if year == selected_year %}
-                                selected
-                            {% endif %}
-                        >
-                            {{ year }}
-                        </option>
+                    <option value="{{ year }}" {% if year==selected_year %} selected {% endif %}>
+                        {{ year }}
+                    </option>
 
                     {% endfor %}
 
@@ -69,10 +57,7 @@ Department Budgets
             </div>
 
 
-            <button
-                type="submit"
-                class="btn btn-outline-primary"
-            >
+            <button type="submit" class="btn btn-outline-primary">
                 Apply
             </button>
 
@@ -81,10 +66,7 @@ Department Budgets
 
         <!-- # ADD BUDGET BUTTON -->
 
-        <a
-            href="{{ url_for('add_department_budget') }}"
-            class="btn btn-primary"
-        >
+        <a href="{{ url_for('add_department_budget') }}" class="btn btn-primary">
             Add Budget
         </a>
 
@@ -113,7 +95,7 @@ Department Budgets
 
                 <h4 class="mb-0">
                     ₱{{ "{:,.2f}".format(
-                        budget_summary.total_budget
+                    budget_summary.total_budget
                     ) }}
                 </h4>
 
@@ -138,7 +120,7 @@ Department Budgets
 
                 <h4 class="mb-0">
                     ₱{{ "{:,.2f}".format(
-                        budget_summary.total_spent
+                    budget_summary.total_spent
                     ) }}
                 </h4>
 
@@ -163,7 +145,7 @@ Department Budgets
 
                 <h4 class="mb-0">
                     ₱{{ "{:,.2f}".format(
-                        budget_summary.total_remaining
+                    budget_summary.total_remaining
                     ) }}
                 </h4>
 
@@ -387,20 +369,25 @@ Department Budgets
                         <td>
 
                             <a href="{{ url_for(
-                                        'edit_department_budget',
-                                        budget_id=budget.budget_id
-                                    ) }}" class="btn btn-sm btn-outline-primary">
+            'view_department_budget',
+            budget_id=budget.budget_id
+        ) }}" class="btn btn-sm btn-outline-secondary me-1">
+                                View
+                            </a>
+
+                            <a href="{{ url_for(
+            'edit_department_budget',
+            budget_id=budget.budget_id
+        ) }}" class="btn btn-sm btn-outline-primary">
                                 Edit
                             </a>
 
                         </td>
 
-                    </tr>
 
+                        {% else %}
 
-                    {% else %}
-
-                    <!-- # EMPTY STATE -->
+                        <!-- # EMPTY STATE -->
 
                     <tr>
 
