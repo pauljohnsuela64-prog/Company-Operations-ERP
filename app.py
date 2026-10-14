@@ -9,6 +9,13 @@ from decimal import Decimal, InvalidOperation
 
 from finance_export import generate_finance_report_excel
 
+
+from it_asset_repository import (
+    create_it_asset,
+    get_active_it_asset_categories,
+    get_all_it_assets,
+)
+
 from budget_repository import (
     create_department_budget,
     get_all_department_budgets,
@@ -5602,6 +5609,308 @@ def export_finance_report():
         ),
     )
 
+
+# ==========================================================
+# IT MANAGEMENT - IT ASSETS
+# ==========================================================
+
+@app.route("/it/assets")
+@permission_required("it_assets.view")
+def it_assets():
+
+    # ======================================================
+    # GET ASSETS
+    # ======================================================
+
+    asset_list = get_all_it_assets()
+
+    return render_template(
+        "it_assets/index.html",
+        assets=asset_list,
+    )
+
+
+# ==========================================================
+# IT MANAGEMENT - ADD ASSET
+# ==========================================================
+
+@app.route(
+    "/it/assets/add",
+    methods=["GET", "POST"],
+)
+@permission_required("it_assets.view")
+def add_it_asset():
+
+    # ======================================================
+    # FORM OPTIONS
+    # ======================================================
+
+    categories = get_active_it_asset_categories()
+    departments = get_active_departments()
+    employees = get_all_employees()
+
+    if request.method == "POST":
+
+        # ==================================================
+        # FORM INPUT
+        # ==========================================================
+
+        asset_tag = request.form.get(
+            "asset_tag",
+            "",
+        ).strip().upper()
+
+        asset_name = request.form.get(
+            "asset_name",
+            "",
+        ).strip()
+
+        category_id = request.form.get(
+            "category_id",
+            "",
+        ).strip()
+
+        brand = request.form.get(
+            "brand",
+            "",
+        ).strip()
+
+        model = request.form.get(
+            "model",
+            "",
+        ).strip()
+
+        serial_number = request.form.get(
+            "serial_number",
+            "",
+        ).strip()
+
+        department_id = request.form.get(
+            "department_id",
+            "",
+        ).strip()
+
+        assigned_employee_id = request.form.get(
+            "assigned_employee_id",
+            "",
+        ).strip()
+
+        purchase_date = request.form.get(
+            "purchase_date",
+            "",
+        ).strip()
+
+        purchase_cost = request.form.get(
+            "purchase_cost",
+            "",
+        ).strip()
+
+        warranty_expiry = request.form.get(
+            "warranty_expiry",
+            "",
+        ).strip()
+
+        condition_status = request.form.get(
+            "condition_status",
+            "GOOD",
+        ).strip().upper()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+
+        # ==================================================
+        # REQUIRED FIELDS
+        # ==========================================================
+
+        if (
+            not asset_tag
+            or not asset_name
+            or not category_id
+        ):
+
+            flash(
+                "Asset tag, asset name, and category are required.",
+                "danger",
+            )
+
+            return render_template(
+                "it_assets/add.html",
+                categories=categories,
+                departments=departments,
+                employees=employees,
+            )
+
+
+        # ==================================================
+        # ID VALIDATION
+        # ==========================================================
+
+        try:
+            category_id_value = int(category_id)
+
+            department_id_value = (
+                int(department_id)
+                if department_id
+                else None
+            )
+
+            assigned_employee_id_value = (
+                int(assigned_employee_id)
+                if assigned_employee_id
+                else None
+            )
+
+        except ValueError:
+
+            flash(
+                "Invalid category, department, or employee.",
+                "danger",
+            )
+
+            return redirect(
+                url_for("add_it_asset")
+            )
+
+
+        # ==================================================
+        # PURCHASE COST VALIDATION
+        # ==========================================================
+
+        purchase_cost_value = None
+
+        if purchase_cost:
+
+            try:
+
+                purchase_cost_value = Decimal(
+                    purchase_cost.replace(",", "")
+                )
+
+                if purchase_cost_value < 0:
+                    raise ValueError
+
+            except (
+                InvalidOperation,
+                ValueError,
+            ):
+
+                flash(
+                    "Purchase cost must be zero or greater.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for("add_it_asset")
+                )
+
+
+        # ==================================================
+        # CONDITION VALIDATION
+        # ==========================================================
+
+        allowed_conditions = {
+            "NEW",
+            "GOOD",
+            "FAIR",
+            "POOR",
+            "DAMAGED",
+        }
+
+        if condition_status not in allowed_conditions:
+
+            flash(
+                "Invalid asset condition.",
+                "danger",
+            )
+
+            return redirect(
+                url_for("add_it_asset")
+            )
+
+
+        # ==================================================
+        # ASSET STATUS
+        #
+        # If assigned to an employee, mark it ASSIGNED.
+        # Otherwise it starts AVAILABLE.
+        # ==========================================================
+
+        if assigned_employee_id_value:
+
+            asset_status = "ASSIGNED"
+
+        else:
+
+            asset_status = "AVAILABLE"
+
+
+        # ==================================================
+        # DATABASE INSERT
+        # ==========================================================
+
+        try:
+
+            asset_id = create_it_asset(
+                asset_tag=asset_tag,
+                asset_name=asset_name,
+                category_id=category_id_value,
+                brand=brand or None,
+                model=model or None,
+                serial_number=serial_number or None,
+                department_id=department_id_value,
+                assigned_employee_id=assigned_employee_id_value,
+                purchase_date=purchase_date or None,
+                purchase_cost=purchase_cost_value,
+                warranty_expiry=warranty_expiry or None,
+                status=asset_status,
+                condition_status=condition_status,
+                notes=notes or None,
+                created_by=session["user_id"],
+            )
+
+        except Exception as error:
+
+            if getattr(error, "errno", None) == 1062:
+
+                flash(
+                    "Asset tag or serial number already exists.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for("add_it_asset")
+                )
+
+            raise
+
+
+        # ==================================================
+        # SUCCESS
+        # ==========================================================
+
+        flash(
+            f"IT asset {asset_tag} created successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for("it_assets")
+        )
+
+
+    # ======================================================
+    # SHOW FORM
+    # ======================================================
+
+    return render_template(
+        "it_assets/add.html",
+        categories=categories,
+        departments=departments,
+        employees=employees,
+    )
 
 
 @app.route("/logout")

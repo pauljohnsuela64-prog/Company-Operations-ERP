@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}
+IT Assets
+{% endblock %}
+
+
+{% block content %}
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            IT Assets
+        </h2>
+
+        <p class="text-muted mb-0">
+            Track company computers, devices, and IT equipment.
+        </p>
+
+    </div>
+
+    <a
+        href="{{ url_for('add_it_asset') }}"
+        class="btn btn-primary"
+    >
+        Add Asset
+    </a>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # ASSET TABLE -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Asset Tag</th>
+                        <th>Asset</th>
+                        <th>Category</th>
+                        <th>Department</th>
+                        <th>Assigned To</th>
+                        <th>Status</th>
+                        <th>Condition</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for asset in assets %}
+
+                        <tr>
+
+                            <td>
+                                <strong>
+                                    {{ asset.asset_tag }}
+                                </strong>
+                            </td>
+
+                            <td>
+
+                                {{ asset.asset_name }}
+
+                                {% if asset.brand or asset.model %}
+
+                                    <div class="text-muted small">
+
+                                        {{ asset.brand or "" }}
+                                        {{ asset.model or "" }}
+
+                                    </div>
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+                                {{ asset.category_name }}
+                            </td>
+
+                            <td>
+                                {{ asset.department_name or "-" }}
+                            </td>
+
+                            <td>
+                                {{ asset.assigned_employee_name or "-" }}
+                            </td>
+
+                            <td>
+
+                                {% if asset.status == "AVAILABLE" %}
+
+                                    <span class="badge bg-success">
+                                        Available
+                                    </span>
+
+                                {% elif asset.status == "ASSIGNED" %}
+
+                                    <span class="badge bg-primary">
+                                        Assigned
+                                    </span>
+
+                                {% elif asset.status == "MAINTENANCE" %}
+
+                                    <span class="badge bg-warning text-dark">
+                                        Maintenance
+                                    </span>
+
+                                {% elif asset.status == "RETIRED" %}
+
+                                    <span class="badge bg-secondary">
+                                        Retired
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge bg-danger">
+                                        Lost
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+                                {{ asset.condition_status.title() }}
+                            </td>
+
+                        </tr>
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="7"
+                                class="text-center text-muted py-4"
+                            >
+                                No IT assets found.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

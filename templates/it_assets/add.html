@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block title %}
+Add IT Asset
+{% endblock %}
+
+
+{% block content %}
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="mb-4">
+
+    <h2 class="mb-1">
+        Add IT Asset
+    </h2>
+
+    <p class="text-muted mb-0">
+        Register new company IT equipment.
+    </p>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # ASSET FORM -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <form method="POST">
+
+            <div class="row g-3">
+
+
+                <!-- # ASSET TAG -->
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Asset Tag
+                    </label>
+
+                    <input
+                        type="text"
+                        name="asset_tag"
+                        class="form-control"
+                        placeholder="IT-0001"
+                        maxlength="50"
+                        required
+                    >
+
+                </div>
+
+
+                <!-- # ASSET NAME -->
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Asset Name
+                    </label>
+
+                    <input
+                        type="text"
+                        name="asset_name"
+                        class="form-control"
+                        placeholder="Accounting Laptop"
+                        maxlength="150"
+                        required
+                    >
+
+                </div>
+
+
+                <!-- # CATEGORY -->
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Category
+                    </label>
+
+                    <select
+                        name="category_id"
+                        class="form-select"
+                        required
+                    >
+
+                        <option value="">
+                            Select Category
+                        </option>
+
+                        {% for category in categories %}
+
+                            <option value="{{ category.category_id }}">
+                                {{ category.category_code }}
+                                -
+                                {{ category.category_name }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <!-- # BRAND -->
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Brand
+                    </label>
+
+                    <input
+                        type="text"
+                        name="brand"
+                        class="form-control"
+                        placeholder="Lenovo"
+                        maxlength="100"
+                    >
+
+                </div>
+
+
+                <!-- # MODEL -->
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Model
+                    </label>
+
+                    <input
+                        type="text"
+                        name="model"
+                        class="form-control"
+                        placeholder="ThinkPad E14"
+                        maxlength="100"
+                    >
+
+                </div>
+
+
+                <!-- # SERIAL NUMBER -->
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Serial Number
+                    </label>
+
+                    <input
+                        type="text"
+                        name="serial_number"
+                        class="form-control"
+                        maxlength="100"
+                    >
+
+                </div>
+
+
+                <!-- # DEPARTMENT -->
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Department
+                    </label>
+
+                    <select
+                        name="department_id"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            No Department
+                        </option>
+
+                        {% for department in departments %}
+
+                            <option value="{{ department.department_id }}">
+                                {{ department.department_name }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <!-- # ASSIGNED EMPLOYEE -->
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Assigned Employee
+                    </label>
+
+                    <select
+                        name="assigned_employee_id"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            Unassigned
+                        </option>
+
+                        {% for employee in employees %}
+
+                            <option value="{{ employee.employee_id }}">
+
+                                {{ employee.employee_number }}
+                                -
+                                {{ employee.first_name }}
+                                {{ employee.last_name }}
+
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <!-- # PURCHASE DATE -->
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Purchase Date
+                    </label>
+
+                    <input
+                        type="date"
+                        name="purchase_date"
+                        class="form-control"
+                    >
+
+                </div>
+
+
+                <!-- # PURCHASE COST -->
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Purchase Cost
+                    </label>
+
+                    <input
+                        type="number"
+                        name="purchase_cost"
+                        class="form-control"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                    >
+
+                </div>
+
+
+                <!-- # WARRANTY EXPIRY -->
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Warranty Expiry
+                    </label>
+
+                    <input
+                        type="date"
+                        name="warranty_expiry"
+                        class="form-control"
+                    >
+
+                </div>
+
+
+                <!-- # CONDITION -->
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Condition
+                    </label>
+
+                    <select
+                        name="condition_status"
+                        class="form-select"
+                    >
+
+                        <option value="NEW">
+                            New
+                        </option>
+
+                        <option value="GOOD" selected>
+                            Good
+                        </option>
+
+                        <option value="FAIR">
+                            Fair
+                        </option>
+
+                        <option value="POOR">
+                            Poor
+                        </option>
+
+                        <option value="DAMAGED">
+                            Damaged
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- # NOTES -->
+
+                <div class="col-12">
+
+                    <label class="form-label">
+                        Notes
+                    </label>
+
+                    <textarea
+                        name="notes"
+                        class="form-control"
+                        rows="3"
+                        maxlength="255"
+                    ></textarea>
+
+                </div>
+
+            </div>
+
+
+            <!-- # BUTTONS -->
+
+            <div class="mt-4">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Save Asset
+                </button>
+
+                <a
+                    href="{{ url_for('it_assets') }}"
+                    class="btn btn-outline-secondary ms-2"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

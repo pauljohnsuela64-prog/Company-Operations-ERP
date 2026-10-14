@@ -120,9 +120,11 @@
                 </div>
 
                 {% if has_permission('it_assets.view') %}
-                <a href="#" class="sidebar-link">
+
+                <a href="{{ url_for('it_assets') }}" class="sidebar-link">
                     IT Assets
                 </a>
+
                 {% endif %}
 
                 {% if has_permission('helpdesk.view') %}
