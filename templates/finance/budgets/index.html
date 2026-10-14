@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}
+Department Budgets
+{% endblock %}
+
+
+{% block content %}
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+        <h2 class="mb-1">
+            Department Budgets
+        </h2>
+
+        <p class="text-muted mb-0">
+            Monitor annual department budgets and spending.
+        </p>
+    </div>
+
+    <!-- # ADD BUDGET BUTTON -->
+    <!-- # We will connect this in the next step -->
+
+    <!-- # ADD BUDGET BUTTON -->
+
+<a
+    href="{{ url_for('add_department_budget') }}"
+    class="btn btn-primary"
+>
+    Add Budget
+</a>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # BUDGET TABLE -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <!-- # TABLE HEADER -->
+
+                <thead>
+
+                    <tr>
+                        <th>Department</th>
+                        <th>Year</th>
+                        <th>Budget</th>
+                        <th>Spent</th>
+                        <th>Remaining</th>
+                        <th>Usage</th>
+                    </tr>
+
+                </thead>
+
+
+                <!-- # TABLE BODY -->
+
+                <tbody>
+
+                    {% for budget in budgets %}
+
+                        {% set budget_amount =
+                            budget.budget_amount|float %}
+
+                        {% set spent_amount =
+                            budget.spent_amount|float %}
+
+                        {% if budget_amount > 0 %}
+
+                            {% set usage_percentage =
+                                (
+                                    spent_amount
+                                    / budget_amount
+                                    * 100
+                                )
+                            %}
+
+                        {% else %}
+
+                            {% set usage_percentage = 0 %}
+
+                        {% endif %}
+
+
+                        <tr>
+
+                            <!-- # DEPARTMENT -->
+
+                            <td>
+                                {{ budget.department_name }}
+                            </td>
+
+
+                            <!-- # YEAR -->
+
+                            <td>
+                                {{ budget.budget_year }}
+                            </td>
+
+
+                            <!-- # BUDGET AMOUNT -->
+
+                            <td>
+                                ₱{{ "{:,.2f}".format(
+                                    budget.budget_amount
+                                ) }}
+                            </td>
+
+
+                            <!-- # SPENT -->
+
+                            <td>
+                                ₱{{ "{:,.2f}".format(
+                                    budget.spent_amount
+                                ) }}
+                            </td>
+
+
+                            <!-- # REMAINING -->
+
+                            <td>
+                                ₱{{ "{:,.2f}".format(
+                                    budget.remaining_amount
+                                ) }}
+                            </td>
+
+
+                            <!-- # BUDGET USAGE -->
+
+                            <td>
+                                {{ "{:.1f}".format(
+                                    usage_percentage
+                                ) }}%
+                            </td>
+
+                        </tr>
+
+                    {% else %}
+
+                        <!-- # EMPTY STATE -->
+
+                        <tr>
+
+                            <td
+                                colspan="6"
+                                class="text-center text-muted py-4"
+                            >
+                                No department budgets found.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

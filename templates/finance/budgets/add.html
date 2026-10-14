@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}
+Add Department Budget
+{% endblock %}
+
+
+{% block content %}
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="mb-4">
+
+    <h2 class="mb-1">
+        Add Department Budget
+    </h2>
+
+    <p class="text-muted mb-0">
+        Create an annual budget for a department.
+    </p>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # ADD BUDGET FORM -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <form
+            method="POST"
+            action="{{ url_for('add_department_budget') }}"
+        >
+
+            <div class="row g-3">
+
+
+                <!-- # DEPARTMENT -->
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Department
+                    </label>
+
+                    <select
+                        name="department_id"
+                        class="form-select"
+                        required
+                    >
+
+                        <option value="">
+                            Select Department
+                        </option>
+
+                        {% for department in departments %}
+
+                            <option
+                                value="{{ department.department_id }}"
+                            >
+                                {{ department.department_name }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <!-- # BUDGET YEAR -->
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Budget Year
+                    </label>
+
+                    <input
+                        type="number"
+                        name="budget_year"
+                        class="form-control"
+                        placeholder="2026"
+                        min="2000"
+                        max="2100"
+                        required
+                    >
+
+                </div>
+
+
+                <!-- # BUDGET AMOUNT -->
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Budget Amount
+                    </label>
+
+                    <input
+                        type="number"
+                        name="budget_amount"
+                        class="form-control"
+                        placeholder="500000.00"
+                        min="0.01"
+                        step="0.01"
+                        required
+                    >
+
+                </div>
+
+
+                <!-- # NOTES -->
+
+                <div class="col-12">
+
+                    <label class="form-label">
+                        Notes
+                    </label>
+
+                    <textarea
+                        name="notes"
+                        class="form-control"
+                        rows="3"
+                        maxlength="255"
+                        placeholder="Optional notes..."
+                    ></textarea>
+
+                </div>
+
+            </div>
+
+
+            <!-- # FORM BUTTONS -->
+
+            <div class="mt-4">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Save Budget
+                </button>
+
+                <a
+                    href="{{ url_for('department_budgets') }}"
+                    class="btn btn-outline-secondary ms-2"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}
