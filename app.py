@@ -16,6 +16,7 @@ from budget_repository import (
     get_department_budget_details_by_id,
     get_paid_expenses_for_budget,
     update_department_budget,
+    check_expense_against_budget,
 )
 
 from expense_repository import (
@@ -4214,6 +4215,69 @@ def mark_expense_as_paid_route(expense_id):
 
     try:
 
+        # ==================================================
+        # CHECK DEPARTMENT BUDGET
+        # ==========================================================
+
+        budget_check = check_expense_against_budget(
+            expense_id
+        )
+
+
+        # ==================================================
+        # DEPARTMENT HAS NO BUDGET
+        # ==========================================================
+
+        if (
+            budget_check["budget_required"]
+            and not budget_check["budget_found"]
+        ):
+
+            flash(
+                (
+                    f"Payment blocked. "
+                    f"{budget_check['department_name']} "
+                    f"does not have a budget for "
+                    f"{budget_check['budget_year']}."
+                ),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "view_expense",
+                    expense_id=expense_id,
+                )
+            )
+
+
+        # ==================================================
+        # PAYMENT WOULD EXCEED BUDGET
+        # ==========================================================
+
+        if not budget_check["can_pay"]:
+
+            flash(
+                (
+                    "Payment blocked. This expense would "
+                    "exceed the department budget by "
+                    f"₱{budget_check['over_by']:,.2f}."
+                ),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "view_expense",
+                    expense_id=expense_id,
+                )
+            )
+
+
+        # ==================================================
+        # BUDGET CHECK PASSED
+        # ==========================================================
+
         mark_expense_as_paid(
             expense_id
         )
@@ -4223,12 +4287,14 @@ def mark_expense_as_paid_route(expense_id):
             "success",
         )
 
+
     except ValueError as error:
 
         flash(
             str(error),
             "danger",
         )
+
 
     return redirect(
         url_for(

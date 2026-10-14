@@ -2,7 +2,11 @@
 # FINANCE - BUDGET REPOSITORY
 # ==========================================================
 
+from decimal import Decimal
+
 from database import get_connection
+
+
 
 
 # ==========================================================
@@ -651,6 +655,241 @@ def get_department_budget_details_by_id(budget_id):
         )
 
         return cursor.fetchone()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+# ==========================================================
+# CHECK EXPENSE AGAINST DEPARTMENT BUDGET
+#
+# Used before an APPROVED expense is marked as PAID.
+#
+# Checks:
+# - Expense department
+# - Expense year
+# - Department budget
+# - Current paid spending
+# - Projected spending
+# - Possible overspending
+# ==========================================================
+
+def check_expense_against_budget(expense_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        # ==================================================
+        # GET EXPENSE + MATCHING DEPARTMENT BUDGET
+        # ==========================================================
+
+        cursor.execute(
+            """
+            SELECT
+                e.expense_id,
+                e.expense_number,
+                e.expense_date,
+                e.amount AS expense_amount,
+                e.status,
+
+                e.department_id,
+                d.department_name,
+
+                YEAR(e.expense_date) AS budget_year,
+
+                b.budget_id,
+                b.budget_amount,
+
+                COALESCE(
+                    (
+                        SELECT SUM(paid_expense.amount)
+
+                        FROM expenses paid_expense
+
+                        WHERE
+                            paid_expense.department_id
+                                = e.department_id
+
+                            AND YEAR(
+                                paid_expense.expense_date
+                            ) = YEAR(e.expense_date)
+
+                            AND paid_expense.status = 'PAID'
+                    ),
+                    0
+                ) AS spent_amount
+
+            FROM expenses e
+
+            LEFT JOIN departments d
+                ON e.department_id = d.department_id
+
+            LEFT JOIN department_budgets b
+                ON b.department_id = e.department_id
+                AND b.budget_year = YEAR(e.expense_date)
+
+            WHERE e.expense_id = %s
+
+            LIMIT 1
+            """,
+            (expense_id,),
+        )
+
+        expense = cursor.fetchone()
+
+
+        # ==================================================
+        # EXPENSE VALIDATION
+        # ==========================================================
+
+        if not expense:
+            raise ValueError(
+                "Expense was not found."
+            )
+
+        if expense["status"] != "APPROVED":
+            raise ValueError(
+                "Only approved expenses can be checked "
+                "for payment."
+            )
+
+
+        # ==================================================
+        # NO DEPARTMENT
+        #
+        # Budget control cannot be applied when the
+        # expense is not assigned to a department.
+        # ==========================================================
+
+        if expense["department_id"] is None:
+
+            return {
+                "expense_id": expense["expense_id"],
+                "expense_number": expense["expense_number"],
+                "department_id": None,
+                "department_name": None,
+                "budget_year": expense["budget_year"],
+
+                "budget_found": False,
+                "budget_required": False,
+
+                "budget_amount": None,
+                "spent_amount": Decimal("0.00"),
+                "expense_amount": expense["expense_amount"],
+                "projected_spent": None,
+                "remaining_before": None,
+                "remaining_after": None,
+                "over_by": Decimal("0.00"),
+
+                "can_pay": True,
+            }
+
+
+        # ==================================================
+        # NO DEPARTMENT BUDGET
+        # ==========================================================
+
+        if expense["budget_id"] is None:
+
+            return {
+                "expense_id": expense["expense_id"],
+                "expense_number": expense["expense_number"],
+                "department_id": expense["department_id"],
+                "department_name": expense["department_name"],
+                "budget_year": expense["budget_year"],
+
+                "budget_found": False,
+                "budget_required": True,
+
+                "budget_amount": None,
+                "spent_amount": expense["spent_amount"],
+                "expense_amount": expense["expense_amount"],
+                "projected_spent": None,
+                "remaining_before": None,
+                "remaining_after": None,
+                "over_by": Decimal("0.00"),
+
+                "can_pay": False,
+            }
+
+
+        # ==================================================
+        # CALCULATE PROJECTED BUDGET USAGE
+        # ==========================================================
+
+        budget_amount = expense["budget_amount"]
+
+        spent_amount = expense["spent_amount"]
+
+        expense_amount = expense["expense_amount"]
+
+        projected_spent = (
+            spent_amount
+            + expense_amount
+        )
+
+        remaining_before = (
+            budget_amount
+            - spent_amount
+        )
+
+        remaining_after = (
+            budget_amount
+            - projected_spent
+        )
+
+
+        # ==================================================
+        # CHECK FOR OVERSPENDING
+        # ==========================================================
+
+        if projected_spent > budget_amount:
+
+            over_by = (
+                projected_spent
+                - budget_amount
+            )
+
+            can_pay = False
+
+        else:
+
+            over_by = Decimal("0.00")
+
+            can_pay = True
+
+
+        # ==================================================
+        # RETURN BUDGET CHECK
+        # ==========================================================
+
+        return {
+            "expense_id": expense["expense_id"],
+            "expense_number": expense["expense_number"],
+
+            "department_id": expense["department_id"],
+            "department_name": expense["department_name"],
+
+            "budget_year": expense["budget_year"],
+
+            "budget_found": True,
+            "budget_required": True,
+
+            "budget_amount": budget_amount,
+            "spent_amount": spent_amount,
+            "expense_amount": expense_amount,
+
+            "projected_spent": projected_spent,
+
+            "remaining_before": remaining_before,
+            "remaining_after": remaining_after,
+
+            "over_by": over_by,
+
+            "can_pay": can_pay,
+        }
 
     finally:
 
