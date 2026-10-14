@@ -49,6 +49,174 @@ Expenses
 </div>
 
 
+
+<!-- # ========================================== -->
+<!-- # EXPENSE FILTERS -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <form
+            method="GET"
+            action="{{ url_for('expenses') }}"
+        >
+
+            <div class="row g-3 align-items-end">
+
+
+                <!-- # STATUS FILTER -->
+
+                <div class="col-md-3">
+
+                    <label class="form-label">
+                        Status
+                    </label>
+
+                    <select
+                        name="status"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            All Statuses
+                        </option>
+
+                        {% for status in [
+                            "DRAFT",
+                            "APPROVED",
+                            "PAID",
+                            "CANCELLED"
+                        ] %}
+
+                            <option
+                                value="{{ status }}"
+                                {% if selected_status == status %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ status.title() }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <!-- # CATEGORY FILTER -->
+
+                <div class="col-md-3">
+
+                    <label class="form-label">
+                        Category
+                    </label>
+
+                    <select
+                        name="category_id"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            All Categories
+                        </option>
+
+                        {% for category in categories %}
+
+                            <option
+                                value="{{ category.category_id }}"
+                                {% if
+                                    selected_category
+                                    == category.category_id|string
+                                %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ category.category_code }}
+                                -
+                                {{ category.category_name }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <!-- # YEAR FILTER -->
+
+                <div class="col-md-3">
+
+                    <label class="form-label">
+                        Year
+                    </label>
+
+                    <select
+                        name="year"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            All Years
+                        </option>
+
+                        {% for year in range(
+                            current_year,
+                            current_year - 5,
+                            -1
+                        ) %}
+
+                            <option
+                                value="{{ year }}"
+                                {% if
+                                    selected_year
+                                    == year|string
+                                %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ year }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <!-- # FILTER BUTTONS -->
+
+                <div class="col-md-3">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary me-2"
+                    >
+                        Apply Filters
+                    </button>
+
+                    <a
+                        href="{{ url_for('expenses') }}"
+                        class="btn btn-outline-secondary"
+                    >
+                        Reset
+                    </a>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
 <!-- # ========================================== -->
 <!-- # EXPENSE TABLE -->
 <!-- # ========================================== -->

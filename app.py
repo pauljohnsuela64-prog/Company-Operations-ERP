@@ -20,6 +20,7 @@ from expense_repository import (
     get_paid_expenses_by_category,
     mark_expense_as_paid,
     update_expense,
+    get_filtered_expenses,
 )
 
 from expense_category_repository import (
@@ -3412,14 +3413,98 @@ def add_expense_category():
 def expenses():
 
     # ======================================================
+    # FILTER INPUT
+    # ======================================================
+
+    selected_status = request.args.get(
+        "status",
+        "",
+    ).strip()
+
+    selected_category = request.args.get(
+        "category_id",
+        "",
+    ).strip()
+
+    selected_year = request.args.get(
+        "year",
+        "",
+    ).strip()
+
+
+    # ======================================================
+    # STATUS VALIDATION
+    # ======================================================
+
+    allowed_statuses = {
+        "DRAFT",
+        "APPROVED",
+        "PAID",
+        "CANCELLED",
+    }
+
+    if (
+        selected_status
+        and selected_status not in allowed_statuses
+    ):
+        selected_status = ""
+
+
+    # ======================================================
+    # CATEGORY VALIDATION
+    # ======================================================
+
+    category_id_value = None
+
+    if selected_category:
+
+        try:
+            category_id_value = int(selected_category)
+
+        except ValueError:
+            selected_category = ""
+
+
+    # ======================================================
+    # YEAR VALIDATION
+    # ======================================================
+
+    year_value = None
+
+    if selected_year:
+
+        try:
+            year_value = int(selected_year)
+
+        except ValueError:
+            selected_year = ""
+
+
+    # ======================================================
     # GET EXPENSE RECORDS
     # ======================================================
 
-    expense_list = get_all_expenses()
+    expense_list = get_filtered_expenses(
+        status=selected_status or None,
+        category_id=category_id_value,
+        year=year_value,
+    )
+
+    categories = get_all_expense_categories()
+
+
+    # ======================================================
+    # SHOW PAGE
+    # ======================================================
 
     return render_template(
         "finance/expenses/index.html",
         expenses=expense_list,
+        categories=categories,
+        selected_status=selected_status,
+        selected_category=selected_category,
+        selected_year=selected_year,
+        current_year=date.today().year,
     )
 
 

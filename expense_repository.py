@@ -1073,3 +1073,158 @@ def get_finance_summary_by_year(year):
 
         cursor.close()
         connection.close()
+
+
+
+# ==========================================================
+# GET FILTERED EXPENSES
+#
+# Optional filters:
+# - Status
+# - Expense Category
+# - Year
+# ==========================================================
+
+def get_filtered_expenses(
+    status=None,
+    category_id=None,
+    year=None,
+):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        # ==================================================
+        # BASE QUERY
+        # ==========================================================
+
+        query = """
+            SELECT
+                e.expense_id,
+                e.expense_number,
+                e.expense_date,
+
+                e.category_id,
+                ec.category_code,
+                ec.category_name,
+
+                e.department_id,
+                d.department_name,
+
+                e.supplier_id,
+                s.supplier_name,
+
+                e.purchase_order_id,
+                po.po_number,
+
+                e.description,
+                e.amount,
+                e.reference_number,
+                e.payment_method,
+                e.status,
+
+                e.created_by,
+                creator.username AS created_by_username,
+
+                e.approved_by,
+                approver.username AS approved_by_username,
+
+                e.approved_at,
+                e.paid_at,
+                e.notes,
+                e.created_at,
+                e.updated_at
+
+            FROM expenses e
+
+            INNER JOIN expense_categories ec
+                ON e.category_id = ec.category_id
+
+            LEFT JOIN departments d
+                ON e.department_id = d.department_id
+
+            LEFT JOIN suppliers s
+                ON e.supplier_id = s.supplier_id
+
+            LEFT JOIN purchase_orders po
+                ON e.purchase_order_id = po.purchase_order_id
+
+            INNER JOIN users creator
+                ON e.created_by = creator.user_id
+
+            LEFT JOIN users approver
+                ON e.approved_by = approver.user_id
+
+            WHERE 1 = 1
+        """
+
+        parameters = []
+
+
+        # ==================================================
+        # STATUS FILTER
+        # ==========================================================
+
+        if status:
+
+            query += """
+                AND e.status = %s
+            """
+
+            parameters.append(status)
+
+
+        # ==================================================
+        # CATEGORY FILTER
+        # ==========================================================
+
+        if category_id is not None:
+
+            query += """
+                AND e.category_id = %s
+            """
+
+            parameters.append(category_id)
+
+
+        # ==================================================
+        # YEAR FILTER
+        # ==========================================================
+
+        if year is not None:
+
+            query += """
+                AND YEAR(e.expense_date) = %s
+            """
+
+            parameters.append(year)
+
+
+        # ==================================================
+        # SORTING
+        # ==========================================================
+
+        query += """
+            ORDER BY
+                e.expense_date DESC,
+                e.expense_id DESC
+        """
+
+
+        # ==================================================
+        # EXECUTE QUERY
+        # ==========================================================
+
+        cursor.execute(
+            query,
+            tuple(parameters),
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
