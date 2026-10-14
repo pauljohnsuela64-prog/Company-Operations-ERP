@@ -72,6 +72,18 @@ Finance Reports
             Apply
         </button>
 
+        <!-- # EXPORT EXCEL -->
+
+    <a
+        href="{{ url_for(
+        'export_finance_report',
+        year=selected_year
+        ) }}"
+        class="btn btn-success"
+    >
+        Export Excel
+    </a>
+
     </form>
 
 </div>

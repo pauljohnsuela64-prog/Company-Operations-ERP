@@ -7,6 +7,8 @@ from dashboard_repository import get_dashboard_summary
 
 from decimal import Decimal, InvalidOperation
 
+from finance_export import generate_finance_report_excel
+
 from budget_repository import (
     create_department_budget,
     get_all_department_budgets,
@@ -129,6 +131,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_file,
     session,
     url_for,
 )
@@ -5520,6 +5523,83 @@ def finance_reports():
         expense_records=expense_records,
         selected_year=selected_year,
         current_year=current_year,
+    )
+
+
+# ==========================================================
+# FINANCE - EXPORT REPORT TO EXCEL
+# ==========================================================
+
+@app.route("/finance/reports/export")
+@permission_required("finance.view")
+def export_finance_report():
+
+    # ======================================================
+    # SELECTED YEAR
+    # ======================================================
+
+    current_year = date.today().year
+
+    selected_year = request.args.get(
+        "year",
+        str(current_year),
+    ).strip()
+
+    try:
+        selected_year = int(selected_year)
+
+    except ValueError:
+        selected_year = current_year
+
+
+    # ======================================================
+    # GET REPORT DATA
+    # ======================================================
+
+    summary = get_finance_summary_by_year(
+        selected_year
+    )
+
+    monthly_expenses = get_monthly_paid_expenses(
+        selected_year
+    )
+
+    category_expenses = get_paid_expenses_by_category(
+        selected_year
+    )
+
+    expense_records = get_filtered_expenses(
+        year=selected_year
+    )
+
+
+    # ======================================================
+    # GENERATE EXCEL FILE
+    # ======================================================
+
+    excel_file = generate_finance_report_excel(
+        selected_year,
+        summary,
+        monthly_expenses,
+        category_expenses,
+        expense_records,
+    )
+
+
+    # ======================================================
+    # DOWNLOAD FILE
+    # ======================================================
+
+    return send_file(
+        excel_file,
+        as_attachment=True,
+        download_name=(
+            f"Finance_Report_{selected_year}.xlsx"
+        ),
+        mimetype=(
+            "application/vnd.openxmlformats-"
+            "officedocument.spreadsheetml.sheet"
+        ),
     )
 
 
