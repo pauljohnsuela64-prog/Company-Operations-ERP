@@ -5446,6 +5446,82 @@ def view_department_budget(budget_id):
         usage_percentage=usage_percentage,
     )
 
+# ==========================================================
+# FINANCE - REPORTS
+# ==========================================================
+
+@app.route("/finance/reports")
+@permission_required("finance.view")
+def finance_reports():
+
+    # ======================================================
+    # SELECTED YEAR
+    # ======================================================
+
+    current_year = date.today().year
+
+    selected_year = request.args.get(
+        "year",
+        str(current_year),
+    ).strip()
+
+    try:
+        selected_year = int(selected_year)
+
+    except ValueError:
+        selected_year = current_year
+
+
+    # ======================================================
+    # REPORT SUMMARY
+    # ======================================================
+
+    summary = get_finance_summary_by_year(
+        selected_year
+    )
+
+
+    # ======================================================
+    # MONTHLY PAID EXPENSES
+    # ======================================================
+
+    monthly_expenses = get_monthly_paid_expenses(
+        selected_year
+    )
+
+
+    # ======================================================
+    # PAID EXPENSES BY CATEGORY
+    # ======================================================
+
+    category_expenses = get_paid_expenses_by_category(
+        selected_year
+    )
+
+
+    # ======================================================
+    # ALL EXPENSE RECORDS FOR YEAR
+    # ======================================================
+
+    expense_records = get_filtered_expenses(
+        year=selected_year
+    )
+
+
+    # ======================================================
+    # SHOW REPORT PAGE
+    # ======================================================
+
+    return render_template(
+        "finance/reports/index.html",
+        summary=summary,
+        monthly_expenses=monthly_expenses,
+        category_expenses=category_expenses,
+        expense_records=expense_records,
+        selected_year=selected_year,
+        current_year=current_year,
+    )
+
 
 
 @app.route("/logout")

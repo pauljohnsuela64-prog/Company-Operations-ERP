@@ -1,331 +1,266 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>
         {% block title %}Company Operations ERP{% endblock %}
     </title>
 
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}"
-    >
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body>
 
-<div class="erp-layout">
+    <div class="erp-layout">
 
-    <aside class="sidebar">
+        <aside class="sidebar">
 
-        <div class="sidebar-brand">
-            <h5>Company Operations</h5>
-            <small>ERP System</small>
-        </div>
+            <div class="sidebar-brand">
+                <h5>Company Operations</h5>
+                <small>ERP System</small>
+            </div>
 
-        <nav class="sidebar-nav">
+            <nav class="sidebar-nav">
 
-            <a
-                href="{{ url_for('dashboard') }}"
-                class="sidebar-link"
-            >
-                Dashboard
-            </a>
+                <a href="{{ url_for('dashboard') }}" class="sidebar-link">
+                    Dashboard
+                </a>
 
 
-            {% if
+                {% if
                 has_permission('employees.view')
                 or has_permission('departments.view')
-            %}
+                %}
 
                 <div class="sidebar-section">
                     Human Resources
                 </div>
 
                 {% if has_permission('employees.view') %}
-                    <a
-                        href="{{ url_for('employees') }}"
-                        class="sidebar-link"
-    >
-                        Employees
-                    </a>
+                <a href="{{ url_for('employees') }}" class="sidebar-link">
+                    Employees
+                </a>
                 {% endif %}
 
                 {% if has_permission('departments.view') %}
-                     <a
-                        href="{{ url_for('departments') }}"
-                        class="sidebar-link"
-                        >
-                        Departments
-                    </a>
+                <a href="{{ url_for('departments') }}" class="sidebar-link">
+                    Departments
+                </a>
                 {% endif %}
 
-            {% endif %}
+                {% endif %}
 
 
-            {% if has_permission('inventory.view') %}
+                {% if has_permission('inventory.view') %}
 
-    <div class="sidebar-section">
-        Inventory
-    </div>
+                <div class="sidebar-section">
+                    Inventory
+                </div>
 
-    <a
-        href="{{ url_for('inventory_categories') }}"
-        class="sidebar-link"
-    >
-        Categories
-    </a>
+                <a href="{{ url_for('inventory_categories') }}" class="sidebar-link">
+                    Categories
+                </a>
 
-    <a
-        href="{{ url_for('warehouses') }}"
-        class="sidebar-link"
-    >
-        Warehouses
-    </a>
+                <a href="{{ url_for('warehouses') }}" class="sidebar-link">
+                    Warehouses
+                </a>
 
-    <a
-        href="{{ url_for('inventory_items') }}"
-        class="sidebar-link"
-    >
-        Items
-    </a>
+                <a href="{{ url_for('inventory_items') }}" class="sidebar-link">
+                    Items
+                </a>
 
-    <a
-    href="{{ url_for('inventory_stock') }}"
-    class="sidebar-link"
->
-    Stock
-</a>
+                <a href="{{ url_for('inventory_stock') }}" class="sidebar-link">
+                    Stock
+                </a>
 
 
-<a
-    href="{{ url_for('stock_movement_history') }}"
-    class="sidebar-link"
->
-    Movement History
-</a>
+                <a href="{{ url_for('stock_movement_history') }}" class="sidebar-link">
+                    Movement History
+                </a>
 
-{% if has_permission('procurement.view') %}
+                {% if has_permission('procurement.view') %}
 
-    <div class="sidebar-section">
-        Procurement
-    </div>
+                <div class="sidebar-section">
+                    Procurement
+                </div>
 
-    <a
-        href="{{ url_for('suppliers') }}"
-        class="sidebar-link"
-    >
-        Suppliers
-    </a>
+                <a href="{{ url_for('suppliers') }}" class="sidebar-link">
+                    Suppliers
+                </a>
 
-    <a
-        href="{{ url_for('purchase_requests') }}"
-        class="sidebar-link"
-    >
-        Purchase Requests
-    </a>
+                <a href="{{ url_for('purchase_requests') }}" class="sidebar-link">
+                    Purchase Requests
+                </a>
 
-    <a
-    href="{{ url_for('purchase_orders') }}"
-    class="sidebar-link"
-    >
-    Purchase Orders
-    </a>
+                <a href="{{ url_for('purchase_orders') }}" class="sidebar-link">
+                    Purchase Orders
+                </a>
 
-    <a
-    href="{{ url_for('goods_receipts') }}"
-    class="nav-link"
->
-    Goods Receipts
-    </a>
+                <a href="{{ url_for('goods_receipts') }}" class="nav-link">
+                    Goods Receipts
+                </a>
 
-{% endif %}
-            {% endif %}
+                {% endif %}
+                {% endif %}
 
 
-            {% if
+                {% if
                 has_permission('it_assets.view')
                 or has_permission('helpdesk.view')
-            %}
+                %}
 
                 <div class="sidebar-section">
                     IT Management
                 </div>
 
                 {% if has_permission('it_assets.view') %}
-                    <a href="#" class="sidebar-link">
-                        IT Assets
-                    </a>
+                <a href="#" class="sidebar-link">
+                    IT Assets
+                </a>
                 {% endif %}
 
                 {% if has_permission('helpdesk.view') %}
-                    <a href="#" class="sidebar-link">
-                        Help Desk
-                    </a>
+                <a href="#" class="sidebar-link">
+                    Help Desk
+                </a>
                 {% endif %}
 
-            {% endif %}
+                {% endif %}
 
 
-  <!-- # ========================================== -->
-<!-- # FINANCE -->
-<!-- # ========================================== -->
+                <!-- # ========================================== -->
+                <!-- # FINANCE -->
+                <!-- # ========================================== -->
 
-{% if has_permission('finance.view') %}
-
-    <div class="sidebar-section">
-        Finance
-    </div>
-
-    <a
-        href="{{ url_for('finance_summary') }}"
-        class="sidebar-link"
-    >
-        Summary
-    </a>
-
-    <a
-        href="{{ url_for('expenses') }}"
-        class="sidebar-link"
-    >
-        Expenses
-    </a>
-
-    <a
-        href="{{ url_for('expense_categories') }}"
-        class="sidebar-link"
-    >
-        Expense Categories
-    </a>
-
-    <!-- # DEPARTMENT BUDGETS -->
-
-<a
-    href="{{ url_for('department_budgets') }}"
-    class="sidebar-link"
->
-    Budgets
-</a>
-
-{% endif %}
-
-
-            {% if has_permission('reports.view') %}
+                {% if has_permission('finance.view') %}
 
                 <div class="sidebar-section">
-                    Reporting
+                    Finance
                 </div>
 
-                <a href="#" class="sidebar-link">
+                <a href="{{ url_for('finance_summary') }}" class="sidebar-link">
+                    Summary
+                </a>
+
+                <a href="{{ url_for('expenses') }}" class="sidebar-link">
+                    Expenses
+                </a>
+
+                <a href="{{ url_for('expense_categories') }}" class="sidebar-link">
+                    Expense Categories
+                </a>
+
+                <!-- # FINANCE REPORTS -->
+
+                <a href="{{ url_for('finance_reports') }}" class="sidebar-link">
                     Reports
                 </a>
 
-            {% endif %}
+                <!-- # DEPARTMENT BUDGETS -->
+
+                <a href="{{ url_for('department_budgets') }}" class="sidebar-link">
+                    Budgets
+                </a>
+
+                {% endif %}
 
 
-            {% if
+                {% if
                 has_permission('users.manage')
                 or has_permission('roles.manage')
                 or has_permission('audit_logs.view')
-            %}
+                %}
 
                 <div class="sidebar-section">
                     Administration
                 </div>
 
                 {% if has_permission('users.manage') %}
-                    <a href="#" class="sidebar-link">
-                        Users
-                    </a>
+                <a href="#" class="sidebar-link">
+                    Users
+                </a>
                 {% endif %}
 
                 {% if has_permission('roles.manage') %}
-                    <a href="#" class="sidebar-link">
-                        Roles & Permissions
-                    </a>
+                <a href="#" class="sidebar-link">
+                    Roles & Permissions
+                </a>
                 {% endif %}
 
                 {% if has_permission('audit_logs.view') %}
-                    <a href="#" class="sidebar-link">
-                        Audit Logs
-                    </a>
+                <a href="#" class="sidebar-link">
+                    Audit Logs
+                </a>
                 {% endif %}
 
-            {% endif %}
+                {% endif %}
 
-        </nav>
+            </nav>
 
-    </aside>
+        </aside>
 
 
-    <div class="main-area">
+        <div class="main-area">
 
-        <header class="topbar">
+            <header class="topbar">
 
-            <div>
-                <strong>
-                    {% block page_title %}Dashboard{% endblock %}
-                </strong>
-            </div>
-
-            <div class="d-flex align-items-center gap-3">
-
-                <div class="text-end">
-                    <div>{{ session.username }}</div>
-
-                    <small class="text-muted">
-                        {{ session.role_name }}
-                    </small>
+                <div>
+                    <strong>
+                        {% block page_title %}Dashboard{% endblock %}
+                    </strong>
                 </div>
 
-                <a
-                    href="{{ url_for('logout') }}"
-                    class="btn btn-outline-danger btn-sm"
-                >
-                    Logout
-                </a>
+                <div class="d-flex align-items-center gap-3">
 
-            </div>
+                    <div class="text-end">
+                        <div>{{ session.username }}</div>
 
-        </header>
+                        <small class="text-muted">
+                            {{ session.role_name }}
+                        </small>
+                    </div>
+
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm">
+                        Logout
+                    </a>
+
+                </div>
+
+            </header>
 
 
-        <main class="content-area">
+            <main class="content-area">
 
-            {% with messages =
+                {% with messages =
                 get_flashed_messages(with_categories=true)
-            %}
+                %}
 
                 {% for category, message in messages %}
 
-                    <div class="alert alert-{{ category }}">
-                        {{ message }}
-                    </div>
+                <div class="alert alert-{{ category }}">
+                    {{ message }}
+                </div>
 
                 {% endfor %}
 
-            {% endwith %}
+                {% endwith %}
 
 
-            {% block content %}
-            {% endblock %}
+                {% block content %}
+                {% endblock %}
 
-        </main>
+            </main>
+
+        </div>
 
     </div>
 
-</div>
-
 </body>
+
 </html>
