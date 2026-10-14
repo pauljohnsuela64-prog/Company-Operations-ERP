@@ -4152,12 +4152,37 @@ def view_expense(expense_id):
 
 
     # ======================================================
+    # BUDGET IMPACT PREVIEW
+    #
+    # Only APPROVED expenses need a payment preview.
+    # DRAFT, PAID, and CANCELLED expenses do not.
+    # ======================================================
+
+    budget_check = None
+
+    if expense["status"] == "APPROVED":
+
+        try:
+
+            budget_check = (
+                check_expense_against_budget(
+                    expense_id
+                )
+            )
+
+        except ValueError:
+
+            budget_check = None
+
+
+    # ======================================================
     # SHOW EXPENSE DETAILS
     # ======================================================
 
     return render_template(
         "finance/expenses/view.html",
         expense=expense,
+        budget_check=budget_check,
     )
 
 

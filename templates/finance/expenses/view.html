@@ -112,6 +112,231 @@ Expense Details
 
 
 
+<!-- # ========================================== -->
+<!-- # BUDGET IMPACT PREVIEW -->
+<!-- # ========================================== -->
+
+{% if budget_check %}
+
+    <div class="card shadow-sm border-0 mb-4">
+
+        <div class="card-body">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+
+                <h5 class="mb-0">
+                    Budget Impact
+                </h5>
+
+
+                <!-- # BUDGET STATUS -->
+
+                {% if not budget_check.budget_required %}
+
+                    <span class="badge bg-secondary">
+                        No Department Budget
+                    </span>
+
+                {% elif not budget_check.budget_found %}
+
+                    <span class="badge bg-danger">
+                        Budget Not Found
+                    </span>
+
+                {% elif budget_check.can_pay %}
+
+                    <span class="badge bg-success">
+                        Within Budget
+                    </span>
+
+                {% else %}
+
+                    <span class="badge bg-danger">
+                        Would Exceed Budget
+                    </span>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- # ====================================== -->
+            <!-- # EXPENSE HAS NO DEPARTMENT -->
+            <!-- # ====================================== -->
+
+            {% if not budget_check.budget_required %}
+
+                <div class="alert alert-secondary mb-0">
+
+                    This expense is not assigned to a department,
+                    so department budget control does not apply.
+
+                </div>
+
+
+            <!-- # ====================================== -->
+            <!-- # DEPARTMENT HAS NO BUDGET -->
+            <!-- # ====================================== -->
+
+            {% elif not budget_check.budget_found %}
+
+                <div class="alert alert-danger mb-0">
+
+                    {{ budget_check.department_name }}
+                    does not have a department budget for
+                    {{ budget_check.budget_year }}.
+
+                    Payment will be blocked until a budget
+                    is created.
+
+                </div>
+
+
+            <!-- # ====================================== -->
+            <!-- # BUDGET FOUND -->
+            <!-- # ====================================== -->
+
+            {% else %}
+
+                <div class="row g-3">
+
+
+                    <!-- # DEPARTMENT BUDGET -->
+
+                    <div class="col-md-4">
+
+                        <div class="text-muted">
+                            Department Budget
+                        </div>
+
+                        <strong>
+                            ₱{{ "{:,.2f}".format(
+                                budget_check.budget_amount
+                            ) }}
+                        </strong>
+
+                    </div>
+
+
+                    <!-- # ALREADY SPENT -->
+
+                    <div class="col-md-4">
+
+                        <div class="text-muted">
+                            Already Spent
+                        </div>
+
+                        <strong>
+                            ₱{{ "{:,.2f}".format(
+                                budget_check.spent_amount
+                            ) }}
+                        </strong>
+
+                    </div>
+
+
+                    <!-- # THIS EXPENSE -->
+
+                    <div class="col-md-4">
+
+                        <div class="text-muted">
+                            This Expense
+                        </div>
+
+                        <strong>
+                            ₱{{ "{:,.2f}".format(
+                                budget_check.expense_amount
+                            ) }}
+                        </strong>
+
+                    </div>
+
+
+                    <!-- # PROJECTED SPENDING -->
+
+                    <div class="col-md-4">
+
+                        <div class="text-muted">
+                            Projected Spent
+                        </div>
+
+                        <strong>
+                            ₱{{ "{:,.2f}".format(
+                                budget_check.projected_spent
+                            ) }}
+                        </strong>
+
+                    </div>
+
+
+                    <!-- # REMAINING BEFORE PAYMENT -->
+
+                    <div class="col-md-4">
+
+                        <div class="text-muted">
+                            Remaining Before Payment
+                        </div>
+
+                        <strong>
+                            ₱{{ "{:,.2f}".format(
+                                budget_check.remaining_before
+                            ) }}
+                        </strong>
+
+                    </div>
+
+
+                    <!-- # REMAINING AFTER PAYMENT -->
+
+                    <div class="col-md-4">
+
+                        <div class="text-muted">
+                            Remaining After Payment
+                        </div>
+
+                        <strong
+                            {% if not budget_check.can_pay %}
+                                class="text-danger"
+                            {% endif %}
+                        >
+                            ₱{{ "{:,.2f}".format(
+                                budget_check.remaining_after
+                            ) }}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <!-- # OVER BUDGET WARNING -->
+
+                {% if not budget_check.can_pay %}
+
+                    <div class="alert alert-danger mt-3 mb-0">
+
+                        Payment would exceed the department
+                        budget by
+
+                        <strong>
+                            ₱{{ "{:,.2f}".format(
+                                budget_check.over_by
+                            ) }}
+                        </strong>.
+
+                    </div>
+
+                {% endif %}
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+{% endif %}
+
+
 
 
 <!-- # ========================================== -->
