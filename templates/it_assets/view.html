@@ -576,4 +576,141 @@ IT Asset Details
 
 </div>
 
+
+<!-- # ========================================== -->
+<!-- # ASSIGNMENT HISTORY -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mt-4">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Assignment History
+        </h5>
+
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Employee</th>
+                        <th>Department</th>
+                        <th>Assigned</th>
+                        <th>Returned</th>
+                        <th>Assigned By</th>
+                        <th>Returned By</th>
+                        <th>Status</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for assignment in assignment_history %}
+
+                        <tr>
+
+                            <!-- # EMPLOYEE -->
+
+                            <td>
+
+                                <strong>
+                                    {{ assignment.employee_name }}
+                                </strong>
+
+                                <div class="small text-muted">
+                                    {{ assignment.employee_number }}
+                                </div>
+
+                            </td>
+
+
+                            <!-- # DEPARTMENT -->
+
+                            <td>
+                                {{ assignment.department_name or "-" }}
+                            </td>
+
+
+                            <!-- # ASSIGNED DATE -->
+
+                            <td>
+                                {{ assignment.assigned_at }}
+                            </td>
+
+
+                            <!-- # RETURNED DATE -->
+
+                            <td>
+                                {{ assignment.returned_at or "-" }}
+                            </td>
+
+
+                            <!-- # ASSIGNED BY -->
+
+                            <td>
+                                {{ assignment.assigned_by_username }}
+                            </td>
+
+
+                            <!-- # RETURNED BY -->
+
+                            <td>
+                                {{ assignment.returned_by_username or "-" }}
+                            </td>
+
+
+                            <!-- # STATUS -->
+
+                            <td>
+
+                                {% if assignment.returned_at %}
+
+                                    <span class="badge bg-secondary">
+                                        Returned
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge bg-primary">
+                                        Active
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="7"
+                                class="text-center text-muted py-4"
+                            >
+                                No assignment history yet.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
 {% endblock %}

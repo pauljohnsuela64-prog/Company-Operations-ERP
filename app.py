@@ -26,6 +26,7 @@ from it_asset_repository import (
     retire_it_asset,
     unassign_it_asset,
     update_it_asset,
+    get_it_asset_assignment_history,
 )
 
 from budget_repository import (
@@ -6050,6 +6051,12 @@ def view_it_asset(asset_id):
     )
 )
 
+    assignment_history = (
+    get_it_asset_assignment_history(
+        asset_id
+    )
+)
+
     if not asset:
 
         flash(
@@ -6068,6 +6075,7 @@ def view_it_asset(asset_id):
     asset=asset,
     employees=employees,
     maintenance_history=maintenance_history,
+    assignment_history=assignment_history,
 )
 
 
@@ -6411,10 +6419,11 @@ def assign_it_asset_route(asset_id):
     try:
 
         assign_it_asset(
-            asset_id=asset_id,
-            employee_id=employee_id_value,
-            department_id=employee["department_id"],
-        )
+    asset_id=asset_id,
+    employee_id=employee_id_value,
+    department_id=employee["department_id"],
+    assigned_by=session["user_id"],
+)
 
         flash(
             "IT asset assigned successfully.",
@@ -6450,8 +6459,9 @@ def unassign_it_asset_route(asset_id):
     try:
 
         unassign_it_asset(
-            asset_id
-        )
+    asset_id=asset_id,
+    returned_by=session["user_id"],
+)
 
         flash(
             "IT asset unassigned successfully.",

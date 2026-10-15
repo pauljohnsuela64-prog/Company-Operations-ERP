@@ -393,19 +393,26 @@ def assign_it_asset(
     asset_id,
     employee_id,
     department_id,
+    assigned_by,
 ):
     connection = get_connection()
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
 
     try:
 
         connection.start_transaction()
 
+
+        # ==================================================
+        # LOCK ASSET
+        # ==========================================================
+
         cursor.execute(
             """
             SELECT
                 asset_id,
-                status
+                status,
+                assigned_employee_id
 
             FROM it_assets
 
@@ -419,21 +426,42 @@ def assign_it_asset(
         asset = cursor.fetchone()
 
         if not asset:
+
             raise ValueError(
                 "IT asset was not found."
             )
 
-        if asset[1] in (
+
+        # ==================================================
+        # BUSINESS RULES
+        # ==========================================================
+
+        if asset["status"] in (
+            "MAINTENANCE",
             "RETIRED",
             "LOST",
         ):
+
             raise ValueError(
-    "Assets under maintenance, retired, or lost cannot be assigned."
-)
+                "Assets under maintenance, retired, "
+                "or lost cannot be assigned."
+            )
+
+        if asset["assigned_employee_id"] is not None:
+
+            raise ValueError(
+                "This asset is already assigned."
+            )
+
+
+        # ==================================================
+        # UPDATE CURRENT ASSET
+        # ==========================================================
 
         cursor.execute(
             """
             UPDATE it_assets
+
             SET
                 assigned_employee_id = %s,
                 department_id = %s,
@@ -448,6 +476,35 @@ def assign_it_asset(
             ),
         )
 
+
+        # ==================================================
+        # CREATE ASSIGNMENT HISTORY
+        # ==========================================================
+
+        cursor.execute(
+            """
+            INSERT INTO it_asset_assignments (
+                asset_id,
+                employee_id,
+                department_id,
+                assigned_by
+            )
+            VALUES (
+                %s,
+                %s,
+                %s,
+                %s
+            )
+            """,
+            (
+                asset_id,
+                employee_id,
+                department_id,
+                assigned_by,
+            ),
+        )
+
+
         connection.commit()
 
     except Exception:
@@ -459,38 +516,94 @@ def assign_it_asset(
 
         cursor.close()
         connection.close()
-
+        
 
 # ==========================================================
 # UNASSIGN IT ASSET
 # ==========================================================
 
-def unassign_it_asset(asset_id):
+def unassign_it_asset(
+    asset_id,
+    returned_by,
+):
     connection = get_connection()
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
 
     try:
 
         connection.start_transaction()
 
+
+        # ==================================================
+        # LOCK ASSET
+        # ==========================================================
+
         cursor.execute(
             """
-            SELECT asset_id
+            SELECT
+                asset_id,
+                assigned_employee_id,
+                status
+
             FROM it_assets
+
             WHERE asset_id = %s
+
             FOR UPDATE
             """,
             (asset_id,),
         )
 
-        if not cursor.fetchone():
+        asset = cursor.fetchone()
+
+        if not asset:
+
             raise ValueError(
                 "IT asset was not found."
             )
 
+        if asset["assigned_employee_id"] is None:
+
+            raise ValueError(
+                "This asset is not currently assigned."
+            )
+
+
+        # ==================================================
+        # CLOSE ACTIVE ASSIGNMENT HISTORY
+        # ==========================================================
+
+        cursor.execute(
+            """
+            UPDATE it_asset_assignments
+
+            SET
+                returned_at = CURRENT_TIMESTAMP,
+                returned_by = %s
+
+            WHERE
+                asset_id = %s
+                AND returned_at IS NULL
+
+            ORDER BY assignment_id DESC
+
+            LIMIT 1
+            """,
+            (
+                returned_by,
+                asset_id,
+            ),
+        )
+
+
+        # ==================================================
+        # UPDATE ASSET
+        # ==========================================================
+
         cursor.execute(
             """
             UPDATE it_assets
+
             SET
                 assigned_employee_id = NULL,
                 status = 'AVAILABLE'
@@ -1271,6 +1384,80 @@ def restore_it_asset(asset_id):
 
         connection.rollback()
         raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# GET IT ASSET ASSIGNMENT HISTORY
+# ==========================================================
+
+def get_it_asset_assignment_history(
+    asset_id,
+):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                a.assignment_id,
+                a.asset_id,
+                a.employee_id,
+                a.department_id,
+
+                e.employee_number,
+
+                CONCAT(
+                    e.first_name,
+                    ' ',
+                    e.last_name
+                ) AS employee_name,
+
+                d.department_name,
+
+                a.assigned_at,
+                a.returned_at,
+
+                assigned_user.username
+                    AS assigned_by_username,
+
+                returned_user.username
+                    AS returned_by_username,
+
+                a.notes
+
+            FROM it_asset_assignments a
+
+            INNER JOIN employees e
+                ON a.employee_id = e.employee_id
+
+            LEFT JOIN departments d
+                ON a.department_id = d.department_id
+
+            INNER JOIN users assigned_user
+                ON a.assigned_by
+                = assigned_user.user_id
+
+            LEFT JOIN users returned_user
+                ON a.returned_by
+                = returned_user.user_id
+
+            WHERE a.asset_id = %s
+
+            ORDER BY
+                a.assigned_at DESC,
+                a.assignment_id DESC
+            """,
+            (asset_id,),
+        )
+
+        return cursor.fetchall()
 
     finally:
 
