@@ -1,0 +1,525 @@
+{% extends "base.html" %}
+
+{% block title %}
+IT Asset Reports
+{% endblock %}
+
+
+{% block content %}
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            IT Asset Reports
+        </h2>
+
+        <p class="text-muted mb-0">
+            Summary and reporting for company IT assets.
+        </p>
+
+    </div>
+
+
+    <div>
+
+        <a
+            href="{{ url_for(
+                'export_it_asset_report'
+            ) }}"
+            class="btn btn-success me-2"
+        >
+            Export Excel
+        </a>
+
+        <a
+            href="{{ url_for('it_assets') }}"
+            class="btn btn-outline-secondary"
+        >
+            Back to Assets
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # SUMMARY CARDS -->
+<!-- # ========================================== -->
+
+<div class="row g-3 mb-4">
+
+    <div class="col-md-2">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Total
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.total_assets }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Available
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.available_count }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Assigned
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.assigned_count }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Maintenance
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.maintenance_count }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Retired
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.retired_count }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Lost
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.lost_count }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # ASSETS BY CATEGORY -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Assets by Category
+        </h5>
+
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle">
+
+                <thead>
+
+                    <tr>
+                        <th>Category</th>
+                        <th>Total</th>
+                        <th>Available</th>
+                        <th>Assigned</th>
+                        <th>Maintenance</th>
+                        <th>Retired</th>
+                        <th>Lost</th>
+                        <th>Purchase Value</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for category in category_summary %}
+
+                        <tr>
+
+                            <td>
+
+                                <strong>
+                                    {{ category.category_name }}
+                                </strong>
+
+                                <div class="small text-muted">
+                                    {{ category.category_code }}
+                                </div>
+
+                            </td>
+
+                            <td>
+                                {{ category.total_assets }}
+                            </td>
+
+                            <td>
+                                {{ category.available_count }}
+                            </td>
+
+                            <td>
+                                {{ category.assigned_count }}
+                            </td>
+
+                            <td>
+                                {{ category.maintenance_count }}
+                            </td>
+
+                            <td>
+                                {{ category.retired_count }}
+                            </td>
+
+                            <td>
+                                {{ category.lost_count }}
+                            </td>
+
+                            <td>
+                                ₱{{ "{:,.2f}".format(
+                                    category.total_purchase_cost
+                                ) }}
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # ASSETS BY DEPARTMENT -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Assets by Department
+        </h5>
+
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle">
+
+                <thead>
+
+                    <tr>
+                        <th>Department</th>
+                        <th>Total</th>
+                        <th>Available</th>
+                        <th>Assigned</th>
+                        <th>Maintenance</th>
+                        <th>Retired</th>
+                        <th>Lost</th>
+                        <th>Purchase Value</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for department in department_summary %}
+
+                        <tr>
+
+                            <td>
+                                {{ department.department_name }}
+                            </td>
+
+                            <td>
+                                {{ department.total_assets }}
+                            </td>
+
+                            <td>
+                                {{ department.available_count }}
+                            </td>
+
+                            <td>
+                                {{ department.assigned_count }}
+                            </td>
+
+                            <td>
+                                {{ department.maintenance_count }}
+                            </td>
+
+                            <td>
+                                {{ department.retired_count }}
+                            </td>
+
+                            <td>
+                                {{ department.lost_count }}
+                            </td>
+
+                            <td>
+                                ₱{{ "{:,.2f}".format(
+                                    department.total_purchase_cost
+                                ) }}
+                            </td>
+
+                        </tr>
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="8"
+                                class="text-center text-muted"
+                            >
+                                No department asset data.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # COMPLETE ASSET REGISTER -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Asset Register
+        </h5>
+
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle">
+
+                <thead>
+
+                    <tr>
+                        <th>Asset Tag</th>
+                        <th>Asset</th>
+                        <th>Category</th>
+                        <th>Department</th>
+                        <th>Assigned To</th>
+                        <th>Status</th>
+                        <th>Condition</th>
+                        <th>Purchase Cost</th>
+                        <th>Action</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for asset in assets %}
+
+                        <tr>
+
+                            <td>
+                                <strong>
+                                    {{ asset.asset_tag }}
+                                </strong>
+                            </td>
+
+                            <td>
+
+                                {{ asset.asset_name }}
+
+                                {% if asset.brand or asset.model %}
+
+                                    <div class="small text-muted">
+
+                                        {{ asset.brand or "" }}
+
+                                        {{ asset.model or "" }}
+
+                                    </div>
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+                                {{ asset.category_name }}
+                            </td>
+
+                            <td>
+                                {{ asset.department_name or "-" }}
+                            </td>
+
+                            <td>
+                                {{ asset.assigned_employee_name or "-" }}
+                            </td>
+
+                            <td>
+                                {{ asset.status.title() }}
+                            </td>
+
+                            <td>
+                                {{ asset.condition_status.title() }}
+                            </td>
+
+                            <td>
+
+                                {% if asset.purchase_cost is not none %}
+
+                                    ₱{{ "{:,.2f}".format(
+                                        asset.purchase_cost
+                                    ) }}
+
+                                {% else %}
+
+                                    -
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+
+                                <a
+                                    href="{{ url_for(
+                                        'view_it_asset',
+                                        asset_id=asset.asset_id
+                                    ) }}"
+                                    class="btn btn-sm btn-outline-secondary"
+                                >
+                                    View
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="9"
+                                class="text-center text-muted py-4"
+                            >
+                                No IT assets found.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

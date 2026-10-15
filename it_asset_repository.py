@@ -1636,3 +1636,149 @@ def set_it_asset_category_active_status(
 
         cursor.close()
         connection.close()
+
+
+# ==========================================================
+# IT ASSET REPORT - BY CATEGORY
+# ==========================================================
+
+def get_it_asset_report_by_category():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                c.category_id,
+                c.category_code,
+                c.category_name,
+
+                COUNT(a.asset_id) AS total_assets,
+
+                COALESCE(
+                    SUM(a.status = 'AVAILABLE'),
+                    0
+                ) AS available_count,
+
+                COALESCE(
+                    SUM(a.status = 'ASSIGNED'),
+                    0
+                ) AS assigned_count,
+
+                COALESCE(
+                    SUM(a.status = 'MAINTENANCE'),
+                    0
+                ) AS maintenance_count,
+
+                COALESCE(
+                    SUM(a.status = 'RETIRED'),
+                    0
+                ) AS retired_count,
+
+                COALESCE(
+                    SUM(a.status = 'LOST'),
+                    0
+                ) AS lost_count,
+
+                COALESCE(
+                    SUM(a.purchase_cost),
+                    0
+                ) AS total_purchase_cost
+
+            FROM it_asset_categories c
+
+            LEFT JOIN it_assets a
+                ON c.category_id = a.category_id
+
+            GROUP BY
+                c.category_id,
+                c.category_code,
+                c.category_name
+
+            ORDER BY
+                c.category_name
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# IT ASSET REPORT - BY DEPARTMENT
+# ==========================================================
+
+def get_it_asset_report_by_department():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                a.department_id,
+
+                COALESCE(
+                    d.department_name,
+                    'No Department'
+                ) AS department_name,
+
+                COUNT(a.asset_id) AS total_assets,
+
+                COALESCE(
+                    SUM(a.status = 'AVAILABLE'),
+                    0
+                ) AS available_count,
+
+                COALESCE(
+                    SUM(a.status = 'ASSIGNED'),
+                    0
+                ) AS assigned_count,
+
+                COALESCE(
+                    SUM(a.status = 'MAINTENANCE'),
+                    0
+                ) AS maintenance_count,
+
+                COALESCE(
+                    SUM(a.status = 'RETIRED'),
+                    0
+                ) AS retired_count,
+
+                COALESCE(
+                    SUM(a.status = 'LOST'),
+                    0
+                ) AS lost_count,
+
+                COALESCE(
+                    SUM(a.purchase_cost),
+                    0
+                ) AS total_purchase_cost
+
+            FROM it_assets a
+
+            LEFT JOIN departments d
+                ON a.department_id = d.department_id
+
+            GROUP BY
+                a.department_id,
+                d.department_name
+
+            ORDER BY
+                department_name
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()

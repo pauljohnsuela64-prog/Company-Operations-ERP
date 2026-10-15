@@ -9,6 +9,10 @@ from decimal import Decimal, InvalidOperation
 
 from finance_export import generate_finance_report_excel
 
+from it_asset_export import (
+    generate_it_asset_report_excel,
+)
+
 
 from it_asset_repository import (
     assign_it_asset,
@@ -32,6 +36,8 @@ from it_asset_repository import (
     unassign_it_asset,
     update_it_asset,
     update_it_asset_category,
+    get_it_asset_report_by_category,
+    get_it_asset_report_by_department,
 )
 
 from budget_repository import (
@@ -7080,6 +7086,114 @@ def change_it_asset_category_status(category_id):
 
     return redirect(
         url_for("it_asset_categories")
+    )
+
+# ==========================================================
+# IT MANAGEMENT - IT ASSET REPORTS
+# ==========================================================
+
+@app.route("/it/assets/reports")
+@permission_required("it_assets.view")
+def it_asset_reports():
+
+    # ======================================================
+    # SUMMARY
+    # ======================================================
+
+    summary = get_it_asset_summary()
+
+
+    # ======================================================
+    # CATEGORY REPORT
+    # ======================================================
+
+    category_summary = (
+        get_it_asset_report_by_category()
+    )
+
+
+    # ======================================================
+    # DEPARTMENT REPORT
+    # ======================================================
+
+    department_summary = (
+        get_it_asset_report_by_department()
+    )
+
+
+    # ======================================================
+    # ASSET REGISTER
+    # ======================================================
+
+    assets = get_filtered_it_assets()
+
+
+    # ======================================================
+    # SHOW REPORT
+    # ======================================================
+
+    return render_template(
+        "it_assets/reports/index.html",
+        summary=summary,
+        category_summary=category_summary,
+        department_summary=department_summary,
+        assets=assets,
+    )
+
+
+# ==========================================================
+# IT MANAGEMENT - EXPORT ASSET REPORT
+# ==========================================================
+
+@app.route("/it/assets/reports/export")
+@permission_required("it_assets.view")
+def export_it_asset_report():
+
+    # ======================================================
+    # GET REPORT DATA
+    # ======================================================
+
+    summary = get_it_asset_summary()
+
+    category_summary = (
+        get_it_asset_report_by_category()
+    )
+
+    department_summary = (
+        get_it_asset_report_by_department()
+    )
+
+    assets = get_filtered_it_assets()
+
+
+    # ======================================================
+    # GENERATE EXCEL FILE
+    # ======================================================
+
+    excel_file = (
+        generate_it_asset_report_excel(
+            summary=summary,
+            category_summary=category_summary,
+            department_summary=department_summary,
+            assets=assets,
+        )
+    )
+
+
+    # ======================================================
+    # DOWNLOAD
+    # ======================================================
+
+    return send_file(
+        excel_file,
+        as_attachment=True,
+        download_name=(
+            "IT_Asset_Report.xlsx"
+        ),
+        mimetype=(
+            "application/vnd.openxmlformats-"
+            "officedocument.spreadsheetml.sheet"
+        ),
     )
 
 @app.route("/logout")
