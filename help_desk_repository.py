@@ -1256,3 +1256,138 @@ def get_helpdesk_ticket_history(ticket_id):
 
         cursor.close()
         connection.close()
+
+# ==========================================================
+# HELP DESK REPORT - BY CATEGORY
+# ==========================================================
+
+def get_helpdesk_report_by_category():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                c.category_id,
+                c.category_code,
+                c.category_name,
+
+                COUNT(t.ticket_id) AS total_tickets,
+
+                COALESCE(
+                    SUM(t.status = 'OPEN'),
+                    0
+                ) AS open_count,
+
+                COALESCE(
+                    SUM(t.status = 'IN_PROGRESS'),
+                    0
+                ) AS in_progress_count,
+
+                COALESCE(
+                    SUM(t.status = 'RESOLVED'),
+                    0
+                ) AS resolved_count,
+
+                COALESCE(
+                    SUM(t.status = 'CLOSED'),
+                    0
+                ) AS closed_count,
+
+                COALESCE(
+                    SUM(t.status = 'CANCELLED'),
+                    0
+                ) AS cancelled_count
+
+            FROM helpdesk_categories c
+
+            LEFT JOIN helpdesk_tickets t
+                ON c.category_id = t.category_id
+
+            GROUP BY
+                c.category_id,
+                c.category_code,
+                c.category_name
+
+            ORDER BY
+                c.category_name
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# HELP DESK REPORT - BY TECHNICIAN
+# ==========================================================
+
+def get_helpdesk_report_by_technician():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                t.assigned_to,
+
+                COALESCE(
+                    u.username,
+                    'Unassigned'
+                ) AS technician_name,
+
+                COUNT(t.ticket_id) AS total_tickets,
+
+                COALESCE(
+                    SUM(t.status = 'OPEN'),
+                    0
+                ) AS open_count,
+
+                COALESCE(
+                    SUM(t.status = 'IN_PROGRESS'),
+                    0
+                ) AS in_progress_count,
+
+                COALESCE(
+                    SUM(t.status = 'RESOLVED'),
+                    0
+                ) AS resolved_count,
+
+                COALESCE(
+                    SUM(t.status = 'CLOSED'),
+                    0
+                ) AS closed_count,
+
+                COALESCE(
+                    SUM(t.status = 'CANCELLED'),
+                    0
+                ) AS cancelled_count
+
+            FROM helpdesk_tickets t
+
+            LEFT JOIN users u
+                ON t.assigned_to = u.user_id
+
+            GROUP BY
+                t.assigned_to,
+                u.username
+
+            ORDER BY
+                technician_name
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()

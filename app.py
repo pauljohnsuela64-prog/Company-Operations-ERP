@@ -26,6 +26,12 @@ from help_desk_repository import (
     get_filtered_helpdesk_tickets,
     get_helpdesk_summary,
     get_helpdesk_ticket_history,
+    get_helpdesk_report_by_category,
+    get_helpdesk_report_by_technician,
+)
+
+from help_desk_export import (
+    generate_helpdesk_report_excel,
 )
 
 from it_asset_repository import (
@@ -7307,6 +7313,114 @@ def help_desk():
         selected_status=selected_status,
         selected_priority=selected_priority,
         selected_category=selected_category,
+    )
+
+# ==========================================================
+# IT MANAGEMENT - HELP DESK REPORTS
+# ==========================================================
+
+@app.route("/it/help-desk/reports")
+@permission_required("it_assets.view")
+def help_desk_reports():
+
+    # ======================================================
+    # SUMMARY
+    # ======================================================
+
+    summary = get_helpdesk_summary()
+
+
+    # ======================================================
+    # CATEGORY REPORT
+    # ======================================================
+
+    category_summary = (
+        get_helpdesk_report_by_category()
+    )
+
+
+    # ======================================================
+    # TECHNICIAN REPORT
+    # ======================================================
+
+    technician_summary = (
+        get_helpdesk_report_by_technician()
+    )
+
+
+    # ======================================================
+    # TICKET REGISTER
+    # ======================================================
+
+    tickets = get_all_helpdesk_tickets()
+
+
+    # ======================================================
+    # SHOW REPORT PAGE
+    # ======================================================
+
+    return render_template(
+        "help_desk/reports/index.html",
+        summary=summary,
+        category_summary=category_summary,
+        technician_summary=technician_summary,
+        tickets=tickets,
+    )
+
+
+# ==========================================================
+# IT MANAGEMENT - EXPORT HELP DESK REPORT
+# ==========================================================
+
+@app.route("/it/help-desk/reports/export")
+@permission_required("it_assets.view")
+def export_help_desk_report():
+
+    # ======================================================
+    # REPORT DATA
+    # ======================================================
+
+    summary = get_helpdesk_summary()
+
+    category_summary = (
+        get_helpdesk_report_by_category()
+    )
+
+    technician_summary = (
+        get_helpdesk_report_by_technician()
+    )
+
+    tickets = get_all_helpdesk_tickets()
+
+
+    # ======================================================
+    # CREATE EXCEL FILE
+    # ======================================================
+
+    excel_file = (
+        generate_helpdesk_report_excel(
+            summary=summary,
+            category_summary=category_summary,
+            technician_summary=technician_summary,
+            tickets=tickets,
+        )
+    )
+
+
+    # ======================================================
+    # DOWNLOAD
+    # ======================================================
+
+    return send_file(
+        excel_file,
+        as_attachment=True,
+        download_name=(
+            "Help_Desk_Report.xlsx"
+        ),
+        mimetype=(
+            "application/vnd.openxmlformats-"
+            "officedocument.spreadsheetml.sheet"
+        ),
     )
 
 

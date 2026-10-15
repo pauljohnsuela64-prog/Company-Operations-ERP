@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+
+{% block title %}
+Help Desk Reports
+{% endblock %}
+
+
+{% block content %}
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            Help Desk Reports
+        </h2>
+
+        <p class="text-muted mb-0">
+            Ticket statistics and IT support performance overview.
+        </p>
+
+    </div>
+
+
+    <div>
+
+        <a
+            href="{{ url_for(
+                'export_help_desk_report'
+            ) }}"
+            class="btn btn-success me-2"
+        >
+            Export Excel
+        </a>
+
+        <a
+            href="{{ url_for('help_desk') }}"
+            class="btn btn-outline-secondary"
+        >
+            Back to Help Desk
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # SUMMARY CARDS -->
+<!-- # ========================================== -->
+
+<div class="row g-3 mb-4">
+
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted">
+                    Total
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.total_tickets }}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted">
+                    Open
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.open_count }}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted">
+                    In Progress
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.in_progress_count }}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted">
+                    Resolved
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.resolved_count }}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted">
+                    Closed
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.closed_count }}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted">
+                    Cancelled
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.cancelled_count }}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # TICKETS BY CATEGORY -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Tickets by Category
+        </h5>
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Category</th>
+                        <th>Total</th>
+                        <th>Open</th>
+                        <th>In Progress</th>
+                        <th>Resolved</th>
+                        <th>Closed</th>
+                        <th>Cancelled</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for category in category_summary %}
+
+                        <tr>
+
+                            <td>
+
+                                <strong>
+                                    {{ category.category_name }}
+                                </strong>
+
+                                <div class="small text-muted">
+                                    {{ category.category_code }}
+                                </div>
+
+                            </td>
+
+                            <td>
+                                {{ category.total_tickets }}
+                            </td>
+
+                            <td>
+                                {{ category.open_count }}
+                            </td>
+
+                            <td>
+                                {{ category.in_progress_count }}
+                            </td>
+
+                            <td>
+                                {{ category.resolved_count }}
+                            </td>
+
+                            <td>
+                                {{ category.closed_count }}
+                            </td>
+
+                            <td>
+                                {{ category.cancelled_count }}
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # TICKETS BY TECHNICIAN -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Tickets by Technician
+        </h5>
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Technician</th>
+                        <th>Total</th>
+                        <th>Open</th>
+                        <th>In Progress</th>
+                        <th>Resolved</th>
+                        <th>Closed</th>
+                        <th>Cancelled</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for technician in technician_summary %}
+
+                        <tr>
+
+                            <td>
+                                {{ technician.technician_name }}
+                            </td>
+
+                            <td>
+                                {{ technician.total_tickets }}
+                            </td>
+
+                            <td>
+                                {{ technician.open_count }}
+                            </td>
+
+                            <td>
+                                {{ technician.in_progress_count }}
+                            </td>
+
+                            <td>
+                                {{ technician.resolved_count }}
+                            </td>
+
+                            <td>
+                                {{ technician.closed_count }}
+                            </td>
+
+                            <td>
+                                {{ technician.cancelled_count }}
+                            </td>
+
+                        </tr>
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="7"
+                                class="text-center text-muted py-4"
+                            >
+                                No technician data available.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # COMPLETE TICKET REGISTER -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Ticket Register
+        </h5>
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Ticket</th>
+                        <th>Employee</th>
+                        <th>Category</th>
+                        <th>Subject</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Technician</th>
+                        <th>Created</th>
+                        <th>Action</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for ticket in tickets %}
+
+                        <tr>
+
+                            <td>
+                                <strong>
+                                    {{ ticket.ticket_number }}
+                                </strong>
+                            </td>
+
+
+                            <td>
+
+                                {{ ticket.employee_name }}
+
+                                <div class="small text-muted">
+                                    {{ ticket.employee_number }}
+                                </div>
+
+                            </td>
+
+
+                            <td>
+                                {{ ticket.category_name }}
+                            </td>
+
+
+                            <td>
+                                {{ ticket.subject }}
+                            </td>
+
+
+                            <td>
+
+                                {% if ticket.priority == "URGENT" %}
+
+                                    <span class="badge bg-danger">
+                                        Urgent
+                                    </span>
+
+                                {% elif ticket.priority == "HIGH" %}
+
+                                    <span class="badge bg-warning text-dark">
+                                        High
+                                    </span>
+
+                                {% elif ticket.priority == "MEDIUM" %}
+
+                                    <span class="badge bg-primary">
+                                        Medium
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge bg-secondary">
+                                        Low
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+                                {{ ticket.status.replace("_", " ").title() }}
+                            </td>
+
+
+                            <td>
+                                {{ ticket.assigned_to_username or "Unassigned" }}
+                            </td>
+
+
+                            <td>
+                                {{ ticket.created_at }}
+                            </td>
+
+
+                            <td>
+
+                                <a
+                                    href="{{ url_for(
+                                        'view_helpdesk_ticket',
+                                        ticket_id=ticket.ticket_id
+                                    ) }}"
+                                    class="btn btn-sm btn-outline-secondary"
+                                >
+                                    View
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="9"
+                                class="text-center text-muted py-4"
+                            >
+                                No help desk tickets found.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
