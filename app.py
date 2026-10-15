@@ -197,14 +197,19 @@ from flask import (
 from user_repository import (
     count_active_super_admins,
     create_user,
+    get_all_permissions,
     get_all_roles,
     get_all_users,
     get_available_user_employees,
     get_permissions_by_role_id,
+    get_role_by_id,
+    get_role_permission_ids,
     get_user_by_id,
     get_user_by_username,
     set_user_active_status,
     update_last_login,
+    update_role_permissions,
+    update_user_password,
     update_user_role,
 )
 
@@ -8377,6 +8382,290 @@ def change_admin_user_status(user_id):
             url_for("admin_users")
         )
 
+
+# ==========================================================
+# ADMINISTRATION - RESET USER PASSWORD
+# ==========================================================
+
+@app.route(
+    "/admin/users/<int:user_id>/reset-password",
+    methods=["GET", "POST"],
+)
+@permission_required("users.manage")
+def reset_admin_user_password(user_id):
+
+    user = get_user_by_id(
+        user_id
+    )
+
+    if not user:
+
+        flash(
+            "User account not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("admin_users")
+        )
+
+
+    if request.method == "POST":
+
+        # ==================================================
+        # FORM INPUT
+        # ==========================================================
+
+        password = request.form.get(
+            "password",
+            "",
+        )
+
+        confirm_password = request.form.get(
+            "confirm_password",
+            "",
+        )
+
+
+        # ==================================================
+        # VALIDATION
+        # ==========================================================
+
+        if len(password) < 8:
+
+            flash(
+                "Password must contain at least 8 characters.",
+                "danger",
+            )
+
+            return render_template(
+                "admin/users/reset_password.html",
+                user=user,
+            )
+
+
+        if password != confirm_password:
+
+            flash(
+                "Password confirmation does not match.",
+                "danger",
+            )
+
+            return render_template(
+                "admin/users/reset_password.html",
+                user=user,
+            )
+
+
+        # ==================================================
+        # HASH NEW PASSWORD
+        # ==========================================================
+
+        password_hash = (
+            generate_password_hash(
+                password
+            )
+        )
+
+
+        # ==================================================
+        # DATABASE UPDATE
+        # ==========================================================
+
+        update_user_password(
+            user_id,
+            password_hash,
+        )
+
+
+        flash(
+            (
+                f"Password for {user['username']} "
+                "was reset successfully."
+            ),
+            "success",
+        )
+
+
+        return redirect(
+            url_for("admin_users")
+        )
+
+
+    return render_template(
+        "admin/users/reset_password.html",
+        user=user,
+    )
+
+    # ==========================================================
+# ADMINISTRATION - ROLES
+# ==========================================================
+
+@app.route("/admin/roles")
+@permission_required("roles.manage")
+def admin_roles():
+
+    roles = get_all_roles()
+
+    return render_template(
+        "admin/roles/index.html",
+        roles=roles,
+    )
+
+
+# ==========================================================
+# ADMINISTRATION - MANAGE ROLE PERMISSIONS
+# ==========================================================
+
+@app.route(
+    "/admin/roles/<int:role_id>/permissions",
+    methods=["GET", "POST"],
+)
+@permission_required("roles.manage")
+def admin_role_permissions(role_id):
+
+    role = get_role_by_id(
+        role_id
+    )
+
+    if not role:
+
+        flash(
+            "Role not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("admin_roles")
+        )
+
+
+    # ======================================================
+    # SUPER ADMIN PROTECTION
+    # ======================================================
+
+    if role["role_name"] == "Super Admin":
+
+        flash(
+            (
+                "Super Admin permissions are protected "
+                "and cannot be changed here."
+            ),
+            "warning",
+        )
+
+        return redirect(
+            url_for("admin_roles")
+        )
+
+
+    permissions = (
+        get_all_permissions()
+    )
+
+
+    if request.method == "POST":
+
+        # ==================================================
+        # SELECTED PERMISSIONS
+        # ==========================================================
+
+        selected_values = (
+            request.form.getlist(
+                "permission_ids"
+            )
+        )
+
+
+        selected_permission_ids = set()
+
+        try:
+
+            for permission_id in selected_values:
+
+                selected_permission_ids.add(
+                    int(permission_id)
+                )
+
+        except ValueError:
+
+            flash(
+                "Invalid permission selection.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "admin_role_permissions",
+                    role_id=role_id,
+                )
+            )
+
+
+        # ==================================================
+        # VERIFY PERMISSIONS
+        # ==========================================================
+
+        valid_permission_ids = {
+            permission["permission_id"]
+            for permission in permissions
+        }
+
+
+        if not selected_permission_ids.issubset(
+            valid_permission_ids
+        ):
+
+            flash(
+                "One or more selected permissions are invalid.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "admin_role_permissions",
+                    role_id=role_id,
+                )
+            )
+
+
+        # ==================================================
+        # UPDATE DATABASE
+        # ==========================================================
+
+        update_role_permissions(
+            role_id,
+            selected_permission_ids,
+        )
+
+
+        flash(
+            (
+                f"Permissions for "
+                f"{role['role_name']} updated successfully."
+            ),
+            "success",
+        )
+
+
+        return redirect(
+            url_for("admin_roles")
+        )
+
+
+    selected_permission_ids = (
+        get_role_permission_ids(
+            role_id
+        )
+    )
+
+
+    return render_template(
+        "admin/roles/permissions.html",
+        role=role,
+        permissions=permissions,
+        selected_permission_ids=selected_permission_ids,
+    )
 
     # ======================================================
     # DO NOT DEACTIVATE YOUR OWN ACCOUNT

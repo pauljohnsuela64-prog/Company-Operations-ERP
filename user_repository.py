@@ -418,3 +418,204 @@ def count_active_super_admins():
 
         cursor.close()
         connection.close()
+
+# ==========================================================
+# USER ADMINISTRATION - RESET PASSWORD
+# ==========================================================
+
+def update_user_password(
+    user_id,
+    password_hash,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET password_hash = %s
+            WHERE user_id = %s
+            """,
+            (
+                password_hash,
+                user_id,
+            ),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# ROLE ADMINISTRATION - GET ROLE BY ID
+# ==========================================================
+
+def get_role_by_id(role_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                role_id,
+                role_name,
+                description,
+                created_at
+
+            FROM roles
+
+            WHERE role_id = %s
+            """,
+            (role_id,),
+        )
+
+        return cursor.fetchone()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# ROLE ADMINISTRATION - GET ALL PERMISSIONS
+# ==========================================================
+
+def get_all_permissions():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                permission_id,
+                permission_code,
+                description,
+                created_at
+
+            FROM permissions
+
+            ORDER BY
+                permission_code
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# ROLE ADMINISTRATION - GET ROLE PERMISSIONS
+# ==========================================================
+
+def get_role_permission_ids(role_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                permission_id
+
+            FROM role_permissions
+
+            WHERE role_id = %s
+            """,
+            (role_id,),
+        )
+
+        rows = cursor.fetchall()
+
+        return {
+            row["permission_id"]
+            for row in rows
+        }
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# ROLE ADMINISTRATION - UPDATE ROLE PERMISSIONS
+# ==========================================================
+
+def update_role_permissions(
+    role_id,
+    permission_ids,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        # ==================================================
+        # REMOVE CURRENT PERMISSIONS
+        # ==========================================================
+
+        cursor.execute(
+            """
+            DELETE FROM role_permissions
+            WHERE role_id = %s
+            """,
+            (role_id,),
+        )
+
+
+        # ==================================================
+        # ADD SELECTED PERMISSIONS
+        # ==========================================================
+
+        for permission_id in permission_ids:
+
+            cursor.execute(
+                """
+                INSERT INTO role_permissions (
+                    role_id,
+                    permission_id
+                )
+                VALUES (
+                    %s,
+                    %s
+                )
+                """,
+                (
+                    role_id,
+                    permission_id,
+                ),
+            )
+
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()

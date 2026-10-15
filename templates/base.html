@@ -183,10 +183,14 @@
                     Administration
                 </div>
 
-                {% if has_permission('users.manage') %}
-                <a href="#" class="sidebar-link">
+                <!-- # ADMINISTRATION - USERS -->
+
+                {% if has_permission("users.manage") %}
+
+                <a href="{{ url_for('admin_users') }}" class="sidebar-link">
                     Users
                 </a>
+
                 {% endif %}
 
                 {% if has_permission('roles.manage') %}

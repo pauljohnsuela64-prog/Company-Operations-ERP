@@ -26,12 +26,23 @@ User Administration
     </div>
 
 
-    <a
-        href="{{ url_for('add_admin_user') }}"
-        class="btn btn-primary"
-    >
-        Create User
-    </a>
+    <div>
+
+        <a
+            href="{{ url_for('admin_roles') }}"
+            class="btn btn-outline-secondary me-2"
+        >
+            Manage Roles
+        </a>
+
+        <a
+            href="{{ url_for('add_admin_user') }}"
+            class="btn btn-primary"
+        >
+            Create User
+        </a>
+
+    </div>
 
 </div>
 
@@ -77,6 +88,7 @@ User Administration
                                     {{ user.username }}
                                 </strong>
 
+
                                 {% if user.user_id == session.user_id %}
 
                                     <div class="small text-muted">
@@ -102,6 +114,7 @@ User Administration
 
                                     {{ user.last_name }}
 
+
                                     <div class="small text-muted">
                                         {{ user.employee_number }}
                                     </div>
@@ -120,7 +133,9 @@ User Administration
                             <!-- # DEPARTMENT -->
 
                             <td>
+
                                 {{ user.department_name or "-" }}
+
                             </td>
 
 
@@ -220,41 +235,60 @@ User Administration
                             </td>
 
 
-                            <!-- # ACTION -->
+                            <!-- # ACTIONS -->
 
                             <td>
 
                                 {% if user.user_id != session.user_id %}
 
-                                    <form
-                                        method="POST"
-                                        action="{{ url_for(
-                                            'change_admin_user_status',
-                                            user_id=user.user_id
-                                        ) }}"
-                                    >
+                                    <div class="d-flex gap-2">
 
-                                        {% if user.is_active %}
+                                        <!-- # RESET PASSWORD -->
 
-                                            <button
-                                                type="submit"
-                                                class="btn btn-sm btn-outline-danger"
-                                            >
-                                                Deactivate
-                                            </button>
+                                        <a
+                                            href="{{ url_for(
+                                                'reset_admin_user_password',
+                                                user_id=user.user_id
+                                            ) }}"
+                                            class="btn btn-sm btn-outline-primary"
+                                        >
+                                            Reset Password
+                                        </a>
 
-                                        {% else %}
 
-                                            <button
-                                                type="submit"
-                                                class="btn btn-sm btn-outline-success"
-                                            >
-                                                Activate
-                                            </button>
+                                        <!-- # ACCOUNT STATUS -->
 
-                                        {% endif %}
+                                        <form
+                                            method="POST"
+                                            action="{{ url_for(
+                                                'change_admin_user_status',
+                                                user_id=user.user_id
+                                            ) }}"
+                                        >
 
-                                    </form>
+                                            {% if user.is_active %}
+
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn-sm btn-outline-danger"
+                                                >
+                                                    Deactivate
+                                                </button>
+
+                                            {% else %}
+
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn-sm btn-outline-success"
+                                                >
+                                                    Activate
+                                                </button>
+
+                                            {% endif %}
+
+                                        </form>
+
+                                    </div>
 
                                 {% else %}
 
@@ -267,7 +301,6 @@ User Administration
                             </td>
 
                         </tr>
-
 
                     {% else %}
 
