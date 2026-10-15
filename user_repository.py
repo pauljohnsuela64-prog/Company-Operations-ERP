@@ -74,3 +74,347 @@ def update_last_login(user_id):
     finally:
         cursor.close()
         connection.close()
+
+# ==========================================================
+# USER ADMINISTRATION - GET ALL USERS
+# ==========================================================
+
+def get_all_users():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                u.user_id,
+                u.employee_id,
+                u.role_id,
+                u.username,
+                u.is_active,
+                u.last_login_at,
+                u.created_at,
+                u.updated_at,
+
+                r.role_name,
+
+                e.employee_number,
+                e.first_name,
+                e.middle_name,
+                e.last_name,
+
+                d.department_name
+
+            FROM users u
+
+            INNER JOIN roles r
+                ON u.role_id = r.role_id
+
+            LEFT JOIN employees e
+                ON u.employee_id = e.employee_id
+
+            LEFT JOIN departments d
+                ON e.department_id = d.department_id
+
+            ORDER BY
+                u.username
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# USER ADMINISTRATION - GET USER BY ID
+# ==========================================================
+
+def get_user_by_id(user_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                u.user_id,
+                u.employee_id,
+                u.role_id,
+                u.username,
+                u.password_hash,
+                u.is_active,
+                u.last_login_at,
+                u.created_at,
+                u.updated_at,
+
+                r.role_name
+
+            FROM users u
+
+            INNER JOIN roles r
+                ON u.role_id = r.role_id
+
+            WHERE u.user_id = %s
+            """,
+            (user_id,),
+        )
+
+        return cursor.fetchone()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# USER ADMINISTRATION - GET ALL ROLES
+# ==========================================================
+
+def get_all_roles():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                role_id,
+                role_name,
+                description,
+                created_at
+
+            FROM roles
+
+            ORDER BY
+                role_id
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# USER ADMINISTRATION - GET AVAILABLE EMPLOYEES
+#
+# Only employees that do not already have a user account.
+# ==========================================================
+
+def get_available_user_employees():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                e.employee_id,
+                e.employee_number,
+                e.first_name,
+                e.middle_name,
+                e.last_name,
+                e.department_id,
+                d.department_name
+
+            FROM employees e
+
+            LEFT JOIN users u
+                ON e.employee_id = u.employee_id
+
+            LEFT JOIN departments d
+                ON e.department_id = d.department_id
+
+            WHERE u.user_id IS NULL
+
+            ORDER BY
+                e.first_name,
+                e.last_name
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# USER ADMINISTRATION - CREATE USER
+# ==========================================================
+
+def create_user(
+    username,
+    password_hash,
+    role_id,
+    employee_id=None,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        cursor.execute(
+            """
+            INSERT INTO users (
+                employee_id,
+                role_id,
+                username,
+                password_hash,
+                is_active
+            )
+            VALUES (
+                %s,
+                %s,
+                %s,
+                %s,
+                1
+            )
+            """,
+            (
+                employee_id,
+                role_id,
+                username,
+                password_hash,
+            ),
+        )
+
+        connection.commit()
+
+        return cursor.lastrowid
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# USER ADMINISTRATION - CHANGE ROLE
+# ==========================================================
+
+def update_user_role(
+    user_id,
+    role_id,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET role_id = %s
+            WHERE user_id = %s
+            """,
+            (
+                role_id,
+                user_id,
+            ),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# USER ADMINISTRATION - CHANGE ACTIVE STATUS
+# ==========================================================
+
+def set_user_active_status(
+    user_id,
+    is_active,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET is_active = %s
+            WHERE user_id = %s
+            """,
+            (
+                is_active,
+                user_id,
+            ),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# USER ADMINISTRATION - COUNT ACTIVE SUPER ADMINS
+# ==========================================================
+
+def count_active_super_admins():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                COUNT(*) AS total
+
+            FROM users u
+
+            INNER JOIN roles r
+                ON u.role_id = r.role_id
+
+            WHERE
+                r.role_name = 'Super Admin'
+                AND u.is_active = 1
+            """
+        )
+
+        result = cursor.fetchone()
+
+        return result["total"]
+
+    finally:
+
+        cursor.close()
+        connection.close()

@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}
+Create User
+{% endblock %}
+
+
+{% block content %}
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="mb-4">
+
+    <h2 class="mb-1">
+        Create User
+    </h2>
+
+    <p class="text-muted mb-0">
+        Create a new ERP application account.
+    </p>
+
+</div>
+
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <form method="POST">
+
+
+            <!-- # ====================================== -->
+            <!-- # EMPLOYEE -->
+            <!-- # ====================================== -->
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Employee
+                </label>
+
+                <select
+                    name="employee_id"
+                    class="form-select"
+                >
+
+                    <option value="">
+                        No linked employee
+                    </option>
+
+                    {% for employee in employees %}
+
+                        <option
+                            value="{{ employee.employee_id }}"
+                        >
+
+                            {{ employee.employee_number }}
+                            -
+                            {{ employee.first_name }}
+                            {{ employee.last_name }}
+
+                            {% if employee.department_name %}
+                                -
+                                {{ employee.department_name }}
+                            {% endif %}
+
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+                <div class="form-text">
+                    Optional. Each employee can only be linked to one user account.
+                </div>
+
+            </div>
+
+
+            <!-- # ====================================== -->
+            <!-- # USERNAME -->
+            <!-- # ====================================== -->
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Username
+                </label>
+
+                <input
+                    type="text"
+                    name="username"
+                    class="form-control"
+                    maxlength="100"
+                    required
+                >
+
+            </div>
+
+
+            <!-- # ====================================== -->
+            <!-- # ROLE -->
+            <!-- # ====================================== -->
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Role
+                </label>
+
+                <select
+                    name="role_id"
+                    class="form-select"
+                    required
+                >
+
+                    <option value="">
+                        Select Role
+                    </option>
+
+                    {% for role in roles %}
+
+                        <option
+                            value="{{ role.role_id }}"
+                        >
+                            {{ role.role_name }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <!-- # ====================================== -->
+            <!-- # PASSWORD -->
+            <!-- # ====================================== -->
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Password
+                </label>
+
+                <input
+                    type="password"
+                    name="password"
+                    class="form-control"
+                    minlength="8"
+                    required
+                >
+
+                <div class="form-text">
+                    Minimum 8 characters.
+                </div>
+
+            </div>
+
+
+            <!-- # ====================================== -->
+            <!-- # CONFIRM PASSWORD -->
+            <!-- # ====================================== -->
+
+            <div class="mb-4">
+
+                <label class="form-label">
+                    Confirm Password
+                </label>
+
+                <input
+                    type="password"
+                    name="confirm_password"
+                    class="form-control"
+                    minlength="8"
+                    required
+                >
+
+            </div>
+
+
+            <!-- # ====================================== -->
+            <!-- # BUTTONS -->
+            <!-- # ====================================== -->
+
+            <div class="d-flex gap-2">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Create User
+                </button>
+
+
+                <a
+                    href="{{ url_for('admin_users') }}"
+                    class="btn btn-outline-secondary"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}
