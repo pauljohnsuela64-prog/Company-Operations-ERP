@@ -38,6 +38,250 @@ IT Help Desk
 
 
 <!-- # ========================================== -->
+<!-- # HELP DESK SUMMARY -->
+<!-- # ========================================== -->
+
+<div class="row g-3 mb-4">
+
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted">Total</div>
+                <h4 class="mb-0">
+                    {{ summary.total_tickets }}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted">Open</div>
+                <h4 class="mb-0">
+                    {{ summary.open_count }}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted">In Progress</div>
+                <h4 class="mb-0">
+                    {{ summary.in_progress_count }}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted">Resolved</div>
+                <h4 class="mb-0">
+                    {{ summary.resolved_count }}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted">Closed</div>
+                <h4 class="mb-0">
+                    {{ summary.closed_count }}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="text-muted">Cancelled</div>
+                <h4 class="mb-0">
+                    {{ summary.cancelled_count }}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # SEARCH / FILTERS -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <form method="GET">
+
+            <div class="row g-3 align-items-end">
+
+                <div class="col-md-3">
+
+                    <label class="form-label">
+                        Search
+                    </label>
+
+                    <input
+                        type="text"
+                        name="search"
+                        value="{{ search_text }}"
+                        class="form-control"
+                        placeholder="Ticket, employee, subject..."
+                    >
+
+                </div>
+
+
+                <div class="col-md-2">
+
+                    <label class="form-label">
+                        Status
+                    </label>
+
+                    <select
+                        name="status"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            All Statuses
+                        </option>
+
+                        {% for status in [
+                            "OPEN",
+                            "IN_PROGRESS",
+                            "RESOLVED",
+                            "CLOSED",
+                            "CANCELLED"
+                        ] %}
+
+                            <option
+                                value="{{ status }}"
+                                {% if selected_status == status %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ status.replace("_", " ").title() }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <div class="col-md-2">
+
+                    <label class="form-label">
+                        Priority
+                    </label>
+
+                    <select
+                        name="priority"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            All Priorities
+                        </option>
+
+                        {% for priority in [
+                            "LOW",
+                            "MEDIUM",
+                            "HIGH",
+                            "URGENT"
+                        ] %}
+
+                            <option
+                                value="{{ priority }}"
+                                {% if selected_priority == priority %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ priority.title() }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <div class="col-md-2">
+
+                    <label class="form-label">
+                        Category
+                    </label>
+
+                    <select
+                        name="category_id"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            All Categories
+                        </option>
+
+                        {% for category in categories %}
+
+                            <option
+                                value="{{ category.category_id }}"
+                                {% if
+                                    selected_category
+                                    == category.category_id|string
+                                %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ category.category_name }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <div class="col-md-3">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary me-2"
+                    >
+                        Search / Apply
+                    </button>
+
+                    <a
+                        href="{{ url_for('help_desk') }}"
+                        class="btn btn-outline-secondary"
+                    >
+                        Reset
+                    </a>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
 <!-- # TICKET TABLE -->
 <!-- # ========================================== -->
 
@@ -217,7 +461,7 @@ IT Help Desk
                         <tr>
 
                             <td
-                                colspan="8"
+                                colspan="9"
                                 class="text-center text-muted py-4"
                             >
                                 No help desk tickets found.

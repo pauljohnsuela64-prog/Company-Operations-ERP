@@ -469,4 +469,94 @@ Help Desk Ticket
 
 </div>
 
+
+<!-- # ========================================== -->
+<!-- # TICKET HISTORY -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mt-4">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Ticket History
+        </h5>
+
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Date</th>
+                        <th>Action</th>
+                        <th>Old Status</th>
+                        <th>New Status</th>
+                        <th>Details</th>
+                        <th>Changed By</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for history in ticket_history %}
+
+                        <tr>
+
+                            <td>
+                                {{ history.created_at }}
+                            </td>
+
+                            <td>
+                                {{ history.action_type.replace("_", " ").title() }}
+                            </td>
+
+                            <td>
+                                {{ history.old_status or "-" }}
+                            </td>
+
+                            <td>
+                                {{ history.new_status or "-" }}
+                            </td>
+
+                            <td>
+                                {{ history.details or "-" }}
+                            </td>
+
+                            <td>
+                                {{ history.changed_by_username }}
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="6"
+                                class="text-center text-muted py-4"
+                            >
+                                No ticket history yet.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
 {% endblock %}

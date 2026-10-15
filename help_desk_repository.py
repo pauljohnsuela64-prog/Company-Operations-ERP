@@ -357,6 +357,7 @@ def get_helpdesk_assignable_users():
 def assign_helpdesk_ticket(
     ticket_id,
     assigned_to,
+    changed_by,
 ):
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
@@ -365,15 +366,13 @@ def assign_helpdesk_ticket(
 
         connection.start_transaction()
 
-        # ==================================================
-        # LOCK TICKET
-        # ==========================================================
 
         cursor.execute(
             """
             SELECT
                 ticket_id,
-                status
+                status,
+                assigned_to
 
             FROM helpdesk_tickets
 
@@ -405,7 +404,7 @@ def assign_helpdesk_ticket(
 
 
         # ==================================================
-        # UPDATE ASSIGNMENT
+        # UPDATE TECHNICIAN
         # ==========================================================
 
         cursor.execute(
@@ -419,6 +418,38 @@ def assign_helpdesk_ticket(
             (
                 assigned_to,
                 ticket_id,
+            ),
+        )
+
+
+        # ==================================================
+        # HISTORY
+        # ==========================================================
+
+        cursor.execute(
+            """
+            INSERT INTO helpdesk_ticket_history (
+                ticket_id,
+                action_type,
+                old_status,
+                new_status,
+                details,
+                changed_by
+            )
+            VALUES (
+                %s,
+                'ASSIGNED',
+                %s,
+                %s,
+                'Technician assigned or reassigned',
+                %s
+            )
+            """,
+            (
+                ticket_id,
+                ticket["status"],
+                ticket["status"],
+                changed_by,
             ),
         )
 
@@ -439,7 +470,10 @@ def assign_helpdesk_ticket(
 # START HELP DESK TICKET
 # ==========================================================
 
-def start_helpdesk_ticket(ticket_id):
+def start_helpdesk_ticket(
+    ticket_id,
+    changed_by,
+):
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
@@ -484,9 +518,7 @@ def start_helpdesk_ticket(ticket_id):
             )
 
 
-        # ==================================================
-        # OPEN -> IN PROGRESS
-        # ==========================================================
+
 
         cursor.execute(
             """
@@ -497,6 +529,31 @@ def start_helpdesk_ticket(ticket_id):
             WHERE ticket_id = %s
             """,
             (ticket_id,),
+        )
+
+        cursor.execute(
+            """
+            INSERT INTO helpdesk_ticket_history (
+                ticket_id,
+                action_type,
+                old_status,
+                new_status,
+                details,
+                changed_by
+            )
+            VALUES (
+                %s,
+                'STATUS_CHANGE',
+                'OPEN',
+                'IN_PROGRESS',
+                'Work started on ticket',
+                %s
+            )
+            """,
+            (
+                ticket_id,
+                changed_by,
+            ),
         )
 
         connection.commit()
@@ -519,6 +576,7 @@ def start_helpdesk_ticket(ticket_id):
 def resolve_helpdesk_ticket(
     ticket_id,
     resolution,
+    changed_by,
 ):
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
@@ -557,9 +615,7 @@ def resolve_helpdesk_ticket(
             )
 
 
-        # ==================================================
-        # IN PROGRESS -> RESOLVED
-        # ==========================================================
+
 
         cursor.execute(
             """
@@ -575,6 +631,32 @@ def resolve_helpdesk_ticket(
             (
                 resolution,
                 ticket_id,
+            ),
+        )
+
+        cursor.execute(
+            """
+            INSERT INTO helpdesk_ticket_history (
+                ticket_id,
+                action_type,
+                old_status,
+                new_status,
+                details,
+                changed_by
+            )
+            VALUES (
+                %s,
+                'RESOLVED',
+                'IN_PROGRESS',
+                'RESOLVED',
+                %s,
+                %s
+            )
+            """,
+            (
+                ticket_id,
+                resolution[:255],
+                changed_by,
             ),
         )
 
@@ -595,7 +677,10 @@ def resolve_helpdesk_ticket(
 # CLOSE HELP DESK TICKET
 # ==========================================================
 
-def close_helpdesk_ticket(ticket_id):
+def close_helpdesk_ticket(
+    ticket_id,
+    changed_by,
+):
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
@@ -633,9 +718,7 @@ def close_helpdesk_ticket(ticket_id):
             )
 
 
-        # ==================================================
-        # RESOLVED -> CLOSED
-        # ==========================================================
+
 
         cursor.execute(
             """
@@ -650,12 +733,524 @@ def close_helpdesk_ticket(ticket_id):
             (ticket_id,),
         )
 
+        cursor.execute(
+            """
+            INSERT INTO helpdesk_ticket_history (
+                ticket_id,
+                action_type,
+                old_status,
+                new_status,
+                details,
+                changed_by
+            )
+            VALUES (
+                %s,
+                'STATUS_CHANGE',
+                'RESOLVED',
+                'CLOSED',
+                'Ticket closed',
+                %s
+            )
+            """,
+            (
+                ticket_id,
+                changed_by,
+            ),
+        )
+
         connection.commit()
 
     except Exception:
 
         connection.rollback()
         raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+# ==========================================================
+# HELP DESK SUMMARY
+# ==========================================================
+
+def get_helpdesk_summary():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                COUNT(*) AS total_tickets,
+
+                COALESCE(
+                    SUM(status = 'OPEN'),
+                    0
+                ) AS open_count,
+
+                COALESCE(
+                    SUM(status = 'IN_PROGRESS'),
+                    0
+                ) AS in_progress_count,
+
+                COALESCE(
+                    SUM(status = 'RESOLVED'),
+                    0
+                ) AS resolved_count,
+
+                COALESCE(
+                    SUM(status = 'CLOSED'),
+                    0
+                ) AS closed_count,
+
+                COALESCE(
+                    SUM(status = 'CANCELLED'),
+                    0
+                ) AS cancelled_count
+
+            FROM helpdesk_tickets
+            """
+        )
+
+        return cursor.fetchone()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# FILTER / SEARCH HELP DESK TICKETS
+# ==========================================================
+
+def get_filtered_helpdesk_tickets(
+    search_text=None,
+    status=None,
+    priority=None,
+    category_id=None,
+):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        query = """
+            SELECT
+                t.ticket_id,
+                t.ticket_number,
+
+                t.employee_id,
+                e.employee_number,
+
+                CONCAT(
+                    e.first_name,
+                    ' ',
+                    e.last_name
+                ) AS employee_name,
+
+                t.department_id,
+                d.department_name,
+
+                t.category_id,
+                c.category_code,
+                c.category_name,
+
+                t.subject,
+                t.description,
+
+                t.priority,
+                t.status,
+
+                t.assigned_to,
+                assigned_user.username
+                    AS assigned_to_username,
+
+                t.created_at,
+                t.updated_at
+
+            FROM helpdesk_tickets t
+
+            INNER JOIN employees e
+                ON t.employee_id = e.employee_id
+
+            LEFT JOIN departments d
+                ON t.department_id = d.department_id
+
+            INNER JOIN helpdesk_categories c
+                ON t.category_id = c.category_id
+
+            LEFT JOIN users assigned_user
+                ON t.assigned_to = assigned_user.user_id
+
+            WHERE 1 = 1
+        """
+
+        parameters = []
+
+
+        # ==================================================
+        # SEARCH
+        # ==========================================================
+
+        if search_text:
+
+            search_value = f"%{search_text}%"
+
+            query += """
+                AND (
+                    t.ticket_number LIKE %s
+                    OR t.subject LIKE %s
+                    OR t.description LIKE %s
+                    OR CONCAT(
+                        e.first_name,
+                        ' ',
+                        e.last_name
+                    ) LIKE %s
+                    OR d.department_name LIKE %s
+                    OR c.category_name LIKE %s
+                    OR assigned_user.username LIKE %s
+                )
+            """
+
+            parameters.extend(
+                [
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                ]
+            )
+
+
+        # ==================================================
+        # STATUS
+        # ==========================================================
+
+        if status:
+
+            query += """
+                AND t.status = %s
+            """
+
+            parameters.append(
+                status
+            )
+
+
+        # ==================================================
+        # PRIORITY
+        # ==========================================================
+
+        if priority:
+
+            query += """
+                AND t.priority = %s
+            """
+
+            parameters.append(
+                priority
+            )
+
+
+        # ==================================================
+        # CATEGORY
+        # ==========================================================
+
+        if category_id is not None:
+
+            query += """
+                AND t.category_id = %s
+            """
+
+            parameters.append(
+                category_id
+            )
+
+
+        query += """
+            ORDER BY
+                t.created_at DESC,
+                t.ticket_id DESC
+        """
+
+        cursor.execute(
+            query,
+            tuple(parameters),
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# GET TICKET HISTORY
+# ==========================================================
+
+def get_helpdesk_ticket_history(ticket_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                h.history_id,
+                h.ticket_id,
+                h.action_type,
+                h.old_status,
+                h.new_status,
+                h.details,
+
+                h.changed_by,
+
+                u.username AS changed_by_username,
+
+                h.created_at
+
+            FROM helpdesk_ticket_history h
+
+            INNER JOIN users u
+                ON h.changed_by = u.user_id
+
+            WHERE h.ticket_id = %s
+
+            ORDER BY
+                h.created_at DESC,
+                h.history_id DESC
+            """,
+            (ticket_id,),
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# FILTER / SEARCH HELP DESK TICKETS
+# ==========================================================
+
+def get_filtered_helpdesk_tickets(
+    search_text=None,
+    status=None,
+    priority=None,
+    category_id=None,
+):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        query = """
+            SELECT
+                t.ticket_id,
+                t.ticket_number,
+
+                t.employee_id,
+                e.employee_number,
+
+                CONCAT(
+                    e.first_name,
+                    ' ',
+                    e.last_name
+                ) AS employee_name,
+
+                t.department_id,
+                d.department_name,
+
+                t.category_id,
+                c.category_code,
+                c.category_name,
+
+                t.subject,
+                t.description,
+
+                t.priority,
+                t.status,
+
+                t.assigned_to,
+                assigned_user.username
+                    AS assigned_to_username,
+
+                t.created_at,
+                t.updated_at
+
+            FROM helpdesk_tickets t
+
+            INNER JOIN employees e
+                ON t.employee_id = e.employee_id
+
+            LEFT JOIN departments d
+                ON t.department_id = d.department_id
+
+            INNER JOIN helpdesk_categories c
+                ON t.category_id = c.category_id
+
+            LEFT JOIN users assigned_user
+                ON t.assigned_to = assigned_user.user_id
+
+            WHERE 1 = 1
+        """
+
+        parameters = []
+
+
+        # ==================================================
+        # SEARCH
+        # ==========================================================
+
+        if search_text:
+
+            search_value = f"%{search_text}%"
+
+            query += """
+                AND (
+                    t.ticket_number LIKE %s
+                    OR t.subject LIKE %s
+                    OR t.description LIKE %s
+                    OR CONCAT(
+                        e.first_name,
+                        ' ',
+                        e.last_name
+                    ) LIKE %s
+                    OR d.department_name LIKE %s
+                    OR c.category_name LIKE %s
+                    OR assigned_user.username LIKE %s
+                )
+            """
+
+            parameters.extend(
+                [
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                ]
+            )
+
+
+        # ==================================================
+        # STATUS
+        # ==========================================================
+
+        if status:
+
+            query += """
+                AND t.status = %s
+            """
+
+            parameters.append(
+                status
+            )
+
+
+        # ==================================================
+        # PRIORITY
+        # ==========================================================
+
+        if priority:
+
+            query += """
+                AND t.priority = %s
+            """
+
+            parameters.append(
+                priority
+            )
+
+
+        # ==================================================
+        # CATEGORY
+        # ==========================================================
+
+        if category_id is not None:
+
+            query += """
+                AND t.category_id = %s
+            """
+
+            parameters.append(
+                category_id
+            )
+
+
+        query += """
+            ORDER BY
+                t.created_at DESC,
+                t.ticket_id DESC
+        """
+
+        cursor.execute(
+            query,
+            tuple(parameters),
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# GET TICKET HISTORY
+# ==========================================================
+
+def get_helpdesk_ticket_history(ticket_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                h.history_id,
+                h.ticket_id,
+                h.action_type,
+                h.old_status,
+                h.new_status,
+                h.details,
+
+                h.changed_by,
+
+                u.username AS changed_by_username,
+
+                h.created_at
+
+            FROM helpdesk_ticket_history h
+
+            INNER JOIN users u
+                ON h.changed_by = u.user_id
+
+            WHERE h.ticket_id = %s
+
+            ORDER BY
+                h.created_at DESC,
+                h.history_id DESC
+            """,
+            (ticket_id,),
+        )
+
+        return cursor.fetchall()
 
     finally:
 

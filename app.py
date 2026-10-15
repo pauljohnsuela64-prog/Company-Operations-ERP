@@ -23,6 +23,9 @@ from help_desk_repository import (
     get_helpdesk_ticket_by_id,
     resolve_helpdesk_ticket,
     start_helpdesk_ticket,
+    get_filtered_helpdesk_tickets,
+    get_helpdesk_summary,
+    get_helpdesk_ticket_history,
 )
 
 from it_asset_repository import (
@@ -7205,11 +7208,105 @@ def export_it_asset_report():
 @permission_required("it_assets.view")
 def help_desk():
 
-    tickets = get_all_helpdesk_tickets()
+    # ======================================================
+    # FILTER INPUT
+    # ======================================================
+
+    search_text = request.args.get(
+        "search",
+        "",
+    ).strip()
+
+    selected_status = request.args.get(
+        "status",
+        "",
+    ).strip().upper()
+
+    selected_priority = request.args.get(
+        "priority",
+        "",
+    ).strip().upper()
+
+    selected_category = request.args.get(
+        "category_id",
+        "",
+    ).strip()
+
+
+    # ======================================================
+    # VALIDATION
+    # ======================================================
+
+    allowed_statuses = {
+        "OPEN",
+        "IN_PROGRESS",
+        "RESOLVED",
+        "CLOSED",
+        "CANCELLED",
+    }
+
+    if (
+        selected_status
+        and selected_status not in allowed_statuses
+    ):
+        selected_status = ""
+
+    allowed_priorities = {
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "URGENT",
+    }
+
+    if (
+        selected_priority
+        and selected_priority not in allowed_priorities
+    ):
+        selected_priority = ""
+
+
+    category_id_value = None
+
+    if selected_category:
+
+        try:
+
+            category_id_value = int(
+                selected_category
+            )
+
+        except ValueError:
+
+            selected_category = ""
+
+
+    # ======================================================
+    # DATA
+    # ======================================================
+
+    tickets = get_filtered_helpdesk_tickets(
+        search_text=search_text or None,
+        status=selected_status or None,
+        priority=selected_priority or None,
+        category_id=category_id_value,
+    )
+
+    summary = get_helpdesk_summary()
+
+    categories = (
+        get_active_helpdesk_categories()
+    )
+
 
     return render_template(
         "help_desk/index.html",
         tickets=tickets,
+        summary=summary,
+        categories=categories,
+        search_text=search_text,
+        selected_status=selected_status,
+        selected_priority=selected_priority,
+        selected_category=selected_category,
     )
 
 
@@ -7412,6 +7509,10 @@ def add_helpdesk_ticket():
 @permission_required("it_assets.view")
 def view_helpdesk_ticket(ticket_id):
 
+    # ======================================================
+    # GET TICKET
+    # ======================================================
+
     ticket = get_helpdesk_ticket_by_id(
         ticket_id
     )
@@ -7427,14 +7528,36 @@ def view_helpdesk_ticket(ticket_id):
             url_for("help_desk")
         )
 
+
+    # ======================================================
+    # GET TECHNICIANS
+    # ======================================================
+
     technicians = (
         get_helpdesk_assignable_users()
     )
+
+
+    # ======================================================
+    # GET TICKET HISTORY
+    # ======================================================
+
+    ticket_history = (
+        get_helpdesk_ticket_history(
+            ticket_id
+        )
+    )
+
+
+    # ======================================================
+    # SHOW TICKET DETAILS PAGE
+    # ======================================================
 
     return render_template(
         "help_desk/view.html",
         ticket=ticket,
         technicians=technicians,
+        ticket_history=ticket_history,
     )
 
 # ==========================================================
@@ -7525,6 +7648,7 @@ def assign_helpdesk_ticket_route(ticket_id):
         assign_helpdesk_ticket(
             ticket_id,
             assigned_to_value,
+            session["user_id"],
         )
 
         flash(
@@ -7560,7 +7684,8 @@ def start_helpdesk_ticket_route(ticket_id):
     try:
 
         start_helpdesk_ticket(
-            ticket_id
+            ticket_id,
+            session["user_id"],
         )
 
         flash(
@@ -7617,6 +7742,7 @@ def resolve_helpdesk_ticket_route(ticket_id):
         resolve_helpdesk_ticket(
             ticket_id,
             resolution,
+            session["user_id"],
         )
 
         flash(
@@ -7652,7 +7778,8 @@ def close_helpdesk_ticket_route(ticket_id):
     try:
 
         close_helpdesk_ticket(
-            ticket_id
+            ticket_id,
+            session["user_id"],
         )
 
         flash(
