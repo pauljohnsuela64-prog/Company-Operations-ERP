@@ -128,7 +128,7 @@
                 {% endif %}
 
                 {% if has_permission('helpdesk.view') %}
-                <a href="#" class="sidebar-link">
+                <a href="{{ url_for('help_desk') }}" class="sidebar-link">
                     Help Desk
                 </a>
                 {% endif %}

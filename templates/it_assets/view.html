@@ -90,6 +90,82 @@ IT Asset Details
 
 </div>
 
+<!-- # ========================================== -->
+<!-- # ASSET STATUS CONTROLS -->
+<!-- # ========================================== -->
+
+<div class="mb-4 d-flex gap-2">
+
+    {% if asset.status not in [
+        "MAINTENANCE",
+        "RETIRED",
+        "LOST"
+    ] %}
+
+        <form
+            method="POST"
+            action="{{ url_for(
+                'mark_it_asset_lost_route',
+                asset_id=asset.asset_id
+            ) }}"
+        >
+
+            <button
+                type="submit"
+                class="btn btn-outline-danger"
+            >
+                Mark Lost
+            </button>
+
+        </form>
+
+
+        <form
+            method="POST"
+            action="{{ url_for(
+                'retire_it_asset_route',
+                asset_id=asset.asset_id
+            ) }}"
+        >
+
+            <button
+                type="submit"
+                class="btn btn-outline-secondary"
+            >
+                Retire Asset
+            </button>
+
+        </form>
+
+    {% endif %}
+
+
+    {% if asset.status in [
+        "RETIRED",
+        "LOST"
+    ] %}
+
+        <form
+            method="POST"
+            action="{{ url_for(
+                'restore_it_asset_route',
+                asset_id=asset.asset_id
+            ) }}"
+        >
+
+            <button
+                type="submit"
+                class="btn btn-outline-success"
+            >
+                Restore Asset
+            </button>
+
+        </form>
+
+    {% endif %}
+
+</div>
+
 
 <!-- # ========================================== -->
 <!-- # ASSET INFORMATION -->

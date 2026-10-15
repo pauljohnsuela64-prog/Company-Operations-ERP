@@ -17,8 +17,13 @@ from it_asset_repository import (
     create_it_asset_maintenance,
     get_active_it_asset_categories,
     get_all_it_assets,
+    get_filtered_it_assets,
     get_it_asset_by_id,
     get_it_asset_maintenance_history,
+    get_it_asset_summary,
+    mark_it_asset_lost,
+    restore_it_asset,
+    retire_it_asset,
     unassign_it_asset,
     update_it_asset,
 )
@@ -5626,14 +5631,118 @@ def export_finance_report():
 def it_assets():
 
     # ======================================================
+    # FILTER INPUT
+    # ======================================================
+
+    search_text = request.args.get(
+        "search",
+        "",
+    ).strip()
+
+    selected_status = request.args.get(
+        "status",
+        "",
+    ).strip().upper()
+
+    selected_category = request.args.get(
+        "category_id",
+        "",
+    ).strip()
+
+    selected_department = request.args.get(
+        "department_id",
+        "",
+    ).strip()
+
+
+    # ======================================================
+    # STATUS VALIDATION
+    # ======================================================
+
+    allowed_statuses = {
+        "AVAILABLE",
+        "ASSIGNED",
+        "MAINTENANCE",
+        "RETIRED",
+        "LOST",
+    }
+
+    if (
+        selected_status
+        and selected_status not in allowed_statuses
+    ):
+        selected_status = ""
+
+
+    # ======================================================
+    # FILTER ID VALIDATION
+    # ======================================================
+
+    try:
+
+        category_id_value = (
+            int(selected_category)
+            if selected_category
+            else None
+        )
+
+        department_id_value = (
+            int(selected_department)
+            if selected_department
+            else None
+        )
+
+    except ValueError:
+
+        category_id_value = None
+        department_id_value = None
+
+        selected_category = ""
+        selected_department = ""
+
+
+    # ======================================================
     # GET ASSETS
     # ======================================================
 
-    asset_list = get_all_it_assets()
+    asset_list = get_filtered_it_assets(
+        search_text=search_text or None,
+        status=selected_status or None,
+        category_id=category_id_value,
+        department_id=department_id_value,
+    )
+
+
+    # ======================================================
+    # SUMMARY
+    # ======================================================
+
+    summary = get_it_asset_summary()
+
+
+    # ======================================================
+    # FILTER OPTIONS
+    # ======================================================
+
+    categories = get_active_it_asset_categories()
+
+    departments = get_active_departments()
+
+
+    # ======================================================
+    # SHOW PAGE
+    # ======================================================
 
     return render_template(
         "it_assets/index.html",
         assets=asset_list,
+        summary=summary,
+        categories=categories,
+        departments=departments,
+        search_text=search_text,
+        selected_status=selected_status,
+        selected_category=selected_category,
+        selected_department=selected_department,
     )
 
 
@@ -6579,6 +6688,128 @@ def complete_it_asset_maintenance_route(
             url_for("it_assets")
         )
 
+
+# ==========================================================
+# IT MANAGEMENT - RETIRE ASSET
+# ==========================================================
+
+@app.route(
+    "/it/assets/<int:asset_id>/retire",
+    methods=["POST"],
+)
+@permission_required("it_assets.view")
+def retire_it_asset_route(asset_id):
+
+    try:
+
+        retire_it_asset(
+            asset_id
+        )
+
+        flash(
+            "IT asset retired successfully.",
+            "success",
+        )
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+    return redirect(
+        url_for(
+            "view_it_asset",
+            asset_id=asset_id,
+        )
+    )
+
+
+# ==========================================================
+# IT MANAGEMENT - MARK AS LOST
+# ==========================================================
+
+@app.route(
+    "/it/assets/<int:asset_id>/lost",
+    methods=["POST"],
+)
+@permission_required("it_assets.view")
+def mark_it_asset_lost_route(asset_id):
+
+    try:
+
+        mark_it_asset_lost(
+            asset_id
+        )
+
+        flash(
+            "IT asset marked as lost.",
+            "success",
+        )
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+    return redirect(
+        url_for(
+            "view_it_asset",
+            asset_id=asset_id,
+        )
+    )
+
+
+# ==========================================================
+# IT MANAGEMENT - RESTORE ASSET
+# ==========================================================
+
+@app.route(
+    "/it/assets/<int:asset_id>/restore",
+    methods=["POST"],
+)
+@permission_required("it_assets.view")
+def restore_it_asset_route(asset_id):
+
+    try:
+
+        restore_it_asset(
+            asset_id
+        )
+
+        flash(
+            "IT asset restored successfully.",
+            "success",
+        )
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+    return redirect(
+        url_for(
+            "view_it_asset",
+            asset_id=asset_id,
+        )
+    )
+
+# ==========================================================
+# IT MANAGEMENT - HELP DESK
+# ==========================================================
+
+@app.route("/it/help-desk")
+@permission_required("it_assets.view")
+def help_desk():
+
+    return render_template(
+        "help_desk/index.html"
+    )
 
 @app.route("/logout")
 @login_required

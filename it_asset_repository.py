@@ -428,8 +428,8 @@ def assign_it_asset(
             "LOST",
         ):
             raise ValueError(
-                "Retired or lost assets cannot be assigned."
-            )
+    "Assets under maintenance, retired, or lost cannot be assigned."
+)
 
         cursor.execute(
             """
@@ -830,6 +830,442 @@ def complete_it_asset_maintenance(
         connection.commit()
 
         return maintenance["asset_id"]
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+# ==========================================================
+# GET IT ASSET SUMMARY
+# ==========================================================
+
+def get_it_asset_summary():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                COUNT(*) AS total_assets,
+
+                COALESCE(
+                    SUM(status = 'AVAILABLE'),
+                    0
+                ) AS available_count,
+
+                COALESCE(
+                    SUM(status = 'ASSIGNED'),
+                    0
+                ) AS assigned_count,
+
+                COALESCE(
+                    SUM(status = 'MAINTENANCE'),
+                    0
+                ) AS maintenance_count,
+
+                COALESCE(
+                    SUM(status = 'RETIRED'),
+                    0
+                ) AS retired_count,
+
+                COALESCE(
+                    SUM(status = 'LOST'),
+                    0
+                ) AS lost_count
+
+            FROM it_assets
+            """
+        )
+
+        return cursor.fetchone()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# GET FILTERED IT ASSETS
+# ==========================================================
+
+def get_filtered_it_assets(
+    search_text=None,
+    status=None,
+    category_id=None,
+    department_id=None,
+):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        query = """
+            SELECT
+                a.asset_id,
+                a.asset_tag,
+                a.asset_name,
+
+                a.category_id,
+                c.category_code,
+                c.category_name,
+
+                a.brand,
+                a.model,
+                a.serial_number,
+
+                a.department_id,
+                d.department_name,
+
+                a.assigned_employee_id,
+
+                CONCAT(
+                    e.first_name,
+                    ' ',
+                    e.last_name
+                ) AS assigned_employee_name,
+
+                a.purchase_date,
+                a.purchase_cost,
+                a.warranty_expiry,
+
+                a.status,
+                a.condition_status,
+                a.notes,
+
+                a.created_at,
+                a.updated_at
+
+            FROM it_assets a
+
+            INNER JOIN it_asset_categories c
+                ON a.category_id = c.category_id
+
+            LEFT JOIN departments d
+                ON a.department_id = d.department_id
+
+            LEFT JOIN employees e
+                ON a.assigned_employee_id = e.employee_id
+
+            WHERE 1 = 1
+        """
+
+        parameters = []
+
+
+        # ==================================================
+        # SEARCH
+        # ==========================================================
+
+        if search_text:
+
+            search_value = f"%{search_text}%"
+
+            query += """
+                AND (
+                    a.asset_tag LIKE %s
+                    OR a.asset_name LIKE %s
+                    OR a.brand LIKE %s
+                    OR a.model LIKE %s
+                    OR a.serial_number LIKE %s
+                    OR d.department_name LIKE %s
+                    OR CONCAT(
+                        e.first_name,
+                        ' ',
+                        e.last_name
+                    ) LIKE %s
+                )
+            """
+
+            parameters.extend(
+                [
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                    search_value,
+                ]
+            )
+
+
+        # ==================================================
+        # STATUS
+        # ==========================================================
+
+        if status:
+
+            query += """
+                AND a.status = %s
+            """
+
+            parameters.append(status)
+
+
+        # ==================================================
+        # CATEGORY
+        # ==========================================================
+
+        if category_id is not None:
+
+            query += """
+                AND a.category_id = %s
+            """
+
+            parameters.append(category_id)
+
+
+        # ==================================================
+        # DEPARTMENT
+        # ==========================================================
+
+        if department_id is not None:
+
+            query += """
+                AND a.department_id = %s
+            """
+
+            parameters.append(department_id)
+
+
+        query += """
+            ORDER BY
+                a.asset_name,
+                a.asset_tag
+        """
+
+        cursor.execute(
+            query,
+            tuple(parameters),
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# MARK IT ASSET AS RETIRED
+# ==========================================================
+
+def retire_it_asset(asset_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        connection.start_transaction()
+
+        cursor.execute(
+            """
+            SELECT
+                asset_id,
+                status,
+                assigned_employee_id
+
+            FROM it_assets
+
+            WHERE asset_id = %s
+
+            FOR UPDATE
+            """,
+            (asset_id,),
+        )
+
+        asset = cursor.fetchone()
+
+        if not asset:
+            raise ValueError(
+                "IT asset was not found."
+            )
+
+        if asset["status"] == "RETIRED":
+            raise ValueError(
+                "This asset is already retired."
+            )
+
+        if asset["status"] == "LOST":
+            raise ValueError(
+                "A lost asset must be recovered before it can be retired."
+            )
+
+        if asset["status"] == "MAINTENANCE":
+            raise ValueError(
+                "Complete the open maintenance record before retiring this asset."
+            )
+
+        if asset["assigned_employee_id"] is not None:
+            raise ValueError(
+                "Unassign the asset before retiring it."
+            )
+
+        cursor.execute(
+            """
+            UPDATE it_assets
+            SET status = 'RETIRED'
+            WHERE asset_id = %s
+            """,
+            (asset_id,),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# MARK IT ASSET AS LOST
+# ==========================================================
+
+def mark_it_asset_lost(asset_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        connection.start_transaction()
+
+        cursor.execute(
+            """
+            SELECT
+                asset_id,
+                status
+
+            FROM it_assets
+
+            WHERE asset_id = %s
+
+            FOR UPDATE
+            """,
+            (asset_id,),
+        )
+
+        asset = cursor.fetchone()
+
+        if not asset:
+            raise ValueError(
+                "IT asset was not found."
+            )
+
+        if asset["status"] == "LOST":
+            raise ValueError(
+                "This asset is already marked as lost."
+            )
+
+        if asset["status"] == "RETIRED":
+            raise ValueError(
+                "A retired asset cannot be marked as lost."
+            )
+
+        if asset["status"] == "MAINTENANCE":
+            raise ValueError(
+                "Complete the open maintenance record before marking this asset as lost."
+            )
+
+        cursor.execute(
+            """
+            UPDATE it_assets
+            SET status = 'LOST'
+            WHERE asset_id = %s
+            """,
+            (asset_id,),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# RESTORE LOST / RETIRED ASSET
+# ==========================================================
+
+def restore_it_asset(asset_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        connection.start_transaction()
+
+        cursor.execute(
+            """
+            SELECT
+                asset_id,
+                status,
+                assigned_employee_id
+
+            FROM it_assets
+
+            WHERE asset_id = %s
+
+            FOR UPDATE
+            """,
+            (asset_id,),
+        )
+
+        asset = cursor.fetchone()
+
+        if not asset:
+            raise ValueError(
+                "IT asset was not found."
+            )
+
+        if asset["status"] not in (
+            "LOST",
+            "RETIRED",
+        ):
+            raise ValueError(
+                "Only lost or retired assets can be restored."
+            )
+
+        restored_status = (
+            "ASSIGNED"
+            if asset["assigned_employee_id"] is not None
+            else "AVAILABLE"
+        )
+
+        cursor.execute(
+            """
+            UPDATE it_assets
+            SET status = %s
+            WHERE asset_id = %s
+            """,
+            (
+                restored_status,
+                asset_id,
+            ),
+        )
+
+        connection.commit()
 
     except Exception:
 
