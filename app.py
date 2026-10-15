@@ -13,6 +13,12 @@ from it_asset_export import (
     generate_it_asset_report_excel,
 )
 
+from help_desk_repository import (
+    create_helpdesk_ticket,
+    get_active_helpdesk_categories,
+    get_all_helpdesk_tickets,
+    get_helpdesk_ticket_by_id,
+)
 
 from it_asset_repository import (
     assign_it_asset,
@@ -6820,17 +6826,7 @@ def restore_it_asset_route(asset_id):
         )
     )
 
-# ==========================================================
-# IT MANAGEMENT - HELP DESK
-# ==========================================================
 
-@app.route("/it/help-desk")
-@permission_required("it_assets.view")
-def help_desk():
-
-    return render_template(
-        "help_desk/index.html"
-    )
 
 # ==========================================================
 # IT MANAGEMENT - ASSET CATEGORIES
@@ -7194,6 +7190,211 @@ def export_it_asset_report():
             "application/vnd.openxmlformats-"
             "officedocument.spreadsheetml.sheet"
         ),
+    )
+
+# ==========================================================
+# IT MANAGEMENT - HELP DESK
+# ==========================================================
+
+@app.route("/it/help-desk")
+@permission_required("it_assets.view")
+def help_desk():
+
+    tickets = get_all_helpdesk_tickets()
+
+    return render_template(
+        "help_desk/index.html",
+        tickets=tickets,
+    )
+
+
+# ==========================================================
+# IT MANAGEMENT - CREATE HELP DESK TICKET
+# ==========================================================
+
+@app.route(
+    "/it/help-desk/add",
+    methods=["GET", "POST"],
+)
+@permission_required("it_assets.view")
+def add_helpdesk_ticket():
+
+    employees = get_all_employees()
+
+    categories = (
+        get_active_helpdesk_categories()
+    )
+
+
+    if request.method == "POST":
+
+        # ==================================================
+        # FORM INPUT
+        # ==========================================================
+
+        employee_id = request.form.get(
+            "employee_id",
+            "",
+        ).strip()
+
+        category_id = request.form.get(
+            "category_id",
+            "",
+        ).strip()
+
+        subject = request.form.get(
+            "subject",
+            "",
+        ).strip()
+
+        description = request.form.get(
+            "description",
+            "",
+        ).strip()
+
+        priority = request.form.get(
+            "priority",
+            "MEDIUM",
+        ).strip().upper()
+
+
+        # ==================================================
+        # REQUIRED FIELDS
+        # ==========================================================
+
+        if (
+            not employee_id
+            or not category_id
+            or not subject
+            or not description
+        ):
+
+            flash(
+                "Employee, category, subject, "
+                "and description are required.",
+                "danger",
+            )
+
+            return render_template(
+                "help_desk/add.html",
+                employees=employees,
+                categories=categories,
+            )
+
+
+        # ==================================================
+        # ID VALIDATION
+        # ==========================================================
+
+        try:
+
+            employee_id_value = int(
+                employee_id
+            )
+
+            category_id_value = int(
+                category_id
+            )
+
+        except ValueError:
+
+            flash(
+                "Invalid employee or category.",
+                "danger",
+            )
+
+            return redirect(
+                url_for("add_helpdesk_ticket")
+            )
+
+
+        # ==================================================
+        # PRIORITY VALIDATION
+        # ==========================================================
+
+        allowed_priorities = {
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "URGENT",
+        }
+
+        if priority not in allowed_priorities:
+
+            flash(
+                "Invalid ticket priority.",
+                "danger",
+            )
+
+            return redirect(
+                url_for("add_helpdesk_ticket")
+            )
+
+
+        # ==================================================
+        # EMPLOYEE VALIDATION
+        # ==========================================================
+
+        employee = get_employee_by_id(
+            employee_id_value
+        )
+
+        if not employee:
+
+            flash(
+                "Employee not found.",
+                "danger",
+            )
+
+            return redirect(
+                url_for("add_helpdesk_ticket")
+            )
+
+
+        # ==================================================
+        # CREATE TICKET
+        # ==========================================================
+
+        ticket_id, ticket_number = (
+            create_helpdesk_ticket(
+                employee_id=employee_id_value,
+                department_id=employee[
+                    "department_id"
+                ],
+                category_id=category_id_value,
+                subject=subject,
+                description=description,
+                priority=priority,
+                created_by=session["user_id"],
+            )
+        )
+
+
+        # ==================================================
+        # SUCCESS
+        # ==========================================================
+
+        flash(
+            (
+                f"Ticket {ticket_number} "
+                "created successfully."
+            ),
+            "success",
+        )
+
+        return redirect(
+            url_for("help_desk")
+        )
+
+
+    # ======================================================
+    # SHOW FORM
+    # ======================================================
+
+    return render_template(
+        "help_desk/add.html",
+        employees=employees,
+        categories=categories,
     )
 
 @app.route("/logout")
