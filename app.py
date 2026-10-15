@@ -14,10 +14,15 @@ from it_asset_export import (
 )
 
 from help_desk_repository import (
+    assign_helpdesk_ticket,
+    close_helpdesk_ticket,
     create_helpdesk_ticket,
     get_active_helpdesk_categories,
     get_all_helpdesk_tickets,
+    get_helpdesk_assignable_users,
     get_helpdesk_ticket_by_id,
+    resolve_helpdesk_ticket,
+    start_helpdesk_ticket,
 )
 
 from it_asset_repository import (
@@ -7395,6 +7400,278 @@ def add_helpdesk_ticket():
         "help_desk/add.html",
         employees=employees,
         categories=categories,
+    )
+
+# ==========================================================
+# IT MANAGEMENT - VIEW HELP DESK TICKET
+# ==========================================================
+
+@app.route(
+    "/it/help-desk/<int:ticket_id>"
+)
+@permission_required("it_assets.view")
+def view_helpdesk_ticket(ticket_id):
+
+    ticket = get_helpdesk_ticket_by_id(
+        ticket_id
+    )
+
+    if not ticket:
+
+        flash(
+            "Help desk ticket not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("help_desk")
+        )
+
+    technicians = (
+        get_helpdesk_assignable_users()
+    )
+
+    return render_template(
+        "help_desk/view.html",
+        ticket=ticket,
+        technicians=technicians,
+    )
+
+# ==========================================================
+# IT MANAGEMENT - ASSIGN TICKET
+# ==========================================================
+
+@app.route(
+    "/it/help-desk/<int:ticket_id>/assign",
+    methods=["POST"],
+)
+@permission_required("it_assets.view")
+def assign_helpdesk_ticket_route(ticket_id):
+
+    assigned_to = request.form.get(
+        "assigned_to",
+        "",
+    ).strip()
+
+    if not assigned_to:
+
+        flash(
+            "Select a technician.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_helpdesk_ticket",
+                ticket_id=ticket_id,
+            )
+        )
+
+    try:
+
+        assigned_to_value = int(
+            assigned_to
+        )
+
+    except ValueError:
+
+        flash(
+            "Invalid technician.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_helpdesk_ticket",
+                ticket_id=ticket_id,
+            )
+        )
+
+
+    # ======================================================
+    # VERIFY TECHNICIAN
+    # ======================================================
+
+    technicians = (
+        get_helpdesk_assignable_users()
+    )
+
+    valid_user_ids = {
+        technician["user_id"]
+        for technician in technicians
+    }
+
+    if assigned_to_value not in valid_user_ids:
+
+        flash(
+            "Selected technician is invalid.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_helpdesk_ticket",
+                ticket_id=ticket_id,
+            )
+        )
+
+
+    # ======================================================
+    # ASSIGN
+    # ======================================================
+
+    try:
+
+        assign_helpdesk_ticket(
+            ticket_id,
+            assigned_to_value,
+        )
+
+        flash(
+            "Technician assigned successfully.",
+            "success",
+        )
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+    return redirect(
+        url_for(
+            "view_helpdesk_ticket",
+            ticket_id=ticket_id,
+        )
+    )
+
+# ==========================================================
+# IT MANAGEMENT - START TICKET
+# ==========================================================
+
+@app.route(
+    "/it/help-desk/<int:ticket_id>/start",
+    methods=["POST"],
+)
+@permission_required("it_assets.view")
+def start_helpdesk_ticket_route(ticket_id):
+
+    try:
+
+        start_helpdesk_ticket(
+            ticket_id
+        )
+
+        flash(
+            "Ticket is now in progress.",
+            "success",
+        )
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+    return redirect(
+        url_for(
+            "view_helpdesk_ticket",
+            ticket_id=ticket_id,
+        )
+    )
+
+# ==========================================================
+# IT MANAGEMENT - RESOLVE TICKET
+# ==========================================================
+
+@app.route(
+    "/it/help-desk/<int:ticket_id>/resolve",
+    methods=["POST"],
+)
+@permission_required("it_assets.view")
+def resolve_helpdesk_ticket_route(ticket_id):
+
+    resolution = request.form.get(
+        "resolution",
+        "",
+    ).strip()
+
+    if not resolution:
+
+        flash(
+            "Resolution details are required.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_helpdesk_ticket",
+                ticket_id=ticket_id,
+            )
+        )
+
+    try:
+
+        resolve_helpdesk_ticket(
+            ticket_id,
+            resolution,
+        )
+
+        flash(
+            "Ticket resolved successfully.",
+            "success",
+        )
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+    return redirect(
+        url_for(
+            "view_helpdesk_ticket",
+            ticket_id=ticket_id,
+        )
+    )
+
+# ==========================================================
+# IT MANAGEMENT - CLOSE TICKET
+# ==========================================================
+
+@app.route(
+    "/it/help-desk/<int:ticket_id>/close",
+    methods=["POST"],
+)
+@permission_required("it_assets.view")
+def close_helpdesk_ticket_route(ticket_id):
+
+    try:
+
+        close_helpdesk_ticket(
+            ticket_id
+        )
+
+        flash(
+            "Ticket closed successfully.",
+            "success",
+        )
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+    return redirect(
+        url_for(
+            "view_helpdesk_ticket",
+            ticket_id=ticket_id,
+        )
     )
 
 @app.route("/logout")

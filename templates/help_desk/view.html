@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+
+{% block title %}
+Help Desk Ticket
+{% endblock %}
+
+
+{% block content %}
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            {{ ticket.ticket_number }}
+        </h2>
+
+        <p class="text-muted mb-0">
+            {{ ticket.subject }}
+        </p>
+
+    </div>
+
+    <a
+        href="{{ url_for('help_desk') }}"
+        class="btn btn-outline-secondary"
+    >
+        Back
+    </a>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # STATUS -->
+<!-- # ========================================== -->
+
+<div class="mb-4">
+
+    {% if ticket.status == "OPEN" %}
+
+        <span class="badge bg-primary">
+            Open
+        </span>
+
+    {% elif ticket.status == "IN_PROGRESS" %}
+
+        <span class="badge bg-warning text-dark">
+            In Progress
+        </span>
+
+    {% elif ticket.status == "RESOLVED" %}
+
+        <span class="badge bg-success">
+            Resolved
+        </span>
+
+    {% elif ticket.status == "CLOSED" %}
+
+        <span class="badge bg-secondary">
+            Closed
+        </span>
+
+    {% else %}
+
+        <span class="badge bg-danger">
+            Cancelled
+        </span>
+
+    {% endif %}
+
+
+    {% if ticket.priority == "URGENT" %}
+
+        <span class="badge bg-danger ms-2">
+            Urgent
+        </span>
+
+    {% elif ticket.priority == "HIGH" %}
+
+        <span class="badge bg-warning text-dark ms-2">
+            High Priority
+        </span>
+
+    {% elif ticket.priority == "MEDIUM" %}
+
+        <span class="badge bg-primary ms-2">
+            Medium Priority
+        </span>
+
+    {% else %}
+
+        <span class="badge bg-secondary ms-2">
+            Low Priority
+        </span>
+
+    {% endif %}
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # TICKET INFORMATION -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Ticket Information
+        </h5>
+
+        <div class="row g-3">
+
+            <div class="col-md-4">
+
+                <strong>
+                    Employee
+                </strong>
+
+                <div class="text-muted">
+                    {{ ticket.employee_name }}
+                </div>
+
+                <div class="small text-muted">
+                    {{ ticket.employee_number }}
+                </div>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <strong>
+                    Department
+                </strong>
+
+                <div class="text-muted">
+                    {{ ticket.department_name or "-" }}
+                </div>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <strong>
+                    Category
+                </strong>
+
+                <div class="text-muted">
+                    {{ ticket.category_name }}
+                </div>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <strong>
+                    Technician
+                </strong>
+
+                <div class="text-muted">
+                    {{ ticket.assigned_to_username or "Unassigned" }}
+                </div>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <strong>
+                    Created By
+                </strong>
+
+                <div class="text-muted">
+                    {{ ticket.created_by_username }}
+                </div>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <strong>
+                    Created
+                </strong>
+
+                <div class="text-muted">
+                    {{ ticket.created_at }}
+                </div>
+
+            </div>
+
+
+            <div class="col-12">
+
+                <strong>
+                    Description
+                </strong>
+
+                <div class="text-muted mt-1">
+                    {{ ticket.description }}
+                </div>
+
+            </div>
+
+
+            {% if ticket.resolution %}
+
+                <div class="col-12">
+
+                    <strong>
+                        Resolution
+                    </strong>
+
+                    <div class="text-muted mt-1">
+                        {{ ticket.resolution }}
+                    </div>
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # TECHNICIAN ASSIGNMENT -->
+<!-- # ========================================== -->
+
+{% if ticket.status in ["OPEN", "IN_PROGRESS"] %}
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Technician Assignment
+        </h5>
+
+        <form
+            method="POST"
+            action="{{ url_for(
+                'assign_helpdesk_ticket_route',
+                ticket_id=ticket.ticket_id
+            ) }}"
+        >
+
+            <div class="row g-3 align-items-end">
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Technician
+                    </label>
+
+                    <select
+                        name="assigned_to"
+                        class="form-select"
+                        required
+                    >
+
+                        <option value="">
+                            Select Technician
+                        </option>
+
+                        {% for technician in technicians %}
+
+                            <option
+                                value="{{ technician.user_id }}"
+                                {% if
+                                    technician.user_id
+                                    == ticket.assigned_to
+                                %}
+                                    selected
+                                {% endif %}
+                            >
+
+                                {{ technician.username }}
+                                -
+                                {{ technician.role_name }}
+
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <div class="col-md-3">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        Assign Technician
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+
+<!-- # ========================================== -->
+<!-- # WORKFLOW -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Ticket Workflow
+        </h5>
+
+
+        <!-- # OPEN -->
+
+        {% if ticket.status == "OPEN" %}
+
+            {% if ticket.assigned_to %}
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'start_helpdesk_ticket_route',
+                        ticket_id=ticket.ticket_id
+                    ) }}"
+                >
+
+                    <button
+                        type="submit"
+                        class="btn btn-warning"
+                    >
+                        Start Work
+                    </button>
+
+                </form>
+
+            {% else %}
+
+                <div class="alert alert-info mb-0">
+
+                    Assign a technician before starting work.
+
+                </div>
+
+            {% endif %}
+
+
+        <!-- # IN PROGRESS -->
+
+        {% elif ticket.status == "IN_PROGRESS" %}
+
+            <form
+                method="POST"
+                action="{{ url_for(
+                    'resolve_helpdesk_ticket_route',
+                    ticket_id=ticket.ticket_id
+                ) }}"
+            >
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Resolution
+                    </label>
+
+                    <textarea
+                        name="resolution"
+                        class="form-control"
+                        rows="4"
+                        placeholder="Describe how the issue was resolved..."
+                        required
+                    ></textarea>
+
+                </div>
+
+                <button
+                    type="submit"
+                    class="btn btn-success"
+                >
+                    Resolve Ticket
+                </button>
+
+            </form>
+
+
+        <!-- # RESOLVED -->
+
+        {% elif ticket.status == "RESOLVED" %}
+
+            <div class="alert alert-success">
+
+                This issue has been resolved.
+
+                {% if ticket.resolved_at %}
+
+                    <div class="small mt-1">
+                        Resolved:
+                        {{ ticket.resolved_at }}
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+            <form
+                method="POST"
+                action="{{ url_for(
+                    'close_helpdesk_ticket_route',
+                    ticket_id=ticket.ticket_id
+                ) }}"
+            >
+
+                <button
+                    type="submit"
+                    class="btn btn-secondary"
+                >
+                    Close Ticket
+                </button>
+
+            </form>
+
+
+        <!-- # CLOSED -->
+
+        {% elif ticket.status == "CLOSED" %}
+
+            <div class="alert alert-secondary mb-0">
+
+                Ticket closed.
+
+                {% if ticket.closed_at %}
+
+                    <div class="small mt-1">
+                        Closed:
+                        {{ ticket.closed_at }}
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}

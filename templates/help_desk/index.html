@@ -32,6 +32,8 @@ IT Help Desk
         Create Ticket
     </a>
 
+    
+
 </div>
 
 
@@ -58,6 +60,7 @@ IT Help Desk
                         <th>Priority</th>
                         <th>Status</th>
                         <th>Created</th>
+                        <th>Action</th>
                     </tr>
 
                 </thead>
@@ -190,6 +193,20 @@ IT Help Desk
 
                             <td>
                                 {{ ticket.created_at }}
+                            </td>
+
+                            <td>
+
+                                <a
+                                    href="{{ url_for(
+                                    'view_helpdesk_ticket',
+                                    ticket_id=ticket.ticket_id
+                                    ) }}"
+                                    class="btn btn-sm btn-outline-secondary"
+                                    >
+                                View
+                                </a>
+
                             </td>
 
                         </tr>

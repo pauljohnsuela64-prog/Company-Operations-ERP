@@ -306,3 +306,358 @@ def create_helpdesk_ticket(
 
         cursor.close()
         connection.close()
+
+# ==========================================================
+# GET HELP DESK ASSIGNABLE USERS
+# ==========================================================
+
+def get_helpdesk_assignable_users():
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                u.user_id,
+                u.username,
+                r.role_name
+
+            FROM users u
+
+            INNER JOIN roles r
+                ON u.role_id = r.role_id
+
+            WHERE
+                u.is_active = TRUE
+                AND r.role_name IN (
+                    'Super Admin',
+                    'IT Manager'
+                )
+
+            ORDER BY
+                r.role_name,
+                u.username
+            """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# ASSIGN HELP DESK TICKET
+# ==========================================================
+
+def assign_helpdesk_ticket(
+    ticket_id,
+    assigned_to,
+):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        connection.start_transaction()
+
+        # ==================================================
+        # LOCK TICKET
+        # ==========================================================
+
+        cursor.execute(
+            """
+            SELECT
+                ticket_id,
+                status
+
+            FROM helpdesk_tickets
+
+            WHERE ticket_id = %s
+
+            FOR UPDATE
+            """,
+            (ticket_id,),
+        )
+
+        ticket = cursor.fetchone()
+
+        if not ticket:
+
+            raise ValueError(
+                "Help desk ticket was not found."
+            )
+
+        if ticket["status"] in (
+            "RESOLVED",
+            "CLOSED",
+            "CANCELLED",
+        ):
+
+            raise ValueError(
+                "Resolved, closed, or cancelled tickets "
+                "cannot be assigned."
+            )
+
+
+        # ==================================================
+        # UPDATE ASSIGNMENT
+        # ==========================================================
+
+        cursor.execute(
+            """
+            UPDATE helpdesk_tickets
+
+            SET assigned_to = %s
+
+            WHERE ticket_id = %s
+            """,
+            (
+                assigned_to,
+                ticket_id,
+            ),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# START HELP DESK TICKET
+# ==========================================================
+
+def start_helpdesk_ticket(ticket_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        connection.start_transaction()
+
+        cursor.execute(
+            """
+            SELECT
+                ticket_id,
+                status,
+                assigned_to
+
+            FROM helpdesk_tickets
+
+            WHERE ticket_id = %s
+
+            FOR UPDATE
+            """,
+            (ticket_id,),
+        )
+
+        ticket = cursor.fetchone()
+
+        if not ticket:
+
+            raise ValueError(
+                "Help desk ticket was not found."
+            )
+
+        if ticket["status"] != "OPEN":
+
+            raise ValueError(
+                "Only open tickets can be started."
+            )
+
+        if ticket["assigned_to"] is None:
+
+            raise ValueError(
+                "Assign a technician before starting work."
+            )
+
+
+        # ==================================================
+        # OPEN -> IN PROGRESS
+        # ==========================================================
+
+        cursor.execute(
+            """
+            UPDATE helpdesk_tickets
+
+            SET status = 'IN_PROGRESS'
+
+            WHERE ticket_id = %s
+            """,
+            (ticket_id,),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# RESOLVE HELP DESK TICKET
+# ==========================================================
+
+def resolve_helpdesk_ticket(
+    ticket_id,
+    resolution,
+):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        connection.start_transaction()
+
+        cursor.execute(
+            """
+            SELECT
+                ticket_id,
+                status
+
+            FROM helpdesk_tickets
+
+            WHERE ticket_id = %s
+
+            FOR UPDATE
+            """,
+            (ticket_id,),
+        )
+
+        ticket = cursor.fetchone()
+
+        if not ticket:
+
+            raise ValueError(
+                "Help desk ticket was not found."
+            )
+
+        if ticket["status"] != "IN_PROGRESS":
+
+            raise ValueError(
+                "Only tickets in progress can be resolved."
+            )
+
+
+        # ==================================================
+        # IN PROGRESS -> RESOLVED
+        # ==========================================================
+
+        cursor.execute(
+            """
+            UPDATE helpdesk_tickets
+
+            SET
+                status = 'RESOLVED',
+                resolution = %s,
+                resolved_at = CURRENT_TIMESTAMP
+
+            WHERE ticket_id = %s
+            """,
+            (
+                resolution,
+                ticket_id,
+            ),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# CLOSE HELP DESK TICKET
+# ==========================================================
+
+def close_helpdesk_ticket(ticket_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        connection.start_transaction()
+
+        cursor.execute(
+            """
+            SELECT
+                ticket_id,
+                status
+
+            FROM helpdesk_tickets
+
+            WHERE ticket_id = %s
+
+            FOR UPDATE
+            """,
+            (ticket_id,),
+        )
+
+        ticket = cursor.fetchone()
+
+        if not ticket:
+
+            raise ValueError(
+                "Help desk ticket was not found."
+            )
+
+        if ticket["status"] != "RESOLVED":
+
+            raise ValueError(
+                "Only resolved tickets can be closed."
+            )
+
+
+        # ==================================================
+        # RESOLVED -> CLOSED
+        # ==========================================================
+
+        cursor.execute(
+            """
+            UPDATE helpdesk_tickets
+
+            SET
+                status = 'CLOSED',
+                closed_at = CURRENT_TIMESTAMP
+
+            WHERE ticket_id = %s
+            """,
+            (ticket_id,),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
