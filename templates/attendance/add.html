@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}
+Add Attendance
+{% endblock %}
+
+
+{% block content %}
+
+<div class="mb-4">
+
+    <h2 class="mb-1">
+        Add Attendance
+    </h2>
+
+    <p class="text-muted mb-0">
+        Record employee attendance for a specific date.
+    </p>
+
+</div>
+
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <form method="POST">
+
+
+            <!-- # EMPLOYEE -->
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Employee
+                </label>
+
+                <select
+                    name="employee_id"
+                    class="form-select"
+                    required
+                >
+
+                    <option value="">
+                        Select Employee
+                    </option>
+
+                    {% for employee in employees %}
+
+                        <option
+                            value="{{ employee.employee_id }}"
+                        >
+                            {{ employee.employee_number }}
+                            -
+                            {{ employee.first_name }}
+                            {{ employee.last_name }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <!-- # DATE -->
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Attendance Date
+                </label>
+
+                <input
+                    type="date"
+                    name="attendance_date"
+                    class="form-control"
+                    value="{{ today }}"
+                    required
+                >
+
+            </div>
+
+
+            <div class="row">
+
+
+                <!-- # TIME IN -->
+
+                <div class="col-md-6 mb-3">
+
+                    <label class="form-label">
+                        Time In
+                    </label>
+
+                    <input
+                        type="time"
+                        name="time_in"
+                        class="form-control"
+                    >
+
+                </div>
+
+
+                <!-- # TIME OUT -->
+
+                <div class="col-md-6 mb-3">
+
+                    <label class="form-label">
+                        Time Out
+                    </label>
+
+                    <input
+                        type="time"
+                        name="time_out"
+                        class="form-control"
+                    >
+
+                </div>
+
+            </div>
+
+
+            <!-- # STATUS -->
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Status
+                </label>
+
+                <select
+                    name="status"
+                    class="form-select"
+                    required
+                >
+
+                    <option value="PRESENT">
+                        Present
+                    </option>
+
+                    <option value="LATE">
+                        Late
+                    </option>
+
+                    <option value="ABSENT">
+                        Absent
+                    </option>
+
+                    <option value="ON_LEAVE">
+                        On Leave
+                    </option>
+
+                    <option value="HALF_DAY">
+                        Half Day
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- # NOTES -->
+
+            <div class="mb-4">
+
+                <label class="form-label">
+                    Notes
+                </label>
+
+                <textarea
+                    name="notes"
+                    class="form-control"
+                    maxlength="255"
+                    rows="3"
+                ></textarea>
+
+            </div>
+
+
+            <!-- # BUTTONS -->
+
+            <div class="d-flex gap-2">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Save Attendance
+                </button>
+
+
+                <a
+                    href="{{ url_for('attendance') }}"
+                    class="btn btn-outline-secondary"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

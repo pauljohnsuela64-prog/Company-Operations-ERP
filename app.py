@@ -1,11 +1,23 @@
 import os
 from functools import wraps
 
+from datetime import (
+    date,
+    datetime,
+)
+
 from dotenv import load_dotenv
-from datetime import date
 from dashboard_repository import get_dashboard_summary
 
 from decimal import Decimal, InvalidOperation
+
+
+from attendance_repository import (
+    create_attendance_record,
+    get_all_attendance_records,
+    get_attendance_record_by_id,
+    update_attendance_record,
+)
 
 
 from werkzeug.security import (
@@ -7069,6 +7081,8 @@ def edit_it_asset_category(category_id):
     )
 
 
+
+
 # ==========================================================
 # IT MANAGEMENT - CATEGORY STATUS
 # ==========================================================
@@ -7631,6 +7645,8 @@ def add_helpdesk_ticket():
         employees=employees,
         categories=categories,
     )
+
+
 
 # ==========================================================
 # IT MANAGEMENT - VIEW HELP DESK TICKET
@@ -8217,12 +8233,628 @@ def add_admin_user():
         return redirect(
             url_for("admin_users")
         )
-
+    
 
     return render_template(
         "admin/users/add.html",
         roles=roles,
         employees=employees,
+    )
+
+    # ==========================================================
+# ATTENDANCE MANAGEMENT
+# ==========================================================
+
+@app.route("/attendance")
+@permission_required("attendance.view")
+def attendance():
+
+    attendance_records = (
+        get_all_attendance_records()
+    )
+
+    return render_template(
+        "attendance/index.html",
+        attendance_records=attendance_records,
+    )
+
+
+# ==========================================================
+# ATTENDANCE - ADD RECORD
+# ==========================================================
+
+@app.route(
+    "/attendance/add",
+    methods=["GET", "POST"],
+)
+@permission_required("attendance.manage")
+def add_attendance():
+
+    employees = get_all_employees()
+
+    allowed_statuses = {
+        "PRESENT",
+        "LATE",
+        "ABSENT",
+        "ON_LEAVE",
+        "HALF_DAY",
+    }
+
+
+    if request.method == "POST":
+
+        # ==================================================
+        # FORM INPUT
+        # ==========================================================
+
+        employee_id = request.form.get(
+            "employee_id",
+            "",
+        ).strip()
+
+        attendance_date = request.form.get(
+            "attendance_date",
+            "",
+        ).strip()
+
+        time_in = request.form.get(
+            "time_in",
+            "",
+        ).strip()
+
+        time_out = request.form.get(
+            "time_out",
+            "",
+        ).strip()
+
+        status = request.form.get(
+            "status",
+            "",
+        ).strip().upper()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+
+        # ==================================================
+        # REQUIRED FIELDS
+        # ==========================================================
+
+        if (
+            not employee_id
+            or not attendance_date
+            or not status
+        ):
+
+            flash(
+                (
+                    "Employee, attendance date, "
+                    "and status are required."
+                ),
+                "danger",
+            )
+
+            return render_template(
+                "attendance/add.html",
+                employees=employees,
+                today=date.today().isoformat(),
+                allowed_statuses=allowed_statuses,
+            )
+
+
+        # ==================================================
+        # EMPLOYEE VALIDATION
+        # ==========================================================
+
+        try:
+
+            employee_id_value = int(
+                employee_id
+            )
+
+        except ValueError:
+
+            flash(
+                "Invalid employee.",
+                "danger",
+            )
+
+            return redirect(
+                url_for("add_attendance")
+            )
+
+
+        employee = get_employee_by_id(
+            employee_id_value
+        )
+
+        if not employee:
+
+            flash(
+                "Employee not found.",
+                "danger",
+            )
+
+            return redirect(
+                url_for("add_attendance")
+            )
+
+
+        # ==================================================
+        # DATE VALIDATION
+        # ==========================================================
+
+        try:
+
+            attendance_date_value = (
+                date.fromisoformat(
+                    attendance_date
+                )
+            )
+
+        except ValueError:
+
+            flash(
+                "Invalid attendance date.",
+                "danger",
+            )
+
+            return redirect(
+                url_for("add_attendance")
+            )
+
+
+        # ==================================================
+        # STATUS VALIDATION
+        # ==========================================================
+
+        if status not in allowed_statuses:
+
+            flash(
+                "Invalid attendance status.",
+                "danger",
+            )
+
+            return redirect(
+                url_for("add_attendance")
+            )
+
+
+        # ==================================================
+        # TIME VALIDATION
+        # ==========================================================
+
+        time_in_value = None
+
+        if time_in:
+
+            try:
+
+                time_in_value = (
+                    datetime.strptime(
+                        time_in,
+                        "%H:%M",
+                    ).time()
+                )
+
+            except ValueError:
+
+                flash(
+                    "Invalid Time In.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for("add_attendance")
+                )
+
+
+        time_out_value = None
+
+        if time_out:
+
+            try:
+
+                time_out_value = (
+                    datetime.strptime(
+                        time_out,
+                        "%H:%M",
+                    ).time()
+                )
+
+            except ValueError:
+
+                flash(
+                    "Invalid Time Out.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for("add_attendance")
+                )
+
+
+        # ==================================================
+        # NOTES VALIDATION
+        # ==========================================================
+
+        if len(notes) > 255:
+
+            flash(
+                "Notes must not exceed 255 characters.",
+                "danger",
+            )
+
+            return redirect(
+                url_for("add_attendance")
+            )
+
+
+        # ==================================================
+        # CREATE ATTENDANCE RECORD
+        # ==========================================================
+
+        try:
+
+            create_attendance_record(
+                employee_id=employee_id_value,
+                attendance_date=attendance_date_value,
+                time_in=time_in_value,
+                time_out=time_out_value,
+                status=status,
+                notes=notes or None,
+                created_by=session["user_id"],
+            )
+
+        except Exception as error:
+
+            if getattr(
+                error,
+                "errno",
+                None,
+            ) == 1062:
+
+                flash(
+                    (
+                        "This employee already has "
+                        "an attendance record for that date."
+                    ),
+                    "danger",
+                )
+
+                return redirect(
+                    url_for("add_attendance")
+                )
+
+            raise
+
+
+        flash(
+            "Attendance record created successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for("attendance")
+        )
+
+
+    return render_template(
+        "attendance/add.html",
+        employees=employees,
+        today=date.today().isoformat(),
+        allowed_statuses=allowed_statuses,
+    )
+
+
+# ==========================================================
+# ATTENDANCE - EDIT RECORD
+# ==========================================================
+
+@app.route(
+    "/attendance/<int:attendance_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required("attendance.manage")
+def edit_attendance(attendance_id):
+
+    attendance_record = (
+        get_attendance_record_by_id(
+            attendance_id
+        )
+    )
+
+    if not attendance_record:
+
+        flash(
+            "Attendance record not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("attendance")
+        )
+
+
+    employees = get_all_employees()
+
+    allowed_statuses = {
+        "PRESENT",
+        "LATE",
+        "ABSENT",
+        "ON_LEAVE",
+        "HALF_DAY",
+    }
+
+
+    if request.method == "POST":
+
+        employee_id = request.form.get(
+            "employee_id",
+            "",
+        ).strip()
+
+        attendance_date = request.form.get(
+            "attendance_date",
+            "",
+        ).strip()
+
+        time_in = request.form.get(
+            "time_in",
+            "",
+        ).strip()
+
+        time_out = request.form.get(
+            "time_out",
+            "",
+        ).strip()
+
+        status = request.form.get(
+            "status",
+            "",
+        ).strip().upper()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+
+        # ==================================================
+        # REQUIRED FIELDS
+        # ==========================================================
+
+        if (
+            not employee_id
+            or not attendance_date
+            or not status
+        ):
+
+            flash(
+                (
+                    "Employee, attendance date, "
+                    "and status are required."
+                ),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_attendance",
+                    attendance_id=attendance_id,
+                )
+            )
+
+
+        try:
+
+            employee_id_value = int(
+                employee_id
+            )
+
+        except ValueError:
+
+            flash(
+                "Invalid employee.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_attendance",
+                    attendance_id=attendance_id,
+                )
+            )
+
+
+        employee = get_employee_by_id(
+            employee_id_value
+        )
+
+        if not employee:
+
+            flash(
+                "Employee not found.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_attendance",
+                    attendance_id=attendance_id,
+                )
+            )
+
+
+        try:
+
+            attendance_date_value = (
+                date.fromisoformat(
+                    attendance_date
+                )
+            )
+
+        except ValueError:
+
+            flash(
+                "Invalid attendance date.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_attendance",
+                    attendance_id=attendance_id,
+                )
+            )
+
+
+        if status not in allowed_statuses:
+
+            flash(
+                "Invalid attendance status.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_attendance",
+                    attendance_id=attendance_id,
+                )
+            )
+
+
+        time_in_value = None
+
+        if time_in:
+
+            try:
+
+                time_in_value = (
+                    datetime.strptime(
+                        time_in,
+                        "%H:%M",
+                    ).time()
+                )
+
+            except ValueError:
+
+                flash(
+                    "Invalid Time In.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_attendance",
+                        attendance_id=attendance_id,
+                    )
+                )
+
+
+        time_out_value = None
+
+        if time_out:
+
+            try:
+
+                time_out_value = (
+                    datetime.strptime(
+                        time_out,
+                        "%H:%M",
+                    ).time()
+                )
+
+            except ValueError:
+
+                flash(
+                    "Invalid Time Out.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_attendance",
+                        attendance_id=attendance_id,
+                    )
+                )
+
+
+        if len(notes) > 255:
+
+            flash(
+                "Notes must not exceed 255 characters.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_attendance",
+                    attendance_id=attendance_id,
+                )
+            )
+
+
+        # ==================================================
+        # DATABASE UPDATE
+        # ==========================================================
+
+        try:
+
+            update_attendance_record(
+                attendance_id=attendance_id,
+                employee_id=employee_id_value,
+                attendance_date=attendance_date_value,
+                time_in=time_in_value,
+                time_out=time_out_value,
+                status=status,
+                notes=notes or None,
+                updated_by=session["user_id"],
+            )
+
+        except Exception as error:
+
+            if getattr(
+                error,
+                "errno",
+                None,
+            ) == 1062:
+
+                flash(
+                    (
+                        "This employee already has "
+                        "an attendance record for that date."
+                    ),
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_attendance",
+                        attendance_id=attendance_id,
+                    )
+                )
+
+            raise
+
+
+        flash(
+            "Attendance record updated successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for("attendance")
+        )
+
+
+    return render_template(
+        "attendance/edit.html",
+        attendance_record=attendance_record,
+        employees=employees,
+        allowed_statuses=allowed_statuses,
     )
 
 

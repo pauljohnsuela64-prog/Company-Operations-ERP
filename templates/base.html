@@ -205,6 +205,14 @@
                 </a>
                 {% endif %}
 
+                {% if has_permission("attendance.view") %}
+
+                <a href="{{ url_for('attendance') }}" class="sidebar-link">
+                    Attendance
+                </a>
+
+                {% endif %}
+
                 {% endif %}
 
             </nav>
