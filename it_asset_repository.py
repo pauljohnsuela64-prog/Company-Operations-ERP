@@ -1463,3 +1463,176 @@ def get_it_asset_assignment_history(
 
         cursor.close()
         connection.close()
+
+# ==========================================================
+# GET IT ASSET CATEGORY BY ID
+# ==========================================================
+
+def get_it_asset_category_by_id(category_id):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT
+                category_id,
+                category_code,
+                category_name,
+                description,
+                is_active,
+                created_at,
+                updated_at
+
+            FROM it_asset_categories
+
+            WHERE category_id = %s
+
+            LIMIT 1
+            """,
+            (category_id,),
+        )
+
+        return cursor.fetchone()
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# CREATE IT ASSET CATEGORY
+# ==========================================================
+
+def create_it_asset_category(
+    category_code,
+    category_name,
+    description,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        cursor.execute(
+            """
+            INSERT INTO it_asset_categories (
+                category_code,
+                category_name,
+                description
+            )
+            VALUES (
+                %s,
+                %s,
+                %s
+            )
+            """,
+            (
+                category_code,
+                category_name,
+                description,
+            ),
+        )
+
+        connection.commit()
+
+        return cursor.lastrowid
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# UPDATE IT ASSET CATEGORY
+# ==========================================================
+
+def update_it_asset_category(
+    category_id,
+    category_code,
+    category_name,
+    description,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        cursor.execute(
+            """
+            UPDATE it_asset_categories
+
+            SET
+                category_code = %s,
+                category_name = %s,
+                description = %s
+
+            WHERE category_id = %s
+            """,
+            (
+                category_code,
+                category_name,
+                description,
+                category_id,
+            ),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# CHANGE IT ASSET CATEGORY STATUS
+# ==========================================================
+
+def set_it_asset_category_active_status(
+    category_id,
+    is_active,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+
+        cursor.execute(
+            """
+            UPDATE it_asset_categories
+
+            SET is_active = %s
+
+            WHERE category_id = %s
+            """,
+            (
+                is_active,
+                category_id,
+            ),
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()

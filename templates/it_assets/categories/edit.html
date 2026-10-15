@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}
+Edit Asset Category
+{% endblock %}
+
+
+{% block content %}
+
+<h2 class="mb-4">
+    Edit IT Asset Category
+</h2>
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <form method="POST">
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Category Code
+                    </label>
+
+                    <input
+                        type="text"
+                        name="category_code"
+                        class="form-control"
+                        value="{{ category.category_code }}"
+                        maxlength="30"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="col-md-8">
+
+                    <label class="form-label">
+                        Category Name
+                    </label>
+
+                    <input
+                        type="text"
+                        name="category_name"
+                        class="form-control"
+                        value="{{ category.category_name }}"
+                        maxlength="100"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="col-12">
+
+                    <label class="form-label">
+                        Description
+                    </label>
+
+                    <textarea
+                        name="description"
+                        class="form-control"
+                        rows="3"
+                        maxlength="255"
+                    >{{ category.description or "" }}</textarea>
+
+                </div>
+
+            </div>
+
+
+            <div class="mt-4">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Save Changes
+                </button>
+
+                <a
+                    href="{{ url_for('it_asset_categories') }}"
+                    class="btn btn-outline-secondary ms-2"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

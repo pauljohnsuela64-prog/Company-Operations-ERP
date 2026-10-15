@@ -14,19 +14,24 @@ from it_asset_repository import (
     assign_it_asset,
     complete_it_asset_maintenance,
     create_it_asset,
+    create_it_asset_category,
     create_it_asset_maintenance,
     get_active_it_asset_categories,
+    get_all_it_asset_categories,
     get_all_it_assets,
     get_filtered_it_assets,
+    get_it_asset_assignment_history,
     get_it_asset_by_id,
+    get_it_asset_category_by_id,
     get_it_asset_maintenance_history,
     get_it_asset_summary,
     mark_it_asset_lost,
     restore_it_asset,
     retire_it_asset,
+    set_it_asset_category_active_status,
     unassign_it_asset,
     update_it_asset,
-    get_it_asset_assignment_history,
+    update_it_asset_category,
 )
 
 from budget_repository import (
@@ -6821,6 +6826,262 @@ def help_desk():
         "help_desk/index.html"
     )
 
+# ==========================================================
+# IT MANAGEMENT - ASSET CATEGORIES
+# ==========================================================
+
+@app.route("/it/assets/categories")
+@permission_required("it_assets.view")
+def it_asset_categories():
+
+    categories = get_all_it_asset_categories()
+
+    return render_template(
+        "it_assets/categories/index.html",
+        categories=categories,
+    )
+
+
+# ==========================================================
+# IT MANAGEMENT - ADD ASSET CATEGORY
+# ==========================================================
+
+@app.route(
+    "/it/assets/categories/add",
+    methods=["GET", "POST"],
+)
+@permission_required("it_assets.view")
+def add_it_asset_category():
+
+    if request.method == "POST":
+
+        category_code = request.form.get(
+            "category_code",
+            "",
+        ).strip().upper()
+
+        category_name = request.form.get(
+            "category_name",
+            "",
+        ).strip()
+
+        description = request.form.get(
+            "description",
+            "",
+        ).strip()
+
+
+        # ==================================================
+        # VALIDATION
+        # ==========================================================
+
+        if not category_code or not category_name:
+
+            flash(
+                "Category code and category name are required.",
+                "danger",
+            )
+
+            return render_template(
+                "it_assets/categories/add.html"
+            )
+
+
+        # ==================================================
+        # DATABASE INSERT
+        # ==========================================================
+
+        try:
+
+            create_it_asset_category(
+                category_code,
+                category_name,
+                description or None,
+            )
+
+        except Exception as error:
+
+            if getattr(error, "errno", None) == 1062:
+
+                flash(
+                    "Asset category code already exists.",
+                    "danger",
+                )
+
+                return render_template(
+                    "it_assets/categories/add.html"
+                )
+
+            raise
+
+
+        flash(
+            "Asset category created successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for("it_asset_categories")
+        )
+
+
+    return render_template(
+        "it_assets/categories/add.html"
+    )
+
+
+# ==========================================================
+# IT MANAGEMENT - EDIT ASSET CATEGORY
+# ==========================================================
+
+@app.route(
+    "/it/assets/categories/<int:category_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required("it_assets.view")
+def edit_it_asset_category(category_id):
+
+    category = get_it_asset_category_by_id(
+        category_id
+    )
+
+    if not category:
+
+        flash(
+            "Asset category not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("it_asset_categories")
+        )
+
+
+    if request.method == "POST":
+
+        category_code = request.form.get(
+            "category_code",
+            "",
+        ).strip().upper()
+
+        category_name = request.form.get(
+            "category_name",
+            "",
+        ).strip()
+
+        description = request.form.get(
+            "description",
+            "",
+        ).strip()
+
+
+        if not category_code or not category_name:
+
+            flash(
+                "Category code and category name are required.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_it_asset_category",
+                    category_id=category_id,
+                )
+            )
+
+
+        try:
+
+            update_it_asset_category(
+                category_id,
+                category_code,
+                category_name,
+                description or None,
+            )
+
+        except Exception as error:
+
+            if getattr(error, "errno", None) == 1062:
+
+                flash(
+                    "Asset category code already exists.",
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_it_asset_category",
+                        category_id=category_id,
+                    )
+                )
+
+            raise
+
+
+        flash(
+            "Asset category updated successfully.",
+            "success",
+        )
+
+        return redirect(
+            url_for("it_asset_categories")
+        )
+
+
+    return render_template(
+        "it_assets/categories/edit.html",
+        category=category,
+    )
+
+
+# ==========================================================
+# IT MANAGEMENT - CATEGORY STATUS
+# ==========================================================
+
+@app.route(
+    "/it/assets/categories/<int:category_id>/status",
+    methods=["POST"],
+)
+@permission_required("it_assets.view")
+def change_it_asset_category_status(category_id):
+
+    category = get_it_asset_category_by_id(
+        category_id
+    )
+
+    if not category:
+
+        flash(
+            "Asset category not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for("it_asset_categories")
+        )
+
+    new_status = not bool(
+        category["is_active"]
+    )
+
+    set_it_asset_category_active_status(
+        category_id,
+        new_status,
+    )
+
+    flash(
+        (
+            "Asset category activated successfully."
+            if new_status
+            else "Asset category deactivated successfully."
+        ),
+        "success",
+    )
+
+    return redirect(
+        url_for("it_asset_categories")
+    )
+
 @app.route("/logout")
 @login_required
 def logout():
@@ -6829,6 +7090,7 @@ def logout():
     flash("You have been logged out.", "success")
 
     return redirect(url_for("login"))
+
 
 
 
