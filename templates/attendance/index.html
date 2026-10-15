@@ -20,7 +20,7 @@ Attendance
         </h2>
 
         <p class="text-muted mb-0">
-            Manage employee daily attendance records.
+            Manage and monitor employee daily attendance.
         </p>
 
     </div>
@@ -36,6 +36,337 @@ Attendance
         </a>
 
     {% endif %}
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # SUMMARY CARDS -->
+<!-- # ========================================== -->
+
+<div class="row g-3 mb-4">
+
+
+    <!-- # TOTAL -->
+
+    <div class="col-md-2">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Total
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.total }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # PRESENT -->
+
+    <div class="col-md-2">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Present
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.present }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # LATE -->
+
+    <div class="col-md-2">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Late
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.late }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # ABSENT -->
+
+    <div class="col-md-2">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Absent
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.absent }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # ON LEAVE -->
+
+    <div class="col-md-2">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    On Leave
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.on_leave }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # HALF DAY -->
+
+    <div class="col-md-2">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted">
+                    Half Day
+                </div>
+
+                <h4 class="mb-0">
+                    {{ summary.half_day }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # FILTERS -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <form
+            method="GET"
+            class="row g-3 align-items-end"
+        >
+
+
+            <!-- # SEARCH -->
+
+            <div class="col-md-3">
+
+                <label class="form-label">
+                    Search
+                </label>
+
+                <input
+                    type="text"
+                    name="search"
+                    class="form-control"
+                    value="{{ search_text }}"
+                    placeholder="Employee, number, department..."
+                >
+
+            </div>
+
+
+            <!-- # DATE -->
+
+            <div class="col-md-2">
+
+                <label class="form-label">
+                    Date
+                </label>
+
+                <input
+                    type="date"
+                    name="date"
+                    class="form-control"
+                    value="{{ selected_date }}"
+                >
+
+            </div>
+
+
+            <!-- # STATUS -->
+
+            <div class="col-md-2">
+
+                <label class="form-label">
+                    Status
+                </label>
+
+                <select
+                    name="status"
+                    class="form-select"
+                >
+
+                    <option value="">
+                        All Statuses
+                    </option>
+
+                    <option
+                        value="PRESENT"
+                        {% if selected_status == "PRESENT" %}
+                            selected
+                        {% endif %}
+                    >
+                        Present
+                    </option>
+
+                    <option
+                        value="LATE"
+                        {% if selected_status == "LATE" %}
+                            selected
+                        {% endif %}
+                    >
+                        Late
+                    </option>
+
+                    <option
+                        value="ABSENT"
+                        {% if selected_status == "ABSENT" %}
+                            selected
+                        {% endif %}
+                    >
+                        Absent
+                    </option>
+
+                    <option
+                        value="ON_LEAVE"
+                        {% if selected_status == "ON_LEAVE" %}
+                            selected
+                        {% endif %}
+                    >
+                        On Leave
+                    </option>
+
+                    <option
+                        value="HALF_DAY"
+                        {% if selected_status == "HALF_DAY" %}
+                            selected
+                        {% endif %}
+                    >
+                        Half Day
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- # DEPARTMENT -->
+
+            <div class="col-md-3">
+
+                <label class="form-label">
+                    Department
+                </label>
+
+                <select
+                    name="department_id"
+                    class="form-select"
+                >
+
+                    <option value="">
+                        All Departments
+                    </option>
+
+                    {% for department in departments %}
+
+                        <option
+                            value="{{ department.department_id }}"
+                            {% if department.department_id|string == selected_department %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ department.department_name }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <!-- # FILTER BUTTON -->
+
+            <div class="col-md-2">
+
+                <div class="d-flex gap-2">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        Apply
+                    </button>
+
+                    <a
+                        href="{{ url_for('attendance') }}"
+                        class="btn btn-outline-secondary"
+                    >
+                        Reset
+                    </a>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
 
 </div>
 
@@ -184,7 +515,7 @@ Attendance
                                 colspan="8"
                                 class="text-center text-muted py-4"
                             >
-                                No attendance records found.
+                                No attendance records match the selected filters.
                             </td>
 
                         </tr>

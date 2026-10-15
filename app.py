@@ -16,6 +16,7 @@ from attendance_repository import (
     create_attendance_record,
     get_all_attendance_records,
     get_attendance_record_by_id,
+    get_filtered_attendance_records,
     update_attendance_record,
 )
 
@@ -8241,7 +8242,7 @@ def add_admin_user():
         employees=employees,
     )
 
-    # ==========================================================
+# ==========================================================
 # ATTENDANCE MANAGEMENT
 # ==========================================================
 
@@ -8249,13 +8250,170 @@ def add_admin_user():
 @permission_required("attendance.view")
 def attendance():
 
+    # ======================================================
+    # FILTER INPUT
+    # ==========================================================
+
+    search_text = request.args.get(
+        "search",
+        "",
+    ).strip()
+
+    selected_date = request.args.get(
+        "date",
+        "",
+    ).strip()
+
+    selected_status = request.args.get(
+        "status",
+        "",
+    ).strip().upper()
+
+    selected_department = request.args.get(
+        "department_id",
+        "",
+    ).strip()
+
+
+    # ======================================================
+    # STATUS VALIDATION
+    # ==========================================================
+
+    allowed_statuses = {
+        "PRESENT",
+        "LATE",
+        "ABSENT",
+        "ON_LEAVE",
+        "HALF_DAY",
+    }
+
+    if (
+        selected_status
+        and selected_status not in allowed_statuses
+    ):
+
+        selected_status = ""
+
+
+    # ======================================================
+    # DATE VALIDATION
+    # ==========================================================
+
+    selected_date_value = None
+
+    if selected_date:
+
+        try:
+
+            selected_date_value = (
+                date.fromisoformat(
+                    selected_date
+                )
+            )
+
+        except ValueError:
+
+            selected_date = ""
+
+
+    # ======================================================
+    # DEPARTMENT VALIDATION
+    # ==========================================================
+
+    department_id_value = None
+
+    if selected_department:
+
+        try:
+
+            department_id_value = int(
+                selected_department
+            )
+
+        except ValueError:
+
+            selected_department = ""
+
+
+    # ======================================================
+    # GET FILTERED RECORDS
+    # ==========================================================
+
     attendance_records = (
-        get_all_attendance_records()
+        get_filtered_attendance_records(
+            search_text=search_text or None,
+            attendance_date=selected_date_value,
+            status=selected_status or None,
+            department_id=department_id_value,
+        )
     )
+
+
+    # ======================================================
+    # SUMMARY
+    #
+    # Summary reflects the current filtered records.
+    # ==========================================================
+
+    summary = {
+        "total": len(
+            attendance_records
+        ),
+
+        "present": sum(
+            1
+            for record in attendance_records
+            if record["status"] == "PRESENT"
+        ),
+
+        "late": sum(
+            1
+            for record in attendance_records
+            if record["status"] == "LATE"
+        ),
+
+        "absent": sum(
+            1
+            for record in attendance_records
+            if record["status"] == "ABSENT"
+        ),
+
+        "on_leave": sum(
+            1
+            for record in attendance_records
+            if record["status"] == "ON_LEAVE"
+        ),
+
+        "half_day": sum(
+            1
+            for record in attendance_records
+            if record["status"] == "HALF_DAY"
+        ),
+    }
+
+
+    # ======================================================
+    # DEPARTMENT FILTER OPTIONS
+    # ==========================================================
+
+    departments = (
+        get_active_departments()
+    )
+
+
+    # ======================================================
+    # SHOW PAGE
+    # ==========================================================
 
     return render_template(
         "attendance/index.html",
         attendance_records=attendance_records,
+        summary=summary,
+        departments=departments,
+        search_text=search_text,
+        selected_date=selected_date,
+        selected_status=selected_status,
+        selected_department=selected_department,
     )
 
 
