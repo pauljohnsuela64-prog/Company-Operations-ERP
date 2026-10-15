@@ -7,6 +7,10 @@ Leave Request
 
 {% block content %}
 
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
 <div class="d-flex justify-content-between align-items-center mb-4">
 
     <div>
@@ -32,12 +36,18 @@ Leave Request
 </div>
 
 
-<div class="card shadow-sm border-0">
+<!-- # ========================================== -->
+<!-- # REQUEST DETAILS -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
 
     <div class="card-body">
 
         <div class="row g-4">
 
+
+            <!-- # EMPLOYEE -->
 
             <div class="col-md-6">
 
@@ -47,6 +57,11 @@ Leave Request
 
                 <div>
                     {{ leave_request.first_name }}
+
+                    {% if leave_request.middle_name %}
+                        {{ leave_request.middle_name }}
+                    {% endif %}
+
                     {{ leave_request.last_name }}
                 </div>
 
@@ -56,6 +71,8 @@ Leave Request
 
             </div>
 
+
+            <!-- # DEPARTMENT -->
 
             <div class="col-md-6">
 
@@ -70,6 +87,8 @@ Leave Request
             </div>
 
 
+            <!-- # LEAVE TYPE -->
+
             <div class="col-md-6">
 
                 <strong>
@@ -78,10 +97,27 @@ Leave Request
 
                 <div>
                     {{ leave_request.leave_name }}
+
+                    {% if leave_request.is_paid %}
+
+                        <span class="badge bg-success ms-2">
+                            Paid
+                        </span>
+
+                    {% else %}
+
+                        <span class="badge bg-secondary ms-2">
+                            Unpaid
+                        </span>
+
+                    {% endif %}
+
                 </div>
 
             </div>
 
+
+            <!-- # STATUS -->
 
             <div class="col-md-6">
 
@@ -89,12 +125,40 @@ Leave Request
                     Status
                 </strong>
 
-                <div>
-                    {{ leave_request.status }}
+                <div class="mt-1">
+
+                    {% if leave_request.status == "PENDING" %}
+
+                        <span class="badge bg-warning text-dark">
+                            Pending
+                        </span>
+
+                    {% elif leave_request.status == "APPROVED" %}
+
+                        <span class="badge bg-success">
+                            Approved
+                        </span>
+
+                    {% elif leave_request.status == "REJECTED" %}
+
+                        <span class="badge bg-danger">
+                            Rejected
+                        </span>
+
+                    {% else %}
+
+                        <span class="badge bg-secondary">
+                            Cancelled
+                        </span>
+
+                    {% endif %}
+
                 </div>
 
             </div>
 
+
+            <!-- # START DATE -->
 
             <div class="col-md-4">
 
@@ -109,6 +173,8 @@ Leave Request
             </div>
 
 
+            <!-- # END DATE -->
+
             <div class="col-md-4">
 
                 <strong>
@@ -121,6 +187,8 @@ Leave Request
 
             </div>
 
+
+            <!-- # TOTAL DAYS -->
 
             <div class="col-md-4">
 
@@ -135,6 +203,8 @@ Leave Request
             </div>
 
 
+            <!-- # REASON -->
+
             <div class="col-12">
 
                 <strong>
@@ -147,6 +217,8 @@ Leave Request
 
             </div>
 
+
+            <!-- # REQUESTED BY -->
 
             <div class="col-md-6">
 
@@ -161,6 +233,8 @@ Leave Request
             </div>
 
 
+            <!-- # REQUESTED AT -->
+
             <div class="col-md-6">
 
                 <strong>
@@ -173,10 +247,215 @@ Leave Request
 
             </div>
 
+
+            <!-- # REVIEWED BY -->
+
+            {% if leave_request.reviewed_by %}
+
+                <div class="col-md-6">
+
+                    <strong>
+                        Reviewed By
+                    </strong>
+
+                    <div>
+                        {{ leave_request.reviewed_by_username }}
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <strong>
+                        Reviewed At
+                    </strong>
+
+                    <div>
+                        {{ leave_request.reviewed_at }}
+                    </div>
+
+                </div>
+
+            {% endif %}
+
+
+            <!-- # REJECTION REASON -->
+
+            {% if leave_request.status == "REJECTED" %}
+
+                <div class="col-12">
+
+                    <div class="alert alert-danger mb-0">
+
+                        <strong>
+                            Rejection Reason:
+                        </strong>
+
+                        {{ leave_request.rejection_reason }}
+
+                    </div>
+
+                </div>
+
+            {% endif %}
+
         </div>
 
     </div>
 
 </div>
+
+
+<!-- # ========================================== -->
+<!-- # WORKFLOW -->
+<!-- # ========================================== -->
+
+{% if leave_request.status == "PENDING" %}
+
+    <div class="card shadow-sm border-0">
+
+        <div class="card-body">
+
+            <h5 class="mb-3">
+                Leave Request Workflow
+            </h5>
+
+
+            <div class="row g-4">
+
+
+                <!-- # APPROVE -->
+
+                {% if has_permission("leave.approve") %}
+
+                    <div class="col-md-4">
+
+                        <div class="border rounded p-3 h-100">
+
+                            <h6>
+                                Approve Request
+                            </h6>
+
+                            <p class="text-muted small">
+                                Approval will create On Leave
+                                attendance records for the selected dates.
+                            </p>
+
+
+                            <form
+                                method="POST"
+                                action="{{ url_for(
+                                    'approve_leave_request_route',
+                                    leave_request_id=leave_request.leave_request_id
+                                ) }}"
+                            >
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-success"
+                                >
+                                    Approve
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- # REJECT -->
+
+                    <div class="col-md-5">
+
+                        <div class="border rounded p-3 h-100">
+
+                            <h6>
+                                Reject Request
+                            </h6>
+
+
+                            <form
+                                method="POST"
+                                action="{{ url_for(
+                                    'reject_leave_request_route',
+                                    leave_request_id=leave_request.leave_request_id
+                                ) }}"
+                            >
+
+                                <textarea
+                                    name="rejection_reason"
+                                    class="form-control mb-3"
+                                    maxlength="500"
+                                    rows="3"
+                                    placeholder="Enter rejection reason..."
+                                    required
+                                ></textarea>
+
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-danger"
+                                >
+                                    Reject
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </div>
+
+                {% endif %}
+
+
+                <!-- # CANCEL -->
+
+                {% if has_permission("leave.manage") %}
+
+                    <div class="col-md-3">
+
+                        <div class="border rounded p-3 h-100">
+
+                            <h6>
+                                Cancel Request
+                            </h6>
+
+                            <p class="text-muted small">
+                                Cancel this pending leave request.
+                            </p>
+
+
+                            <form
+                                method="POST"
+                                action="{{ url_for(
+                                    'cancel_leave_request_route',
+                                    leave_request_id=leave_request.leave_request_id
+                                ) }}"
+                            >
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-outline-secondary"
+                                >
+                                    Cancel Request
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+{% endif %}
 
 {% endblock %}

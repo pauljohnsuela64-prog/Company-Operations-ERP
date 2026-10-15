@@ -1,7 +1,7 @@
 # ==========================================================
 # LEAVE MANAGEMENT REPOSITORY
 # ==========================================================
-
+from datetime import timedelta
 import uuid
 
 from database import get_connection
@@ -618,6 +618,482 @@ def create_leave_request(
 
         connection.rollback()
         raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+# ==========================================================
+# LEAVE MANAGEMENT - APPROVE REQUEST
+#
+# Approval also creates ON_LEAVE attendance records.
+# Existing non-leave attendance is never overwritten.
+# ==========================================================
+
+def approve_leave_request(
+    leave_request_id,
+    reviewed_by,
+):
+
+    connection = get_connection()
+
+    cursor = connection.cursor(
+        dictionary=True
+    )
+
+    try:
+
+        connection.start_transaction()
+
+
+        # ==================================================
+        # LOCK AND GET REQUEST
+        # ==========================================================
+
+        cursor.execute(
+            """
+            SELECT
+                lr.leave_request_id,
+                lr.request_number,
+                lr.employee_id,
+                lr.start_date,
+                lr.end_date,
+                lr.status,
+
+                lt.leave_name
+
+            FROM leave_requests lr
+
+            INNER JOIN leave_types lt
+                ON lr.leave_type_id = lt.leave_type_id
+
+            WHERE lr.leave_request_id = %s
+
+            FOR UPDATE
+            """,
+            (
+                leave_request_id,
+            ),
+        )
+
+
+        leave_request = (
+            cursor.fetchone()
+        )
+
+
+        if not leave_request:
+
+            raise ValueError(
+                "Leave request not found."
+            )
+
+
+        if (
+            leave_request["status"]
+            != "PENDING"
+        ):
+
+            raise ValueError(
+                (
+                    "Only pending leave requests "
+                    "can be approved."
+                )
+            )
+
+
+        # ==================================================
+        # CHECK ALL ATTENDANCE DATES FIRST
+        #
+        # We validate everything before writing anything.
+        # ==========================================================
+
+        current_date = (
+            leave_request["start_date"]
+        )
+
+        end_date = (
+            leave_request["end_date"]
+        )
+
+
+        while current_date <= end_date:
+
+            cursor.execute(
+                """
+                SELECT
+                    attendance_id,
+                    status
+
+                FROM attendance_records
+
+                WHERE
+                    employee_id = %s
+                    AND attendance_date = %s
+
+                FOR UPDATE
+                """,
+                (
+                    leave_request[
+                        "employee_id"
+                    ],
+                    current_date,
+                ),
+            )
+
+
+            attendance = (
+                cursor.fetchone()
+            )
+
+
+            if (
+                attendance
+                and attendance["status"]
+                != "ON_LEAVE"
+            ):
+
+                raise ValueError(
+                    (
+                        "Approval blocked. The employee "
+                        "already has an attendance record "
+                        f"for {current_date} with status "
+                        f"{attendance['status']}."
+                    )
+                )
+
+
+            current_date += timedelta(
+                days=1
+            )
+
+
+        # ==================================================
+        # CREATE ON_LEAVE ATTENDANCE
+        # ==========================================================
+
+        current_date = (
+            leave_request["start_date"]
+        )
+
+
+        while current_date <= end_date:
+
+            cursor.execute(
+                """
+                SELECT
+                    attendance_id
+
+                FROM attendance_records
+
+                WHERE
+                    employee_id = %s
+                    AND attendance_date = %s
+
+                FOR UPDATE
+                """,
+                (
+                    leave_request[
+                        "employee_id"
+                    ],
+                    current_date,
+                ),
+            )
+
+
+            attendance = (
+                cursor.fetchone()
+            )
+
+
+            # ==============================================
+            # ONLY CREATE IF NONE EXISTS
+            # ==============================================
+
+            if not attendance:
+
+                notes = (
+                    f"Approved leave "
+                    f"{leave_request['request_number']} "
+                    f"- {leave_request['leave_name']}"
+                )
+
+
+                cursor.execute(
+                    """
+                    INSERT INTO attendance_records (
+                        employee_id,
+                        attendance_date,
+                        time_in,
+                        time_out,
+                        status,
+                        notes,
+                        created_by
+                    )
+                    VALUES (
+                        %s,
+                        %s,
+                        NULL,
+                        NULL,
+                        'ON_LEAVE',
+                        %s,
+                        %s
+                    )
+                    """,
+                    (
+                        leave_request[
+                            "employee_id"
+                        ],
+                        current_date,
+                        notes,
+                        reviewed_by,
+                    ),
+                )
+
+
+            current_date += timedelta(
+                days=1
+            )
+
+
+        # ==================================================
+        # APPROVE LEAVE REQUEST
+        # ==========================================================
+
+        cursor.execute(
+            """
+            UPDATE leave_requests
+
+            SET
+                status = 'APPROVED',
+                reviewed_by = %s,
+                reviewed_at = NOW(),
+                rejection_reason = NULL
+
+            WHERE leave_request_id = %s
+            """,
+            (
+                reviewed_by,
+                leave_request_id,
+            ),
+        )
+
+
+        connection.commit()
+
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# LEAVE MANAGEMENT - REJECT REQUEST
+# ==========================================================
+
+def reject_leave_request(
+    leave_request_id,
+    reviewed_by,
+    rejection_reason,
+):
+
+    connection = get_connection()
+
+    cursor = connection.cursor(
+        dictionary=True
+    )
+
+    try:
+
+        connection.start_transaction()
+
+
+        # ==================================================
+        # LOCK REQUEST
+        # ==========================================================
+
+        cursor.execute(
+            """
+            SELECT
+                leave_request_id,
+                status
+
+            FROM leave_requests
+
+            WHERE leave_request_id = %s
+
+            FOR UPDATE
+            """,
+            (
+                leave_request_id,
+            ),
+        )
+
+
+        leave_request = (
+            cursor.fetchone()
+        )
+
+
+        if not leave_request:
+
+            raise ValueError(
+                "Leave request not found."
+            )
+
+
+        if (
+            leave_request["status"]
+            != "PENDING"
+        ):
+
+            raise ValueError(
+                (
+                    "Only pending leave requests "
+                    "can be rejected."
+                )
+            )
+
+
+        # ==================================================
+        # DATABASE UPDATE
+        # ==========================================================
+
+        cursor.execute(
+            """
+            UPDATE leave_requests
+
+            SET
+                status = 'REJECTED',
+                reviewed_by = %s,
+                reviewed_at = NOW(),
+                rejection_reason = %s
+
+            WHERE leave_request_id = %s
+            """,
+            (
+                reviewed_by,
+                rejection_reason,
+                leave_request_id,
+            ),
+        )
+
+
+        connection.commit()
+
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# LEAVE MANAGEMENT - CANCEL REQUEST
+# ==========================================================
+
+def cancel_leave_request(
+    leave_request_id,
+):
+
+    connection = get_connection()
+
+    cursor = connection.cursor(
+        dictionary=True
+    )
+
+    try:
+
+        connection.start_transaction()
+
+
+        # ==================================================
+        # LOCK REQUEST
+        # ==========================================================
+
+        cursor.execute(
+            """
+            SELECT
+                leave_request_id,
+                status
+
+            FROM leave_requests
+
+            WHERE leave_request_id = %s
+
+            FOR UPDATE
+            """,
+            (
+                leave_request_id,
+            ),
+        )
+
+
+        leave_request = (
+            cursor.fetchone()
+        )
+
+
+        if not leave_request:
+
+            raise ValueError(
+                "Leave request not found."
+            )
+
+
+        if (
+            leave_request["status"]
+            != "PENDING"
+        ):
+
+            raise ValueError(
+                (
+                    "Only pending leave requests "
+                    "can be cancelled."
+                )
+            )
+
+
+        # ==================================================
+        # DATABASE UPDATE
+        # ==========================================================
+
+        cursor.execute(
+            """
+            UPDATE leave_requests
+
+            SET status = 'CANCELLED'
+
+            WHERE leave_request_id = %s
+            """,
+            (
+                leave_request_id,
+            ),
+        )
+
+
+        connection.commit()
+
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
 
     finally:
 

@@ -13,6 +13,8 @@ from decimal import Decimal, InvalidOperation
 
 
 from leave_repository import (
+    approve_leave_request,
+    cancel_leave_request,
     create_leave_request,
     create_leave_type,
     get_active_leave_types,
@@ -21,6 +23,7 @@ from leave_repository import (
     get_leave_request_by_id,
     get_leave_type_by_id,
     has_overlapping_leave_request,
+    reject_leave_request,
     set_leave_type_active_status,
     update_leave_type,
 )
@@ -9780,6 +9783,180 @@ def view_leave_request(
         leave_request=leave_request,
     )
 
+
+# ==========================================================
+# LEAVE MANAGEMENT - APPROVE REQUEST
+# ==========================================================
+
+@app.route(
+    "/leave/requests/<int:leave_request_id>/approve",
+    methods=["POST"],
+)
+@permission_required("leave.approve")
+def approve_leave_request_route(
+    leave_request_id,
+):
+
+    try:
+
+        approve_leave_request(
+            leave_request_id=leave_request_id,
+            reviewed_by=session["user_id"],
+        )
+
+
+        flash(
+            (
+                "Leave request approved successfully. "
+                "Attendance records were updated to On Leave."
+            ),
+            "success",
+        )
+
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+
+    return redirect(
+        url_for(
+            "view_leave_request",
+            leave_request_id=leave_request_id,
+        )
+    )
+
+
+
+# ==========================================================
+# LEAVE MANAGEMENT - REJECT REQUEST
+# ==========================================================
+
+@app.route(
+    "/leave/requests/<int:leave_request_id>/reject",
+    methods=["POST"],
+)
+@permission_required("leave.approve")
+def reject_leave_request_route(
+    leave_request_id,
+):
+
+    # ======================================================
+    # REJECTION REASON
+    # ==========================================================
+
+    rejection_reason = request.form.get(
+        "rejection_reason",
+        "",
+    ).strip()
+
+
+    if not rejection_reason:
+
+        flash(
+            "Rejection reason is required.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_leave_request",
+                leave_request_id=leave_request_id,
+            )
+        )
+
+
+    if len(rejection_reason) > 500:
+
+        flash(
+            (
+                "Rejection reason must not "
+                "exceed 500 characters."
+            ),
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_leave_request",
+                leave_request_id=leave_request_id,
+            )
+        )
+
+
+    try:
+
+        reject_leave_request(
+            leave_request_id=leave_request_id,
+            reviewed_by=session["user_id"],
+            rejection_reason=rejection_reason,
+        )
+
+
+        flash(
+            "Leave request rejected.",
+            "success",
+        )
+
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+
+    return redirect(
+        url_for(
+            "view_leave_request",
+            leave_request_id=leave_request_id,
+        )
+    )
+
+    # ==========================================================
+# LEAVE MANAGEMENT - CANCEL REQUEST
+# ==========================================================
+
+@app.route(
+    "/leave/requests/<int:leave_request_id>/cancel",
+    methods=["POST"],
+)
+@permission_required("leave.manage")
+def cancel_leave_request_route(
+    leave_request_id,
+):
+
+    try:
+
+        cancel_leave_request(
+            leave_request_id
+        )
+
+
+        flash(
+            "Leave request cancelled successfully.",
+            "success",
+        )
+
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+
+    return redirect(
+        url_for(
+            "view_leave_request",
+            leave_request_id=leave_request_id,
+        )
+    )
 # ==========================================================
 # ADMINISTRATION - CHANGE USER ROLE
 # ==========================================================
