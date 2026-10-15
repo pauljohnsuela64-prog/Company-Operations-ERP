@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}
+Add Leave Type
+{% endblock %}
+
+
+{% block content %}
+
+<h2 class="mb-4">
+    Add Leave Type
+</h2>
+
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <form method="POST">
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Leave Code
+                </label>
+
+                <input
+                    type="text"
+                    name="leave_code"
+                    class="form-control"
+                    maxlength="30"
+                    required
+                >
+
+            </div>
+
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Leave Name
+                </label>
+
+                <input
+                    type="text"
+                    name="leave_name"
+                    class="form-control"
+                    maxlength="100"
+                    required
+                >
+
+            </div>
+
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Annual Entitlement
+                </label>
+
+                <input
+                    type="number"
+                    name="annual_entitlement"
+                    class="form-control"
+                    min="0"
+                    step="0.5"
+                >
+
+                <div class="form-text">
+                    Leave blank if there is no fixed annual limit yet.
+                </div>
+
+            </div>
+
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Description
+                </label>
+
+                <textarea
+                    name="description"
+                    class="form-control"
+                    maxlength="255"
+                    rows="3"
+                ></textarea>
+
+            </div>
+
+
+            <div class="mb-4 form-check">
+
+                <input
+                    type="checkbox"
+                    name="is_paid"
+                    value="1"
+                    class="form-check-input"
+                    id="is_paid"
+                    checked
+                >
+
+                <label
+                    class="form-check-label"
+                    for="is_paid"
+                >
+                    Paid Leave
+                </label>
+
+            </div>
+
+
+            <div class="d-flex gap-2">
+
+                <button
+                    class="btn btn-primary"
+                >
+                    Save Leave Type
+                </button>
+
+                <a
+                    href="{{ url_for('leave_types') }}"
+                    class="btn btn-outline-secondary"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -213,6 +213,14 @@
 
                 {% endif %}
 
+                {% if has_permission("leave.view") %}
+
+                <a href="{{ url_for('leave_requests') }}" class="sidebar-link">
+                    Leave Management
+                </a>
+
+                {% endif %}
+
                 {% endif %}
 
             </nav>
