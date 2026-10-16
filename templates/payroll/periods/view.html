@@ -26,63 +26,165 @@ Payroll Period
     </div>
 
 
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
 
 
-        <!-- # GENERATE ENTRIES -->
+        <!-- # ====================================== -->
+        <!-- # DRAFT ACTIONS -->
+        <!-- # ====================================== -->
 
-        {% if (
-        period.status == "DRAFT"
-        and has_permission("payroll.process")
-        ) %}
+        {% if period.status == "DRAFT" %}
 
-        <form method="POST" action="{{ url_for(
-                    'generate_payroll_entries_route',
-                    payroll_period_id=period.payroll_period_id
-                ) }}" onsubmit="return confirm(
-                    'Generate payroll entries for eligible employees?'
-                );">
 
-            <button type="submit" class="btn btn-outline-primary">
-                Generate Entries
-            </button>
+            {% if has_permission("payroll.process") %}
 
-        </form>
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'generate_payroll_entries_route',
+                        payroll_period_id=period.payroll_period_id
+                    ) }}"
+                    onsubmit="return confirm(
+                        'Generate payroll entries for eligible employees?'
+                    );"
+                >
+
+                    <button
+                        type="submit"
+                        class="btn btn-outline-primary"
+                    >
+                        Generate Entries
+                    </button>
+
+                </form>
+
+            {% endif %}
+
+
+            {% if (
+                entries
+                and has_permission("payroll.process")
+            ) %}
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'calculate_monthly_payroll_route',
+                        payroll_period_id=period.payroll_period_id
+                    ) }}"
+                    onsubmit="return confirm(
+                        'Recalculate payroll using current attendance, leave, earnings, and deductions?'
+                    );"
+                >
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        Calculate Monthly Payroll
+                    </button>
+
+                </form>
+
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'submit_payroll_for_approval_route',
+                        payroll_period_id=period.payroll_period_id
+                    ) }}"
+                    onsubmit="return confirm(
+                        'Submit this payroll for approval? Payroll changes will be locked.'
+                    );"
+                >
+
+                    <button
+                        type="submit"
+                        class="btn btn-success"
+                    >
+                        Submit for Approval
+                    </button>
+
+                </form>
+
+            {% endif %}
+
 
         {% endif %}
 
 
-        <!-- # CALCULATE MONTHLY -->
+        <!-- # ====================================== -->
+        <!-- # PROCESSING ACTIONS -->
+        <!-- # ====================================== -->
 
-        {% if (
-        period.status == "DRAFT"
-        and entries
-        and has_permission("payroll.process")
-        ) %}
+        {% if period.status == "PROCESSING" %}
 
-        <form method="POST" action="{{ url_for(
-                    'calculate_monthly_payroll_route',
-                    payroll_period_id=period.payroll_period_id
-                ) }}" onsubmit="return confirm(
-                    'Calculate monthly payroll using current attendance and leave records?'
-                );">
 
-            <button type="submit" class="btn btn-primary">
-                Calculate Monthly Payroll
-            </button>
+            {% if has_permission("payroll.approve") %}
 
-        </form>
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'approve_payroll_period_route',
+                        payroll_period_id=period.payroll_period_id
+                    ) }}"
+                    onsubmit="return confirm(
+                        'Approve this payroll? This will finalize all payroll entries.'
+                    );"
+                >
+
+                    <button
+                        type="submit"
+                        class="btn btn-success"
+                    >
+                        Approve Payroll
+                    </button>
+
+                </form>
+
+            {% endif %}
+
+
+            {% if has_permission("payroll.process") %}
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'return_payroll_to_draft_route',
+                        payroll_period_id=period.payroll_period_id
+                    ) }}"
+                    onsubmit="return confirm(
+                        'Return this payroll to Draft for correction?'
+                    );"
+                >
+
+                    <button
+                        type="submit"
+                        class="btn btn-outline-warning"
+                    >
+                        Return to Draft
+                    </button>
+
+                </form>
+
+            {% endif %}
+
 
         {% endif %}
 
 
-        <a href="{{ url_for('payroll_periods') }}" class="btn btn-outline-secondary">
+        <a
+            href="{{ url_for('payroll_periods') }}"
+            class="btn btn-outline-secondary"
+        >
             Back to Payroll Periods
         </a>
 
     </div>
 
 </div>
+
+
 
 
 <!-- # ========================================== -->
@@ -104,6 +206,39 @@ Payroll Period
     automatically treated as an absence.
 
 </div>
+
+<!-- # ========================================== -->
+<!-- # WORKFLOW STATUS -->
+<!-- # ========================================== -->
+
+{% if period.status == "PROCESSING" %}
+
+    <div class="alert alert-warning">
+
+        <strong>
+            Payroll is awaiting approval.
+        </strong>
+
+        Payroll generation, recalculation, and adjustment
+        changes are locked while this period is being reviewed.
+
+    </div>
+
+
+{% elif period.status == "APPROVED" %}
+
+    <div class="alert alert-success">
+
+        <strong>
+            Payroll Approved.
+        </strong>
+
+        This payroll is finalized and can no longer be
+        recalculated or modified.
+
+    </div>
+
+{% endif %}
 
 
 <!-- # ========================================== -->

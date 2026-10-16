@@ -11,6 +11,12 @@ from dashboard_repository import get_dashboard_summary
 
 from decimal import Decimal, InvalidOperation
 
+from payroll_workflow_repository import (
+    approve_payroll_period,
+    return_payroll_to_draft,
+    submit_payroll_for_approval,
+)
+
 from payroll_adjustment_repository import (
     add_payroll_adjustment,
     delete_payroll_adjustment,
@@ -6362,6 +6368,143 @@ def view_payroll_period(
         "payroll/periods/view.html",
         period=period,
         entries=entries,
+    )
+
+# ==========================================================
+# PAYROLL - SUBMIT FOR APPROVAL
+# ==========================================================
+
+@app.route(
+    "/payroll/periods/<int:payroll_period_id>/submit",
+    methods=["POST"],
+)
+@permission_required("payroll.process")
+def submit_payroll_for_approval_route(
+    payroll_period_id,
+):
+
+    try:
+
+        result = submit_payroll_for_approval(
+            payroll_period_id=payroll_period_id,
+            submitted_by=session["user_id"],
+        )
+
+
+        flash(
+            (
+                "Payroll submitted for approval successfully. "
+                f"{result['total_entries']} payroll "
+                "entry/entries are ready for review."
+            ),
+            "success",
+        )
+
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+
+    return redirect(
+        url_for(
+            "view_payroll_period",
+            payroll_period_id=payroll_period_id,
+        )
+    )
+
+# ==========================================================
+# PAYROLL - RETURN TO DRAFT
+# ==========================================================
+
+@app.route(
+    "/payroll/periods/<int:payroll_period_id>/return-to-draft",
+    methods=["POST"],
+)
+@permission_required("payroll.process")
+def return_payroll_to_draft_route(
+    payroll_period_id,
+):
+
+    try:
+
+        return_payroll_to_draft(
+            payroll_period_id=payroll_period_id,
+            updated_by=session["user_id"],
+        )
+
+
+        flash(
+            (
+                "Payroll returned to Draft. "
+                "Adjustments and recalculation are unlocked again."
+            ),
+            "success",
+        )
+
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+
+    return redirect(
+        url_for(
+            "view_payroll_period",
+            payroll_period_id=payroll_period_id,
+        )
+    )
+
+# ==========================================================
+# PAYROLL - APPROVE
+# ==========================================================
+
+@app.route(
+    "/payroll/periods/<int:payroll_period_id>/approve",
+    methods=["POST"],
+)
+@permission_required("payroll.approve")
+def approve_payroll_period_route(
+    payroll_period_id,
+):
+
+    try:
+
+        result = approve_payroll_period(
+            payroll_period_id=payroll_period_id,
+            approved_by=session["user_id"],
+        )
+
+
+        flash(
+            (
+                "Payroll approved successfully. "
+                f"{result['total_entries']} payroll "
+                "entry/entries are now finalized."
+            ),
+            "success",
+        )
+
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+
+    return redirect(
+        url_for(
+            "view_payroll_period",
+            payroll_period_id=payroll_period_id,
+        )
     )
 
 # ==========================================================
