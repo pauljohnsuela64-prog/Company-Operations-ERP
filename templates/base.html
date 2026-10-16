@@ -1,3 +1,4 @@
+{% import 'partials/navigation.html' as navigation with context %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -16,293 +17,43 @@
 </head>
 
 <body>
-
-    <div class="erp-layout">
-
-        <aside class="sidebar">
-
-            <div class="sidebar-brand">
-                <h5>Company Operations</h5>
-                <small>ERP System</small>
-            </div>
-
-            <nav class="sidebar-nav">
-
-                <a href="{{ url_for('dashboard') }}" class="sidebar-link">
-                    Dashboard
-                </a>
-
-
-                {% if
-                has_permission('employees.view')
-                or has_permission('departments.view')
-                %}
-
-                <div class="sidebar-section">
-                    Human Resources
-                </div>
-
-                {% if has_permission('employees.view') %}
-                <a href="{{ url_for('employees') }}" class="sidebar-link">
-                    Employees
-                </a>
-                {% endif %}
-
-                {% if has_permission('departments.view') %}
-                <a href="{{ url_for('departments') }}" class="sidebar-link">
-                    Departments
-                </a>
-                {% endif %}
-
-                {% endif %}
-
-
-                {% if has_permission('inventory.view') %}
-
-                <div class="sidebar-section">
-                    Inventory
-                </div>
-
-                <a href="{{ url_for('inventory_categories') }}" class="sidebar-link">
-                    Categories
-                </a>
-
-                <a href="{{ url_for('warehouses') }}" class="sidebar-link">
-                    Warehouses
-                </a>
-
-                <a href="{{ url_for('inventory_items') }}" class="sidebar-link">
-                    Items
-                </a>
-
-                <a href="{{ url_for('inventory_stock') }}" class="sidebar-link">
-                    Stock
-                </a>
-
-
-                <a href="{{ url_for('stock_movement_history') }}" class="sidebar-link">
-                    Movement History
-                </a>
-
-                {% if has_permission('procurement.view') %}
-
-                <div class="sidebar-section">
-                    Procurement
-                </div>
-
-                <a href="{{ url_for('suppliers') }}" class="sidebar-link">
-                    Suppliers
-                </a>
-
-                <a href="{{ url_for('purchase_requests') }}" class="sidebar-link">
-                    Purchase Requests
-                </a>
-
-                <a href="{{ url_for('purchase_orders') }}" class="sidebar-link">
-                    Purchase Orders
-                </a>
-
-                <a href="{{ url_for('goods_receipts') }}" class="nav-link">
-                    Goods Receipts
-                </a>
-
-                {% endif %}
-                {% endif %}
-
-
-                {% if
-                has_permission('it_assets.view')
-                or has_permission('helpdesk.view')
-                %}
-
-                <div class="sidebar-section">
-                    IT Management
-                </div>
-
-                {% if has_permission('it_assets.view') %}
-
-                <a href="{{ url_for('it_assets') }}" class="sidebar-link">
-                    IT Assets
-                </a>
-
-                {% endif %}
-
-                {% if has_permission('helpdesk.view') %}
-                <a href="{{ url_for('help_desk') }}" class="sidebar-link">
-                    Help Desk
-                </a>
-                {% endif %}
-
-                {% endif %}
-
-
-                <!-- # ========================================== -->
-                <!-- # FINANCE -->
-                <!-- # ========================================== -->
-
-                {% if has_permission('finance.view') %}
-
-                <div class="sidebar-section">
-                    Finance
-                </div>
-
-                <a href="{{ url_for('finance_summary') }}" class="sidebar-link">
-                    Summary
-                </a>
-
-                <a href="{{ url_for('expenses') }}" class="sidebar-link">
-                    Expenses
-                </a>
-
-                <a href="{{ url_for('expense_categories') }}" class="sidebar-link">
-                    Expense Categories
-                </a>
-
-                <!-- # FINANCE REPORTS -->
-
-                <a href="{{ url_for('finance_reports') }}" class="sidebar-link">
-                    Reports
-                </a>
-
-                <!-- # DEPARTMENT BUDGETS -->
-
-                <a href="{{ url_for('department_budgets') }}" class="sidebar-link">
-                    Budgets
-                </a>
-
-                {% endif %}
-
-                {% if has_permission("payroll.view") %}
-
-                <a href="{{ url_for('payroll_compensation') }}" class="sidebar-link">
-                    Payroll
-                </a>
-
-                {% endif %}
-
-
-                {% if
-                has_permission('users.manage')
-                or has_permission('roles.manage')
-                or has_permission('audit_logs.view')
-                %}
-
-                <div class="sidebar-section">
-                    Administration
-                </div>
-
-                <!-- # ADMINISTRATION - USERS -->
-
-                {% if has_permission("users.manage") %}
-
-                <a href="{{ url_for('admin_users') }}" class="sidebar-link">
-                    Users
-                </a>
-
-                {% endif %}
-
-                {% if has_permission("audit_logs.view") %}
-
-                <a href="{{ url_for('audit_logs') }}" class="sidebar-link">
-                    Audit Logs
-                </a>
-
-                {% endif %}
-
-                {% if has_permission("roles.manage") %}
-
-                <a href="{{ url_for('admin_roles') }}" class="sidebar-link">
-                    Roles & Permissions
-                </a>
-
-                {% endif %}
-
-                {% if has_permission("audit_logs.view") %}
-
-                <a href="{{ url_for('audit_logs') }}" class="sidebar-link">
-                    Audit Logs
-                </a>
-
-                {% endif %}
-
-                {% if has_permission("attendance.view") %}
-
-                <a href="{{ url_for('attendance') }}" class="sidebar-link">
-                    Attendance
-                </a>
-
-                {% endif %}
-
-                {% if has_permission("leave.view") %}
-
-                <a href="{{ url_for('leave_requests') }}" class="sidebar-link">
-                    Leave Management
-                </a>
-
-                {% endif %}
-
-                {% endif %}
-
-            </nav>
-
-        </aside>
-
-
-        <div class="main-area">
-
-            <header class="topbar">
-
-                <div>
-                    <strong>
-                        {% block page_title %}Dashboard{% endblock %}
-                    </strong>
-                </div>
-
-                <div class="d-flex align-items-center gap-3">
-
-                    <div class="text-end">
-                        <div>{{ session.username }}</div>
-
-                        <small class="text-muted">
-                            {{ session.role_name }}
-                        </small>
-                    </div>
-
-                    <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm">
-                        Logout
-                    </a>
-
-                </div>
-
-            </header>
-
-
-            <main class="content-area">
-
-                {% with messages =
-                get_flashed_messages(with_categories=true)
-                %}
-
-                {% for category, message in messages %}
-
-                <div class="alert alert-{{ category }}">
-                    {{ message }}
-                </div>
-
-                {% endfor %}
-
-                {% endwith %}
-
-
-                {% block content %}
-                {% endblock %}
-
-            </main>
-
-        </div>
-
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    {{ navigation.header() }}
+    <div class="page-header">
+        <nav class="location-trail" aria-label="Breadcrumb">
+            <a href="{{ url_for('dashboard') }}">Home</a>
+            {% if navigation.current.group %}<span aria-hidden="true">/</span><span>{{ navigation.current.group }}</span>{% endif %}
+            {% set location_title = self.title() | striptags | trim %}
+            {% if navigation.current.label and navigation.current.label != location_title %}<span aria-hidden="true">/</span><span>{{ navigation.current.label }}</span>{% endif %}
+            <span aria-hidden="true">/</span><span aria-current="page">{{ location_title }}</span>
+        </nav>
+        <strong>{% block page_title %}{{ self.title() | striptags | trim }}{% endblock %}</strong>
     </div>
 
+    <main class="content-area" id="main-content" tabindex="-1">
+
+        {% with messages =
+        get_flashed_messages(with_categories=true)
+        %}
+
+        {% for category, message in messages %}
+
+        <div class="alert alert-{{ category }}">
+            {{ message }}
+        </div>
+
+        {% endfor %}
+
+        {% endwith %}
+
+
+        {% block content %}
+        {% endblock %}
+
+    </main>
+
+    <script src="{{ url_for('static', filename='js/navigation.js') }}" defer></script>
 </body>
 
 </html>
