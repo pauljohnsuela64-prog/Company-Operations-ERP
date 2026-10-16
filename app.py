@@ -6302,6 +6302,172 @@ def payroll_periods():
         periods=periods,
     )
 
+# ==========================================================
+# PAYROLL - VIEW PERIOD
+# ==========================================================
+
+@app.route(
+    "/payroll/periods/<int:payroll_period_id>"
+)
+@permission_required("payroll.view")
+def view_payroll_period(
+    payroll_period_id,
+):
+
+    period = get_payroll_period_by_id(
+        payroll_period_id
+    )
+
+
+    if not period:
+
+        flash(
+            "Payroll period not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "payroll_periods"
+            )
+        )
+
+
+    entries = (
+        get_payroll_entries_by_period(
+            payroll_period_id
+        )
+    )
+
+
+    return render_template(
+        "payroll/periods/view.html",
+        period=period,
+        entries=entries,
+    )
+
+# ==========================================================
+# PAYROLL - GENERATE ENTRIES
+# ==========================================================
+
+@app.route(
+    "/payroll/periods/<int:payroll_period_id>/generate",
+    methods=["POST"],
+)
+@permission_required("payroll.process")
+def generate_payroll_entries_route(
+    payroll_period_id,
+):
+
+    period = get_payroll_period_by_id(
+        payroll_period_id
+    )
+
+
+    if not period:
+
+        flash(
+            "Payroll period not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "payroll_periods"
+            )
+        )
+
+
+    if period["status"] != "DRAFT":
+
+        flash(
+            (
+                "Payroll entries can only be generated "
+                "for a Draft payroll period."
+            ),
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_payroll_period",
+                payroll_period_id=payroll_period_id,
+            )
+        )
+
+
+    try:
+
+        result = generate_payroll_entries(
+            payroll_period_id=payroll_period_id,
+            generated_by=session["user_id"],
+        )
+
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_payroll_period",
+                payroll_period_id=payroll_period_id,
+            )
+        )
+
+
+    # ======================================================
+    # RESULT MESSAGE
+    # ==========================================================
+
+    if result["inserted_count"] > 0:
+
+        flash(
+            (
+                f"{result['inserted_count']} payroll "
+                "entr"
+                f"{'y' if result['inserted_count'] == 1 else 'ies'} "
+                "generated successfully."
+            ),
+            "success",
+        )
+
+
+    if (
+        result["inserted_count"] == 0
+        and result["existing_count"] > 0
+    ):
+
+        flash(
+            (
+                "All eligible employees already have "
+                "payroll entries for this period."
+            ),
+            "info",
+        )
+
+
+    return redirect(
+        url_for(
+            "view_payroll_period",
+            payroll_period_id=payroll_period_id,
+        )
+    )
+
+
+
+# ==========================================================
+# PAYROLL ENTRIES
+# ==========================================================
+
+from payroll_entry_repository import (
+    generate_payroll_entries,
+    get_payroll_entries_by_period,
+)
+
 
 # ==========================================================
 # IT MANAGEMENT - IT ASSETS

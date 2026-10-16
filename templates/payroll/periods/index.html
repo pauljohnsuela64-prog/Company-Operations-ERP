@@ -28,22 +28,16 @@ Payroll Periods
 
     <div>
 
-        <a
-            href="{{ url_for('payroll_compensation') }}"
-            class="btn btn-outline-secondary me-2"
-        >
+        <a href="{{ url_for('payroll_compensation') }}" class="btn btn-outline-secondary me-2">
             Employee Compensation
         </a>
 
 
         {% if has_permission("payroll.process") %}
 
-            <a
-                href="{{ url_for('add_payroll_period') }}"
-                class="btn btn-primary"
-            >
-                New Payroll Period
-            </a>
+        <a href="{{ url_for('add_payroll_period') }}" class="btn btn-primary">
+            New Payroll Period
+        </a>
 
         {% endif %}
 
@@ -83,179 +77,180 @@ Payroll Periods
 
                     {% for period in periods %}
 
-                        <tr>
+                    <tr>
 
 
-                            <!-- # PERIOD NUMBER -->
+                        <!-- # PERIOD NUMBER -->
 
-                            <td>
+                        <td>
 
-                                <strong>
-                                    {{ period.period_number }}
-                                </strong>
+                            <strong>
+                                {{ period.period_number }}
+                            </strong>
 
-                            </td>
-
-
-                            <!-- # PERIOD NAME -->
-
-                            <td>
-
-                                {{ period.period_name }}
-
-                            </td>
+                        </td>
 
 
-                            <!-- # CUTOFF -->
+                        <!-- # PERIOD NAME -->
 
-                            <td>
+                        <td>
 
-                                {{ period.start_date }}
-                                <br>
+                            {{ period.period_name }}
 
-                                <span class="text-muted small">
-                                    to
-                                </span>
-
-                                {{ period.end_date }}
-
-                            </td>
+                        </td>
 
 
-                            <!-- # PAY DATE -->
+                        <!-- # CUTOFF -->
 
-                            <td>
+                        <td>
 
-                                {{ period.pay_date }}
+                            {{ period.start_date }}
+                            <br>
 
-                            </td>
+                            <span class="text-muted small">
+                                to
+                            </span>
 
+                            {{ period.end_date }}
 
-                            <!-- # STATUS -->
-
-                            <td>
-
-                                {% if period.status == "DRAFT" %}
-
-                                    <span class="badge bg-secondary">
-                                        Draft
-                                    </span>
+                        </td>
 
 
-                                {% elif period.status == "PROCESSING" %}
+                        <!-- # PAY DATE -->
 
-                                    <span class="badge bg-primary">
-                                        Processing
-                                    </span>
+                        <td>
 
+                            {{ period.pay_date }}
 
-                                {% elif period.status == "APPROVED" %}
-
-                                    <span class="badge bg-success">
-                                        Approved
-                                    </span>
+                        </td>
 
 
-                                {% elif period.status == "PAID" %}
+                        <!-- # STATUS -->
 
-                                    <span class="badge bg-dark">
-                                        Paid
-                                    </span>
+                        <td>
 
+                            {% if period.status == "DRAFT" %}
 
-                                {% elif period.status == "CANCELLED" %}
-
-                                    <span class="badge bg-danger">
-                                        Cancelled
-                                    </span>
-
-                                {% endif %}
-
-                            </td>
+                            <span class="badge bg-secondary">
+                                Draft
+                            </span>
 
 
-                            <!-- # CREATED BY -->
+                            {% elif period.status == "PROCESSING" %}
 
-                            <td>
-
-                                {{ period.created_by_username }}
-
-                                <div class="small text-muted">
-                                    {{ period.created_at }}
-                                </div>
-
-                            </td>
+                            <span class="badge bg-primary">
+                                Processing
+                            </span>
 
 
-                            <!-- # ACTIONS -->
+                            {% elif period.status == "APPROVED" %}
 
-                            <td>
+                            <span class="badge bg-success">
+                                Approved
+                            </span>
+
+
+                            {% elif period.status == "PAID" %}
+
+                            <span class="badge bg-dark">
+                                Paid
+                            </span>
+
+
+                            {% elif period.status == "CANCELLED" %}
+
+                            <span class="badge bg-danger">
+                                Cancelled
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <!-- # CREATED BY -->
+
+                        <td>
+
+                            {{ period.created_by_username }}
+
+                            <div class="small text-muted">
+                                {{ period.created_at }}
+                            </div>
+
+                        </td>
+
+
+                        <!-- # ACTIONS -->
+
+                        <td>
+
+                            <div class="d-flex gap-2">
+
+
+                                <!-- # VIEW -->
+
+                                <a href="{{ url_for(
+                'view_payroll_period',
+                payroll_period_id=period.payroll_period_id
+            ) }}" class="btn btn-sm btn-outline-secondary">
+                                    View
+                                </a>
+
 
                                 {% if (
-                                    period.status == "DRAFT"
-                                    and has_permission("payroll.process")
+                                period.status == "DRAFT"
+                                and has_permission("payroll.process")
                                 ) %}
 
-                                    <div class="d-flex gap-2">
 
 
-                                        <a
-                                            href="{{ url_for(
-                                                'edit_payroll_period',
-                                                payroll_period_id=period.payroll_period_id
-                                            ) }}"
-                                            class="btn btn-sm btn-outline-primary"
-                                        >
-                                            Edit
-                                        </a>
+
+                                <!-- # EDIT -->
+
+                                <a href="{{ url_for(
+                    'edit_payroll_period',
+                    payroll_period_id=period.payroll_period_id
+                ) }}" class="btn btn-sm btn-outline-primary">
+                                    Edit
+                                </a>
 
 
-                                        <form
-                                            method="POST"
-                                            action="{{ url_for(
-                                                'cancel_payroll_period_route',
-                                                payroll_period_id=period.payroll_period_id
-                                            ) }}"
-                                            onsubmit="return confirm('Cancel this payroll period?');"
-                                        >
+                                <!-- # CANCEL -->
 
-                                            <button
-                                                type="submit"
-                                                class="btn btn-sm btn-outline-danger"
-                                            >
-                                                Cancel
-                                            </button>
+                                <form method="POST" action="{{ url_for(
+                    'cancel_payroll_period_route',
+                    payroll_period_id=period.payroll_period_id
+                ) }}" onsubmit="return confirm(
+                    'Cancel this payroll period?'
+                );">
 
-                                        </form>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        Cancel
+                                    </button>
+
+                                </form>
 
 
-                                    </div>
-
-                                {% else %}
-
-                                    <span class="text-muted">
-                                        —
-                                    </span>
-
+                                
                                 {% endif %}
 
-                            </td>
+                            </div>
 
-                        </tr>
+                        </td>
+
+                    </tr>
 
 
                     {% else %}
 
-                        <tr>
+                    <tr>
 
-                            <td
-                                colspan="7"
-                                class="text-center text-muted py-4"
-                            >
-                                No payroll periods have been created yet.
-                            </td>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No payroll periods have been created yet.
+                        </td>
 
-                        </tr>
+                    </tr>
 
                     {% endfor %}
 
