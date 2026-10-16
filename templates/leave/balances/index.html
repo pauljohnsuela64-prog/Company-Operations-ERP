@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+
+{% block title %}
+Leave Balances
+{% endblock %}
+
+
+{% block content %}
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            Leave Balances
+        </h2>
+
+        <p class="text-muted mb-0">
+            View employee leave entitlement, usage, and remaining balance.
+        </p>
+
+    </div>
+
+
+    <a
+        href="{{ url_for('leave_requests') }}"
+        class="btn btn-outline-secondary"
+    >
+        Back to Leave Requests
+    </a>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # FILTER -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <form
+            method="GET"
+            class="row g-3 align-items-end"
+        >
+
+
+            <!-- # EMPLOYEE -->
+
+            <div class="col-md-6">
+
+                <label class="form-label">
+                    Employee
+                </label>
+
+                <select
+                    name="employee_id"
+                    class="form-select"
+                    required
+                >
+
+                    <option value="">
+                        Select Employee
+                    </option>
+
+
+                    {% for item in employees %}
+
+                        <option
+                            value="{{ item.employee_id }}"
+                            {% if item.employee_id|string == selected_employee %}
+                                selected
+                            {% endif %}
+                        >
+
+                            {{ item.employee_number }}
+                            -
+                            {{ item.first_name }}
+                            {{ item.last_name }}
+
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <!-- # YEAR -->
+
+            <div class="col-md-3">
+
+                <label class="form-label">
+                    Year
+                </label>
+
+                <input
+                    type="number"
+                    name="year"
+                    class="form-control"
+                    min="2000"
+                    max="2100"
+                    value="{{ selected_year }}"
+                    required
+                >
+
+            </div>
+
+
+            <!-- # APPLY -->
+
+            <div class="col-md-3">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    View Balance
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # SELECTED EMPLOYEE -->
+<!-- # ========================================== -->
+
+{% if employee %}
+
+    <div class="card shadow-sm border-0 mb-4">
+
+        <div class="card-body">
+
+            <div class="row">
+
+                <div class="col-md-4">
+
+                    <div class="text-muted small">
+                        Employee
+                    </div>
+
+                    <strong>
+                        {{ employee.first_name }}
+
+                        {% if employee.middle_name %}
+                            {{ employee.middle_name }}
+                        {% endif %}
+
+                        {{ employee.last_name }}
+                    </strong>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <div class="text-muted small">
+                        Employee Number
+                    </div>
+
+                    <strong>
+                        {{ employee.employee_number }}
+                    </strong>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <div class="text-muted small">
+                        Balance Year
+                    </div>
+
+                    <strong>
+                        {{ selected_year }}
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # ====================================== -->
+    <!-- # BALANCE TABLE -->
+    <!-- # ====================================== -->
+
+    <div class="card shadow-sm border-0">
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table class="table table-hover align-middle mb-0">
+
+                    <thead>
+
+                        <tr>
+                            <th>Leave Type</th>
+                            <th>Paid / Unpaid</th>
+                            <th>Entitlement</th>
+                            <th>Used</th>
+                            <th>Remaining</th>
+                            <th>Status</th>
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        {% for balance in balances %}
+
+                            <tr>
+
+
+                                <!-- # LEAVE TYPE -->
+
+                                <td>
+
+                                    <strong>
+                                        {{ balance.leave_name }}
+                                    </strong>
+
+                                    <div class="small text-muted">
+                                        {{ balance.leave_code }}
+                                    </div>
+
+                                </td>
+
+
+                                <!-- # PAID -->
+
+                                <td>
+
+                                    {% if balance.is_paid %}
+
+                                        <span class="badge bg-success">
+                                            Paid
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="badge bg-secondary">
+                                            Unpaid
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+
+                                <!-- # ENTITLEMENT -->
+
+                                <td>
+
+                                    {% if balance.annual_entitlement is not none %}
+
+                                        {{ balance.annual_entitlement }}
+                                        days
+
+                                    {% else %}
+
+                                        <span class="text-muted">
+                                            Not fixed
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+
+                                <!-- # USED -->
+
+                                <td>
+                                    {{ balance.used_days }}
+                                    days
+                                </td>
+
+
+                                <!-- # REMAINING -->
+
+                                <td>
+
+                                    {% if balance.remaining_days is not none %}
+
+                                        {% if balance.remaining_days > 0 %}
+
+                                            <strong class="text-success">
+                                                {{ balance.remaining_days }}
+                                                days
+                                            </strong>
+
+                                        {% else %}
+
+                                            <strong class="text-danger">
+                                                0 days
+                                            </strong>
+
+                                        {% endif %}
+
+                                    {% else %}
+
+                                        <span class="text-muted">
+                                            Not limited
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+
+                                <!-- # STATUS -->
+
+                                <td>
+
+                                    {% if balance.is_active %}
+
+                                        <span class="badge bg-success">
+                                            Active
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="badge bg-secondary">
+                                            Inactive
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                            </tr>
+
+                        {% else %}
+
+                            <tr>
+
+                                <td
+                                    colspan="6"
+                                    class="text-center text-muted py-4"
+                                >
+                                    No leave types found.
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+{% else %}
+
+    <div class="alert alert-info">
+
+        Select an employee and year to view
+        their leave balances.
+
+    </div>
+
+{% endif %}
+
+{% endblock %}

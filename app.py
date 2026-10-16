@@ -26,6 +26,7 @@ from leave_repository import (
     reject_leave_request,
     set_leave_type_active_status,
     update_leave_type,
+    get_employee_leave_balances,
 )
 
 
@@ -8409,6 +8410,8 @@ def attendance():
     }
 
 
+
+
     # ======================================================
     # DEPARTMENT FILTER OPTIONS
     # ==========================================================
@@ -9047,6 +9050,116 @@ def leave_types():
     return render_template(
         "leave/types/index.html",
         leave_types=leave_type_list,
+    )
+
+# ==========================================================
+# LEAVE MANAGEMENT - BALANCES
+# ==========================================================
+
+@app.route("/leave/balances")
+@permission_required("leave.view")
+def leave_balances():
+
+    employees = get_all_employees()
+
+
+    # ======================================================
+    # FILTER INPUT
+    # ==========================================================
+
+    selected_employee = request.args.get(
+        "employee_id",
+        "",
+    ).strip()
+
+    selected_year = request.args.get(
+        "year",
+        str(date.today().year),
+    ).strip()
+
+
+    # ======================================================
+    # YEAR VALIDATION
+    # ==========================================================
+
+    try:
+
+        selected_year_value = int(
+            selected_year
+        )
+
+        if (
+            selected_year_value < 2000
+            or selected_year_value > 2100
+        ):
+
+            raise ValueError
+
+
+    except ValueError:
+
+        selected_year_value = (
+            date.today().year
+        )
+
+        selected_year = str(
+            selected_year_value
+        )
+
+
+    # ======================================================
+    # EMPLOYEE VALIDATION
+    # ==========================================================
+
+    employee = None
+
+    balances = []
+
+
+    if selected_employee:
+
+        try:
+
+            employee_id_value = int(
+                selected_employee
+            )
+
+        except ValueError:
+
+            selected_employee = ""
+
+        else:
+
+            employee = get_employee_by_id(
+                employee_id_value
+            )
+
+
+            if employee:
+
+                balances = (
+                    get_employee_leave_balances(
+                        employee_id=employee_id_value,
+                        year=selected_year_value,
+                    )
+                )
+
+            else:
+
+                selected_employee = ""
+
+
+    # ======================================================
+    # SHOW PAGE
+    # ==========================================================
+
+    return render_template(
+        "leave/balances/index.html",
+        employees=employees,
+        employee=employee,
+        balances=balances,
+        selected_employee=selected_employee,
+        selected_year=selected_year,
     )
 
 

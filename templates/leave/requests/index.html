@@ -24,22 +24,20 @@ Leave Requests
 
     <div>
 
-        <a
-            href="{{ url_for('leave_types') }}"
-            class="btn btn-outline-secondary me-2"
-        >
+        <a href="{{ url_for('leave_balances') }}" class="btn btn-outline-secondary me-2">
+            Leave Balances
+        </a>
+
+        <a href="{{ url_for('leave_types') }}" class="btn btn-outline-secondary me-2">
             Leave Types
         </a>
 
 
         {% if has_permission("leave.manage") %}
 
-            <a
-                href="{{ url_for('add_leave_request') }}"
-                class="btn btn-primary"
-            >
-                New Leave Request
-            </a>
+        <a href="{{ url_for('add_leave_request') }}" class="btn btn-primary">
+            New Leave Request
+        </a>
 
         {% endif %}
 
@@ -75,106 +73,100 @@ Leave Requests
 
                     {% for request in leave_requests %}
 
-                        <tr>
+                    <tr>
 
-                            <td>
-                                <strong>
-                                    {{ request.request_number }}
-                                </strong>
-                            </td>
-
-
-                            <td>
-
-                                {{ request.first_name }}
-                                {{ request.last_name }}
-
-                                <div class="small text-muted">
-                                    {{ request.employee_number }}
-                                </div>
-
-                            </td>
+                        <td>
+                            <strong>
+                                {{ request.request_number }}
+                            </strong>
+                        </td>
 
 
-                            <td>
-                                {{ request.leave_name }}
-                            </td>
+                        <td>
+
+                            {{ request.first_name }}
+                            {{ request.last_name }}
+
+                            <div class="small text-muted">
+                                {{ request.employee_number }}
+                            </div>
+
+                        </td>
 
 
-                            <td>
-
-                                {{ request.start_date }}
-                                -
-                                {{ request.end_date }}
-
-                            </td>
+                        <td>
+                            {{ request.leave_name }}
+                        </td>
 
 
-                            <td>
-                                {{ request.total_days }}
-                            </td>
+                        <td>
+
+                            {{ request.start_date }}
+                            -
+                            {{ request.end_date }}
+
+                        </td>
 
 
-                            <td>
-
-                                {% if request.status == "PENDING" %}
-
-                                    <span class="badge bg-warning text-dark">
-                                        Pending
-                                    </span>
-
-                                {% elif request.status == "APPROVED" %}
-
-                                    <span class="badge bg-success">
-                                        Approved
-                                    </span>
-
-                                {% elif request.status == "REJECTED" %}
-
-                                    <span class="badge bg-danger">
-                                        Rejected
-                                    </span>
-
-                                {% else %}
-
-                                    <span class="badge bg-secondary">
-                                        Cancelled
-                                    </span>
-
-                                {% endif %}
-
-                            </td>
+                        <td>
+                            {{ request.total_days }}
+                        </td>
 
 
-                            <td>
+                        <td>
 
-                                <a
-                                    href="{{ url_for(
+                            {% if request.status == "PENDING" %}
+
+                            <span class="badge bg-warning text-dark">
+                                Pending
+                            </span>
+
+                            {% elif request.status == "APPROVED" %}
+
+                            <span class="badge bg-success">
+                                Approved
+                            </span>
+
+                            {% elif request.status == "REJECTED" %}
+
+                            <span class="badge bg-danger">
+                                Rejected
+                            </span>
+
+                            {% else %}
+
+                            <span class="badge bg-secondary">
+                                Cancelled
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <td>
+
+                            <a href="{{ url_for(
                                         'view_leave_request',
                                         leave_request_id=request.leave_request_id
-                                    ) }}"
-                                    class="btn btn-sm btn-outline-primary"
-                                >
-                                    View
-                                </a>
+                                    ) }}" class="btn btn-sm btn-outline-primary">
+                                View
+                            </a>
 
-                            </td>
+                        </td>
 
-                        </tr>
+                    </tr>
 
 
                     {% else %}
 
-                        <tr>
+                    <tr>
 
-                            <td
-                                colspan="7"
-                                class="text-center text-muted py-4"
-                            >
-                                No leave requests found.
-                            </td>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No leave requests found.
+                        </td>
 
-                        </tr>
+                    </tr>
 
                     {% endfor %}
 

@@ -1,7 +1,10 @@
 # ==========================================================
 # LEAVE MANAGEMENT REPOSITORY
 # ==========================================================
-from datetime import timedelta
+from datetime import (
+    date,
+    timedelta,
+)
 import uuid
 
 from database import get_connection
@@ -1081,6 +1084,634 @@ def cancel_leave_request(
             WHERE leave_request_id = %s
             """,
             (
+                leave_request_id,
+            ),
+        )
+
+
+        connection.commit()
+
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+# ==========================================================
+# LEAVE BALANCES - EMPLOYEE / YEAR
+#
+# Balances are calculated from:
+#
+# Leave Type Annual Entitlement
+# minus
+# Approved Leave Requests
+# ==========================================================
+
+def get_employee_leave_balances(
+    employee_id,
+    year,
+):
+
+    connection = get_connection()
+
+    cursor = connection.cursor(
+        dictionary=True
+    )
+
+    try:
+
+        # ==================================================
+        # YEAR RANGE
+        # ==========================================================
+
+        year_start = date(
+            year,
+            1,
+            1,
+        )
+
+        year_end = date(
+            year,
+            12,
+            31,
+        )
+
+
+        # ==================================================
+        # GET LEAVE TYPES + APPROVED USAGE
+        #
+        # The DATEDIFF calculation only counts the portion
+        # of a request that falls inside the selected year.
+        #
+        # This also supports a leave request that crosses
+        # from December into January.
+        # ==========================================================
+
+        cursor.execute(
+            """
+            SELECT
+                lt.leave_type_id,
+                lt.leave_code,
+                lt.leave_name,
+                lt.description,
+                lt.annual_entitlement,
+                lt.is_paid,
+                lt.is_active,
+
+                COALESCE(
+                    SUM(
+                        CASE
+
+                            WHEN
+                                lr.status = 'APPROVED'
+                                AND lr.start_date <= %s
+                                AND lr.end_date >= %s
+
+                            THEN
+                                DATEDIFF(
+                                    LEAST(
+                                        lr.end_date,
+                                        %s
+                                    ),
+                                    GREATEST(
+                                        lr.start_date,
+                                        %s
+                                    )
+                                ) + 1
+
+                            ELSE 0
+
+                        END
+                    ),
+                    0
+                ) AS used_days
+
+            FROM leave_types lt
+
+            LEFT JOIN leave_requests lr
+                ON lt.leave_type_id = lr.leave_type_id
+                AND lr.employee_id = %s
+
+            GROUP BY
+                lt.leave_type_id,
+                lt.leave_code,
+                lt.leave_name,
+                lt.description,
+                lt.annual_entitlement,
+                lt.is_paid,
+                lt.is_active
+
+            ORDER BY
+                lt.leave_name
+            """,
+            (
+                year_end,
+                year_start,
+                year_end,
+                year_start,
+                employee_id,
+            ),
+        )
+
+
+        balances = cursor.fetchall()
+
+
+        # ==================================================
+        # CALCULATE REMAINING BALANCE
+        # ==========================================================
+
+        for balance in balances:
+
+            if (
+                balance[
+                    "annual_entitlement"
+                ]
+                is None
+            ):
+
+                # ==========================================
+                # NO FIXED LIMIT
+                # ==========================================
+
+                balance[
+                    "remaining_days"
+                ] = None
+
+            else:
+
+                balance[
+                    "remaining_days"
+                ] = (
+                    balance[
+                        "annual_entitlement"
+                    ]
+                    - balance[
+                        "used_days"
+                    ]
+                )
+
+
+        return balances
+
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+# ==========================================================
+# LEAVE MANAGEMENT - APPROVE REQUEST
+#
+# Approval:
+#
+# 1. Validates leave balance
+# 2. Protects existing attendance records
+# 3. Creates ON_LEAVE attendance
+# 4. Marks request APPROVED
+#
+# All inside one transaction.
+# ==========================================================
+
+def approve_leave_request(
+    leave_request_id,
+    reviewed_by,
+):
+
+    connection = get_connection()
+
+    cursor = connection.cursor(
+        dictionary=True
+    )
+
+    try:
+
+        connection.start_transaction()
+
+
+        # ==================================================
+        # LOCK AND GET REQUEST
+        # ==========================================================
+
+        cursor.execute(
+            """
+            SELECT
+                lr.leave_request_id,
+                lr.request_number,
+                lr.employee_id,
+                lr.leave_type_id,
+                lr.start_date,
+                lr.end_date,
+                lr.total_days,
+                lr.status,
+
+                lt.leave_name,
+                lt.annual_entitlement
+
+            FROM leave_requests lr
+
+            INNER JOIN leave_types lt
+                ON lr.leave_type_id = lt.leave_type_id
+
+            WHERE lr.leave_request_id = %s
+
+            FOR UPDATE
+            """,
+            (
+                leave_request_id,
+            ),
+        )
+
+
+        leave_request = (
+            cursor.fetchone()
+        )
+
+
+        if not leave_request:
+
+            raise ValueError(
+                "Leave request not found."
+            )
+
+
+        if (
+            leave_request["status"]
+            != "PENDING"
+        ):
+
+            raise ValueError(
+                (
+                    "Only pending leave requests "
+                    "can be approved."
+                )
+            )
+
+
+        # ==================================================
+        # LEAVE BALANCE PROTECTION
+        #
+        # NULL entitlement means the leave type currently
+        # has no fixed yearly limit.
+        # ==========================================================
+
+        annual_entitlement = (
+            leave_request[
+                "annual_entitlement"
+            ]
+        )
+
+
+        if annual_entitlement is not None:
+
+            request_start = (
+                leave_request[
+                    "start_date"
+                ]
+            )
+
+            request_end = (
+                leave_request[
+                    "end_date"
+                ]
+            )
+
+
+            # ==============================================
+            # CHECK EVERY CALENDAR YEAR TOUCHED BY REQUEST
+            # ==============================================
+
+            current_year = (
+                request_start.year
+            )
+
+
+            while (
+                current_year
+                <= request_end.year
+            ):
+
+                year_start = date(
+                    current_year,
+                    1,
+                    1,
+                )
+
+                year_end = date(
+                    current_year,
+                    12,
+                    31,
+                )
+
+
+                # ==========================================
+                # REQUESTED DAYS INSIDE THIS YEAR
+                # ==========================================
+
+                request_year_start = max(
+                    request_start,
+                    year_start,
+                )
+
+                request_year_end = min(
+                    request_end,
+                    year_end,
+                )
+
+
+                requested_days = (
+                    request_year_end
+                    - request_year_start
+                ).days + 1
+
+
+                # ==========================================
+                # LOCK EXISTING APPROVED REQUESTS
+                #
+                # This prevents two approvals from
+                # consuming the same remaining balance
+                # at the same time.
+                # ==========================================
+
+                cursor.execute(
+                    """
+                    SELECT
+                        leave_request_id,
+                        start_date,
+                        end_date
+
+                    FROM leave_requests
+
+                    WHERE
+                        employee_id = %s
+
+                        AND leave_type_id = %s
+
+                        AND status = 'APPROVED'
+
+                        AND leave_request_id <> %s
+
+                        AND start_date <= %s
+
+                        AND end_date >= %s
+
+                    FOR UPDATE
+                    """,
+                    (
+                        leave_request[
+                            "employee_id"
+                        ],
+                        leave_request[
+                            "leave_type_id"
+                        ],
+                        leave_request_id,
+                        year_end,
+                        year_start,
+                    ),
+                )
+
+
+                approved_requests = (
+                    cursor.fetchall()
+                )
+
+
+                # ==========================================
+                # CALCULATE USED DAYS
+                # ==========================================
+
+                used_days = 0
+
+
+                for approved in approved_requests:
+
+                    approved_start = max(
+                        approved[
+                            "start_date"
+                        ],
+                        year_start,
+                    )
+
+                    approved_end = min(
+                        approved[
+                            "end_date"
+                        ],
+                        year_end,
+                    )
+
+
+                    used_days += (
+                        approved_end
+                        - approved_start
+                    ).days + 1
+
+
+                remaining_days = (
+                    annual_entitlement
+                    - used_days
+                )
+
+
+                # ==========================================
+                # INSUFFICIENT BALANCE
+                # ==========================================
+
+                if (
+                    requested_days
+                    > remaining_days
+                ):
+
+                    raise ValueError(
+                        (
+                            f"Insufficient "
+                            f"{leave_request['leave_name']} "
+                            f"balance for {current_year}. "
+                            f"Entitlement: "
+                            f"{annual_entitlement} day(s), "
+                            f"Used: {used_days} day(s), "
+                            f"Remaining: "
+                            f"{remaining_days} day(s), "
+                            f"Requested: "
+                            f"{requested_days} day(s)."
+                        )
+                    )
+
+
+                current_year += 1
+
+
+        # ==================================================
+        # CHECK ATTENDANCE CONFLICTS
+        # ==========================================================
+
+        current_date = (
+            leave_request["start_date"]
+        )
+
+        end_date = (
+            leave_request["end_date"]
+        )
+
+
+        while current_date <= end_date:
+
+            cursor.execute(
+                """
+                SELECT
+                    attendance_id,
+                    status
+
+                FROM attendance_records
+
+                WHERE
+                    employee_id = %s
+                    AND attendance_date = %s
+
+                FOR UPDATE
+                """,
+                (
+                    leave_request[
+                        "employee_id"
+                    ],
+                    current_date,
+                ),
+            )
+
+
+            attendance = (
+                cursor.fetchone()
+            )
+
+
+            if (
+                attendance
+                and attendance["status"]
+                != "ON_LEAVE"
+            ):
+
+                raise ValueError(
+                    (
+                        "Approval blocked. The employee "
+                        "already has an attendance record "
+                        f"for {current_date} with status "
+                        f"{attendance['status']}."
+                    )
+                )
+
+
+            current_date += timedelta(
+                days=1
+            )
+
+
+        # ==================================================
+        # CREATE ON_LEAVE ATTENDANCE RECORDS
+        # ==========================================================
+
+        current_date = (
+            leave_request["start_date"]
+        )
+
+
+        while current_date <= end_date:
+
+            cursor.execute(
+                """
+                SELECT
+                    attendance_id
+
+                FROM attendance_records
+
+                WHERE
+                    employee_id = %s
+                    AND attendance_date = %s
+
+                FOR UPDATE
+                """,
+                (
+                    leave_request[
+                        "employee_id"
+                    ],
+                    current_date,
+                ),
+            )
+
+
+            attendance = (
+                cursor.fetchone()
+            )
+
+
+            if not attendance:
+
+                notes = (
+                    f"Approved leave "
+                    f"{leave_request['request_number']} "
+                    f"- {leave_request['leave_name']}"
+                )
+
+
+                cursor.execute(
+                    """
+                    INSERT INTO attendance_records (
+                        employee_id,
+                        attendance_date,
+                        time_in,
+                        time_out,
+                        status,
+                        notes,
+                        created_by
+                    )
+                    VALUES (
+                        %s,
+                        %s,
+                        NULL,
+                        NULL,
+                        'ON_LEAVE',
+                        %s,
+                        %s
+                    )
+                    """,
+                    (
+                        leave_request[
+                            "employee_id"
+                        ],
+                        current_date,
+                        notes,
+                        reviewed_by,
+                    ),
+                )
+
+
+            current_date += timedelta(
+                days=1
+            )
+
+
+        # ==================================================
+        # APPROVE REQUEST
+        # ==========================================================
+
+        cursor.execute(
+            """
+            UPDATE leave_requests
+
+            SET
+                status = 'APPROVED',
+                reviewed_by = %s,
+                reviewed_at = NOW(),
+                rejection_reason = NULL
+
+            WHERE leave_request_id = %s
+            """,
+            (
+                reviewed_by,
                 leave_request_id,
             ),
         )
