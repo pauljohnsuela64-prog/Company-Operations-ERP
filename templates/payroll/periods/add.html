@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}
+New Payroll Period
+{% endblock %}
+
+
+{% block content %}
+
+<div class="mb-4">
+
+    <h2 class="mb-1">
+        New Payroll Period
+    </h2>
+
+    <p class="text-muted mb-0">
+        Create a payroll cutoff and payment schedule.
+    </p>
+
+</div>
+
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <form method="POST">
+
+
+            <!-- # PERIOD NAME -->
+
+            <div class="mb-3">
+
+                <label class="form-label">
+                    Period Name
+                </label>
+
+                <input
+                    type="text"
+                    name="period_name"
+                    class="form-control"
+                    maxlength="100"
+                    placeholder="Example: October 1-15, 2026"
+                    required
+                >
+
+            </div>
+
+
+            <div class="row">
+
+
+                <!-- # START DATE -->
+
+                <div class="col-md-4 mb-3">
+
+                    <label class="form-label">
+                        Start Date
+                    </label>
+
+                    <input
+                        type="date"
+                        name="start_date"
+                        class="form-control"
+                        required
+                    >
+
+                </div>
+
+
+                <!-- # END DATE -->
+
+                <div class="col-md-4 mb-3">
+
+                    <label class="form-label">
+                        End Date
+                    </label>
+
+                    <input
+                        type="date"
+                        name="end_date"
+                        class="form-control"
+                        required
+                    >
+
+                </div>
+
+
+                <!-- # PAY DATE -->
+
+                <div class="col-md-4 mb-3">
+
+                    <label class="form-label">
+                        Pay Date
+                    </label>
+
+                    <input
+                        type="date"
+                        name="pay_date"
+                        class="form-control"
+                        required
+                    >
+
+                </div>
+
+            </div>
+
+
+            <!-- # NOTES -->
+
+            <div class="mb-4">
+
+                <label class="form-label">
+                    Notes
+                </label>
+
+                <textarea
+                    name="notes"
+                    class="form-control"
+                    maxlength="255"
+                    rows="3"
+                ></textarea>
+
+            </div>
+
+
+            <!-- # BUTTONS -->
+
+            <div class="d-flex gap-2">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Create Payroll Period
+                </button>
+
+
+                <a
+                    href="{{ url_for('payroll_periods') }}"
+                    class="btn btn-outline-secondary"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

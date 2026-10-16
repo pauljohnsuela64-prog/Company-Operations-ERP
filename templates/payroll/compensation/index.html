@@ -28,12 +28,13 @@ Employee Compensation
 
     {% if has_permission("payroll.compensation.manage") %}
 
-        <a
-            href="{{ url_for('add_payroll_compensation') }}"
-            class="btn btn-primary"
-        >
-            Add Compensation
-        </a>
+    <a href="{{ url_for('add_payroll_compensation') }}" class="btn btn-primary">
+        Add Compensation
+    </a>
+
+    <a href="{{ url_for('payroll_periods') }}" class="btn btn-outline-secondary me-2">
+        Payroll Periods
+    </a>
 
     {% endif %}
 
@@ -71,122 +72,116 @@ Employee Compensation
 
                     {% for record in compensation_records %}
 
-                        <tr>
+                    <tr>
 
-                            <!-- # EMPLOYEE -->
+                        <!-- # EMPLOYEE -->
 
-                            <td>
+                        <td>
 
-                                <strong>
-                                    {{ record.first_name }}
+                            <strong>
+                                {{ record.first_name }}
 
-                                    {% if record.middle_name %}
-                                        {{ record.middle_name }}
-                                    {% endif %}
+                                {% if record.middle_name %}
+                                {{ record.middle_name }}
+                                {% endif %}
 
-                                    {{ record.last_name }}
-                                </strong>
+                                {{ record.last_name }}
+                            </strong>
 
-                                <div class="small text-muted">
-                                    {{ record.employee_number }}
-                                </div>
+                            <div class="small text-muted">
+                                {{ record.employee_number }}
+                            </div>
 
-                            </td>
-
-
-                            <!-- # DEPARTMENT -->
-
-                            <td>
-                                {{ record.department_name or "-" }}
-                            </td>
+                        </td>
 
 
-                            <!-- # JOB TITLE -->
+                        <!-- # DEPARTMENT -->
 
-                            <td>
-                                {{ record.job_title or "-" }}
-                            </td>
-
-
-                            <!-- # PAY TYPE -->
-
-                            <td>
-
-                                <span class="badge bg-primary">
-                                    {{ record.pay_type.title() }}
-                                </span>
-
-                            </td>
+                        <td>
+                            {{ record.department_name or "-" }}
+                        </td>
 
 
-                            <!-- # BASIC RATE -->
+                        <!-- # JOB TITLE -->
 
-                            <td>
-
-                                <strong>
-                                    ₱{{ "{:,.2f}".format(record.basic_rate) }}
-                                </strong>
-
-                                <div class="small text-muted">
-
-                                    {% if record.pay_type == "MONTHLY" %}
-                                        per month
-
-                                    {% elif record.pay_type == "DAILY" %}
-                                        per day
-
-                                    {% else %}
-                                        per hour
-
-                                    {% endif %}
-
-                                </div>
-
-                            </td>
+                        <td>
+                            {{ record.job_title or "-" }}
+                        </td>
 
 
-                            <!-- # EFFECTIVE DATE -->
+                        <!-- # PAY TYPE -->
 
-                            <td>
-                                {{ record.effective_date }}
-                            </td>
+                        <td>
+
+                            <span class="badge bg-primary">
+                                {{ record.pay_type.title() }}
+                            </span>
+
+                        </td>
 
 
-                            <!-- # ACTION -->
+                        <!-- # BASIC RATE -->
 
-                            <td>
+                        <td>
 
-                                {% if has_permission("payroll.compensation.manage") %}
+                            <strong>
+                                ₱{{ "{:,.2f}".format(record.basic_rate) }}
+                            </strong>
 
-                                    <a
-                                        href="{{ url_for(
-                                            'edit_payroll_compensation',
-                                            compensation_id=record.compensation_id
-                                        ) }}"
-                                        class="btn btn-sm btn-outline-primary"
-                                    >
-                                        Edit
-                                    </a>
+                            <div class="small text-muted">
+
+                                {% if record.pay_type == "MONTHLY" %}
+                                per month
+
+                                {% elif record.pay_type == "DAILY" %}
+                                per day
+
+                                {% else %}
+                                per hour
 
                                 {% endif %}
 
-                            </td>
+                            </div>
 
-                        </tr>
+                        </td>
+
+
+                        <!-- # EFFECTIVE DATE -->
+
+                        <td>
+                            {{ record.effective_date }}
+                        </td>
+
+
+                        <!-- # ACTION -->
+
+                        <td>
+
+                            {% if has_permission("payroll.compensation.manage") %}
+
+                            <a href="{{ url_for(
+                                            'edit_payroll_compensation',
+                                            compensation_id=record.compensation_id
+                                        ) }}" class="btn btn-sm btn-outline-primary">
+                                Edit
+                            </a>
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
 
 
                     {% else %}
 
-                        <tr>
+                    <tr>
 
-                            <td
-                                colspan="7"
-                                class="text-center text-muted py-4"
-                            >
-                                No employee compensation has been configured yet.
-                            </td>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No employee compensation has been configured yet.
+                        </td>
 
-                        </tr>
+                    </tr>
 
                     {% endfor %}
 

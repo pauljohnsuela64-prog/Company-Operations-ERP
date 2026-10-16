@@ -15,6 +15,15 @@ from leave_export import (
     generate_leave_report_excel,
 )
 
+from payroll_period_repository import (
+    cancel_payroll_period,
+    create_payroll_period,
+    get_all_payroll_periods,
+    get_payroll_period_by_id,
+    has_overlapping_payroll_period,
+    update_payroll_period,
+)
+
 from payroll_repository import (
     create_employee_compensation,
     get_all_employee_compensation,
@@ -6278,6 +6287,21 @@ def edit_payroll_compensation(
         compensation=compensation,
     )
 
+# ==========================================================
+# PAYROLL - PERIODS
+# ==========================================================
+
+@app.route("/payroll/periods")
+@permission_required("payroll.view")
+def payroll_periods():
+
+    periods = get_all_payroll_periods()
+
+    return render_template(
+        "payroll/periods/index.html",
+        periods=periods,
+    )
+
 
 # ==========================================================
 # IT MANAGEMENT - IT ASSETS
@@ -6401,6 +6425,685 @@ def it_assets():
         selected_category=selected_category,
         selected_department=selected_department,
     )
+# ==========================================================
+# PAYROLL - CREATE PERIOD
+# ==========================================================
+
+@app.route(
+    "/payroll/periods/add",
+    methods=["GET", "POST"],
+)
+@permission_required("payroll.process")
+def add_payroll_period():
+
+    if request.method == "POST":
+
+        # ==================================================
+        # FORM INPUT
+        # ==========================================================
+
+        period_name = request.form.get(
+            "period_name",
+            "",
+        ).strip()
+
+        start_date = request.form.get(
+            "start_date",
+            "",
+        ).strip()
+
+        end_date = request.form.get(
+            "end_date",
+            "",
+        ).strip()
+
+        pay_date = request.form.get(
+            "pay_date",
+            "",
+        ).strip()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+
+        # ==================================================
+        # REQUIRED FIELDS
+        # ==========================================================
+
+        if (
+            not period_name
+            or not start_date
+            or not end_date
+            or not pay_date
+        ):
+
+            flash(
+                (
+                    "Period name, start date, "
+                    "end date, and pay date "
+                    "are required."
+                ),
+                "danger",
+            )
+
+            return render_template(
+                "payroll/periods/add.html"
+            )
+
+
+        # ==================================================
+        # TEXT VALIDATION
+        # ==========================================================
+
+        if len(period_name) > 100:
+
+            flash(
+                (
+                    "Period name must not exceed "
+                    "100 characters."
+                ),
+                "danger",
+            )
+
+            return render_template(
+                "payroll/periods/add.html"
+            )
+
+
+        if len(notes) > 255:
+
+            flash(
+                (
+                    "Notes must not exceed "
+                    "255 characters."
+                ),
+                "danger",
+            )
+
+            return render_template(
+                "payroll/periods/add.html"
+            )
+
+
+        # ==================================================
+        # DATE VALIDATION
+        # ==========================================================
+
+        try:
+
+            start_date_value = (
+                date.fromisoformat(
+                    start_date
+                )
+            )
+
+            end_date_value = (
+                date.fromisoformat(
+                    end_date
+                )
+            )
+
+            pay_date_value = (
+                date.fromisoformat(
+                    pay_date
+                )
+            )
+
+
+        except ValueError:
+
+            flash(
+                "Invalid payroll period date.",
+                "danger",
+            )
+
+            return render_template(
+                "payroll/periods/add.html"
+            )
+
+
+        # ==================================================
+        # DATE ORDER
+        # ==========================================================
+
+        if (
+            end_date_value
+            < start_date_value
+        ):
+
+            flash(
+                (
+                    "End date cannot be earlier "
+                    "than start date."
+                ),
+                "danger",
+            )
+
+            return render_template(
+                "payroll/periods/add.html"
+            )
+
+
+        if (
+            pay_date_value
+            < end_date_value
+        ):
+
+            flash(
+                (
+                    "Pay date cannot be earlier "
+                    "than the payroll period end date."
+                ),
+                "danger",
+            )
+
+            return render_template(
+                "payroll/periods/add.html"
+            )
+
+
+        # ==================================================
+        # OVERLAP PROTECTION
+        # ==========================================================
+
+        overlapping_period = (
+            has_overlapping_payroll_period(
+                start_date=start_date_value,
+                end_date=end_date_value,
+            )
+        )
+
+
+        if overlapping_period:
+
+            flash(
+                (
+                    "This payroll period overlaps "
+                    f"{overlapping_period['period_number']} "
+                    f"({overlapping_period['start_date']} "
+                    f"to "
+                    f"{overlapping_period['end_date']})."
+                ),
+                "danger",
+            )
+
+            return render_template(
+                "payroll/periods/add.html"
+            )
+
+
+        # ==================================================
+        # CREATE PERIOD
+        # ==========================================================
+
+        try:
+
+            create_payroll_period(
+                period_name=period_name,
+                start_date=start_date_value,
+                end_date=end_date_value,
+                pay_date=pay_date_value,
+                notes=notes or None,
+                created_by=session["user_id"],
+            )
+
+
+        except Exception as error:
+
+            if getattr(
+                error,
+                "errno",
+                None,
+            ) == 1062:
+
+                flash(
+                    (
+                        "A payroll period with "
+                        "that name already exists."
+                    ),
+                    "danger",
+                )
+
+                return render_template(
+                    "payroll/periods/add.html"
+                )
+
+            raise
+
+
+        flash(
+            "Payroll period created successfully.",
+            "success",
+        )
+
+
+        return redirect(
+            url_for(
+                "payroll_periods"
+            )
+        )
+
+
+    return render_template(
+        "payroll/periods/add.html"
+    )
+
+# ==========================================================
+# PAYROLL - EDIT PERIOD
+# ==========================================================
+
+@app.route(
+    "/payroll/periods/<int:payroll_period_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required("payroll.process")
+def edit_payroll_period(
+    payroll_period_id,
+):
+
+    period = get_payroll_period_by_id(
+        payroll_period_id
+    )
+
+
+    if not period:
+
+        flash(
+            "Payroll period not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "payroll_periods"
+            )
+        )
+
+
+    # ======================================================
+    # ONLY DRAFT PERIODS MAY BE EDITED
+    # ==========================================================
+
+    if period["status"] != "DRAFT":
+
+        flash(
+            (
+                "Only draft payroll periods "
+                "can be edited."
+            ),
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "payroll_periods"
+            )
+        )
+
+
+    if request.method == "POST":
+
+        period_name = request.form.get(
+            "period_name",
+            "",
+        ).strip()
+
+        start_date = request.form.get(
+            "start_date",
+            "",
+        ).strip()
+
+        end_date = request.form.get(
+            "end_date",
+            "",
+        ).strip()
+
+        pay_date = request.form.get(
+            "pay_date",
+            "",
+        ).strip()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+
+        # ==================================================
+        # REQUIRED
+        # ==========================================================
+
+        if (
+            not period_name
+            or not start_date
+            or not end_date
+            or not pay_date
+        ):
+
+            flash(
+                "All payroll period fields are required.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_payroll_period",
+                    payroll_period_id=payroll_period_id,
+                )
+            )
+
+
+        # ==================================================
+        # LENGTH VALIDATION
+        # ==========================================================
+
+        if len(period_name) > 100:
+
+            flash(
+                (
+                    "Period name must not exceed "
+                    "100 characters."
+                ),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_payroll_period",
+                    payroll_period_id=payroll_period_id,
+                )
+            )
+
+
+        if len(notes) > 255:
+
+            flash(
+                (
+                    "Notes must not exceed "
+                    "255 characters."
+                ),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_payroll_period",
+                    payroll_period_id=payroll_period_id,
+                )
+            )
+
+
+        # ==================================================
+        # DATE VALIDATION
+        # ==========================================================
+
+        try:
+
+            start_date_value = (
+                date.fromisoformat(
+                    start_date
+                )
+            )
+
+            end_date_value = (
+                date.fromisoformat(
+                    end_date
+                )
+            )
+
+            pay_date_value = (
+                date.fromisoformat(
+                    pay_date
+                )
+            )
+
+
+        except ValueError:
+
+            flash(
+                "Invalid payroll period date.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_payroll_period",
+                    payroll_period_id=payroll_period_id,
+                )
+            )
+
+
+        if (
+            end_date_value
+            < start_date_value
+        ):
+
+            flash(
+                (
+                    "End date cannot be earlier "
+                    "than start date."
+                ),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_payroll_period",
+                    payroll_period_id=payroll_period_id,
+                )
+            )
+
+
+        if (
+            pay_date_value
+            < end_date_value
+        ):
+
+            flash(
+                (
+                    "Pay date cannot be earlier "
+                    "than the payroll period end date."
+                ),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_payroll_period",
+                    payroll_period_id=payroll_period_id,
+                )
+            )
+
+
+        # ==================================================
+        # OVERLAP CHECK
+        # ==========================================================
+
+        overlapping_period = (
+            has_overlapping_payroll_period(
+                start_date=start_date_value,
+                end_date=end_date_value,
+                exclude_payroll_period_id=payroll_period_id,
+            )
+        )
+
+
+        if overlapping_period:
+
+            flash(
+                (
+                    "This payroll period overlaps "
+                    f"{overlapping_period['period_number']} "
+                    f"({overlapping_period['start_date']} "
+                    f"to "
+                    f"{overlapping_period['end_date']})."
+                ),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_payroll_period",
+                    payroll_period_id=payroll_period_id,
+                )
+            )
+
+
+        # ==================================================
+        # DATABASE UPDATE
+        # ==========================================================
+
+        try:
+
+            updated = (
+                update_payroll_period(
+                    payroll_period_id=payroll_period_id,
+                    period_name=period_name,
+                    start_date=start_date_value,
+                    end_date=end_date_value,
+                    pay_date=pay_date_value,
+                    notes=notes or None,
+                    updated_by=session["user_id"],
+                )
+            )
+
+
+        except Exception as error:
+
+            if getattr(
+                error,
+                "errno",
+                None,
+            ) == 1062:
+
+                flash(
+                    (
+                        "A payroll period with "
+                        "that name already exists."
+                    ),
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "edit_payroll_period",
+                        payroll_period_id=payroll_period_id,
+                    )
+                )
+
+            raise
+
+
+        if not updated:
+
+            flash(
+                (
+                    "Payroll period could not be updated. "
+                    "It may no longer be in Draft status."
+                ),
+                "danger",
+            )
+
+        else:
+
+            flash(
+                "Payroll period updated successfully.",
+                "success",
+            )
+
+
+        return redirect(
+            url_for(
+                "payroll_periods"
+            )
+        )
+
+
+    return render_template(
+        "payroll/periods/edit.html",
+        period=period,
+    )
+
+# ==========================================================
+# PAYROLL - CANCEL PERIOD
+# ==========================================================
+
+@app.route(
+    "/payroll/periods/<int:payroll_period_id>/cancel",
+    methods=["POST"],
+)
+@permission_required("payroll.process")
+def cancel_payroll_period_route(
+    payroll_period_id,
+):
+
+    period = get_payroll_period_by_id(
+        payroll_period_id
+    )
+
+
+    if not period:
+
+        flash(
+            "Payroll period not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "payroll_periods"
+            )
+        )
+
+
+    if period["status"] != "DRAFT":
+
+        flash(
+            (
+                "Only draft payroll periods "
+                "can be cancelled."
+            ),
+            "danger",
+        )
+
+
+        return redirect(
+            url_for(
+                "payroll_periods"
+            )
+        )
+
+
+    cancelled = cancel_payroll_period(
+        payroll_period_id=payroll_period_id,
+        updated_by=session["user_id"],
+    )
+
+
+    if cancelled:
+
+        flash(
+            "Payroll period cancelled successfully.",
+            "success",
+        )
+
+    else:
+
+        flash(
+            "Payroll period could not be cancelled.",
+            "danger",
+        )
+
+
+    return redirect(
+        url_for(
+            "payroll_periods"
+        )
+    )
+
+
 
 
 # ==========================================================
