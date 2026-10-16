@@ -1,0 +1,96 @@
+{# Keep the original effective visibility rules, including inherited parent gates. #}
+{% set admin_visible = has_permission('users.manage') or has_permission('roles.manage') or has_permission('audit_logs.view') %}
+{% set groups = [
+    ('hr', 'Human Resources', 'people', [
+        ('Employees', 'employees', '/employees', has_permission('employees.view')),
+        ('Departments', 'departments', '/departments', has_permission('departments.view')),
+        ('Attendance', 'attendance', '/attendance', admin_visible and has_permission('attendance.view')),
+        ('Leave Management', 'leave_requests', '/leave', admin_visible and has_permission('leave.view')),
+        ('Payroll', 'payroll_compensation', '/payroll', has_permission('payroll.view'))
+    ]),
+    ('inventory', 'Inventory', 'box', [
+        ('Categories', 'inventory_categories', '/inventory/categories', has_permission('inventory.view')),
+        ('Warehouses', 'warehouses', '/inventory/warehouses', has_permission('inventory.view')),
+        ('Items', 'inventory_items', '/inventory/items', has_permission('inventory.view')),
+        ('Stock', 'inventory_stock', '/inventory/stock', has_permission('inventory.view')),
+        ('Movement History', 'stock_movement_history', '/inventory/stock/movements', has_permission('inventory.view'))
+    ]),
+    ('procurement', 'Procurement', 'cart', [
+        ('Suppliers', 'suppliers', '/procurement/suppliers', has_permission('inventory.view') and has_permission('procurement.view')),
+        ('Purchase Requests', 'purchase_requests', '/procurement/requests', has_permission('inventory.view') and has_permission('procurement.view')),
+        ('Purchase Orders', 'purchase_orders', '/procurement/orders', has_permission('inventory.view') and has_permission('procurement.view')),
+        ('Goods Receipts', 'goods_receipts', '/procurement/receipts', has_permission('inventory.view') and has_permission('procurement.view'))
+    ]),
+    ('it', 'IT Management', 'monitor', [
+        ('IT Assets', 'it_assets', '/it/assets', has_permission('it_assets.view')),
+        ('Help Desk', 'help_desk', '/it/help-desk', has_permission('helpdesk.view'))
+    ]),
+    ('finance', 'Finance', 'wallet', [
+        ('Summary', 'finance_summary', '/finance', has_permission('finance.view')),
+        ('Expenses', 'expenses', '/finance/expenses', has_permission('finance.view')),
+        ('Expense Categories', 'expense_categories', '/finance/expense-categories', has_permission('finance.view')),
+        ('Reports', 'finance_reports', '/finance/reports', has_permission('finance.view')),
+        ('Budgets', 'department_budgets', '/finance/budgets', has_permission('finance.view'))
+    ]),
+    ('admin', 'Administration', 'shield', [
+        ('Users', 'admin_users', '/admin/users', has_permission('users.manage')),
+        ('Roles & Permissions', 'admin_roles', '/admin/roles', has_permission('roles.manage')),
+        ('Audit Logs', 'audit_logs', '/admin/audit-logs', has_permission('audit_logs.view'))
+    ])
+] %}
+{# Longest segment-boundary match avoids Stock/Movement and Finance overlap. #}
+{% set current = namespace(group='', label='Dashboard' if request.endpoint == 'dashboard' else '', endpoint='', length=0) %}
+{% for id, label, glyph, links in groups %}
+    {% for text, endpoint, prefix, visible in links %}
+        {% if (request.path == prefix or (prefix != '/finance' and request.path.startswith(prefix ~ '/'))) and prefix|length > current.length %}
+            {% set current.group = label %}
+            {% set current.label = text %}
+            {% set current.endpoint = endpoint %}
+            {% set current.length = prefix|length %}
+        {% endif %}
+    {% endfor %}
+{% endfor %}
+
+{% macro icon(name) -%}
+{% set paths = {
+    'dashboard': 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
+    'people': 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M22 21v-2a4 4 0 0 0-3-3.87 M15 3.13a4 4 0 0 1 0 7.75 M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
+    'box': 'm12 3 9 5v9l-9 5-9-5V8z M3 8l9 5 9-5 M12 13v9 M7.5 5.5l9 5',
+    'cart': 'M3 3h2l3 12h11l3-9H6 M10 20h.01 M18 20h.01',
+    'monitor': 'M3 3h18v13H3z M8 21h8 M12 16v5',
+    'wallet': 'M3 5h17v15H3z M3 5V3h15 M15 10h6v5h-6z',
+    'shield': 'M12 3 3 7v6c0 5 9 9 9 9s9-4 9-9V7z M8 12l3 3 5-6',
+    'menu': 'M4 6h16 M4 12h16 M4 18h16',
+    'close': 'm6 6 12 12 M6 18 18 6'
+} %}
+<svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="{{ paths[name] }}" /></svg>
+{%- endmacro %}
+
+{% macro header() %}
+<header class="topbar">
+    <div class="account-bar">
+        <div class="company-brand"><strong>Company Operations</strong><span>ERP System</span></div>
+        <div class="account-controls">
+            <div class="account-identity"><strong>{{ session.username }}</strong><small>{{ session.role_name }}</small></div>
+            <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
+            <button class="navigation-toggle" type="button" aria-controls="erp-navigation" aria-expanded="false" aria-label="Open navigation">{{ icon('menu') }}</button>
+        </div>
+    </div>
+    <nav class="enterprise-nav" id="erp-navigation" aria-label="Main navigation">
+        <a href="{{ url_for('dashboard') }}" class="module-link{{ ' is-active' if request.endpoint == 'dashboard' else '' }}"{% if request.endpoint == 'dashboard' %} aria-current="page"{% endif %}>{{ icon('dashboard') }}<span>Dashboard</span></a>
+        {% for id, label, glyph, links in groups %}
+        {% set visible_links = links | selectattr('3') | list %}
+        {% if visible_links %}
+        <details class="nav-dropdown{{ ' is-active' if current.group == label else '' }}" id="nav-{{ id }}" name="erp-modules">
+            <summary class="module-link" aria-controls="nav-panel-{{ id }}">{{ icon(glyph) }}<span>{{ label }}</span><span class="nav-chevron" aria-hidden="true"></span></summary>
+            <div class="dropdown-panel" id="nav-panel-{{ id }}">
+                {% for text, endpoint, prefix, visible in visible_links %}
+                <a href="{{ url_for(endpoint) }}" class="dropdown-link{{ ' is-active' if current.endpoint == endpoint else '' }}"{% if current.endpoint == endpoint %} aria-current="page"{% endif %}>{{ text }}</a>
+                {% endfor %}
+            </div>
+        </details>
+        {% endif %}
+        {% endfor %}
+    </nav>
+</header>
+{% endmacro %}

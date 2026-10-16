@@ -1,79 +1,67 @@
-html,
-body {
-    height: 100%;
-    margin: 0;
+html, body { min-height: 100%; margin: 0; }
+body { background: #f5f6f8; color: #252d38; }
+.topbar { background: #202c3b; color: #e9edf3; border-bottom: 1px solid #152130; }
+.account-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 32px; }
+.company-brand { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; }
+.company-brand strong { font-size: 16px; font-weight: 600; letter-spacing: .1px; }
+.company-brand > span { color: #aab7c8; font-size: 11px; border-left: 1px solid #ffffff30; padding-left: 12px; }
+.account-controls { display: flex; align-items: center; gap: 18px; min-width: 0; }
+.account-identity { text-align: right; min-width: 0; max-width: 260px; overflow-wrap: anywhere; }
+.account-identity strong { font-size: 12px; font-weight: 500; }
+.account-identity small { display: block; color: #aab7c8; font-size: 11px; }
+.logout-link { color: #e4eaf1; border: 1px solid #778698; border-radius: 4px; padding: 5px 12px; font-size: 12px; text-decoration: none; white-space: nowrap; }
+.logout-link:hover { color: #fff; background: #ffffff12; }
+.enterprise-nav { display: flex; align-items: stretch; gap: 2px; padding: 0 24px; border-top: 1px solid #ffffff12; }
+.enterprise-nav[hidden] { display: none; }
+.module-link { display: flex; align-items: center; gap: 8px; padding: 13px 12px; color: #d0d9e5; font-size: 13px; font-weight: 500; line-height: 1.5; text-decoration: none; white-space: nowrap; border-bottom: 3px solid transparent; }
+.module-link:hover, .nav-dropdown[open] > .module-link { color: #fff; background: #ffffff0b; }
+.module-link.is-active, .nav-dropdown.is-active > .module-link { color: #fff; background: #ffffff0d; border-bottom-color: #a8bdd5; }
+.nav-icon { flex-shrink: 0; }
+.nav-dropdown { position: relative; }
+.nav-dropdown > summary { list-style: none; cursor: pointer; }
+.nav-dropdown > summary::-webkit-details-marker { display: none; }
+.nav-chevron { width: 5px; height: 5px; border-right: 1.5px solid; border-bottom: 1.5px solid; transform: rotate(45deg); margin: -3px 2px 0 4px; }
+.nav-dropdown[open] .nav-chevron { transform: rotate(225deg); margin-top: 3px; }
+.dropdown-panel { position: absolute; top: 100%; left: 0; z-index: 1030; min-width: 236px; max-width: calc(100vw - 32px); padding: 6px; background: #fff; border: 1px solid #d8dee6; border-radius: 0 0 5px 5px; box-shadow: 0 8px 20px #1521301a; }
+.dropdown-link { display: block; padding: 10px 12px; color: #344155; font-size: 13px; line-height: 1.4; border-radius: 3px; text-decoration: none; overflow-wrap: anywhere; }
+.dropdown-link:hover { background: #f1f4f7; color: #142b47; }
+.dropdown-link.is-active { color: #183e68; background: #eaf0f7; font-weight: 600; box-shadow: inset 3px 0 #526f91; }
+.topbar :focus-visible { outline: 2px solid #a8c9f0; outline-offset: -3px; }
+.dropdown-panel :focus-visible { outline-color: #395f8e; }
+.navigation-toggle { display: none; align-items: center; justify-content: center; padding: 7px; border: 1px solid #778698; border-radius: 4px; color: #e9edf3; background: transparent; }
+.page-header { padding: 16px 32px; background: #fff; border-bottom: 1px solid #e0e5eb; }
+.page-header > strong { display: block; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.location-trail { display: flex; flex-wrap: wrap; gap: 7px; font-size: 11px; color: #687586; margin-bottom: 4px; }
+.location-trail a { color: #526378; text-decoration: none; }
+.location-trail a:hover { text-decoration: underline; }
+.content-area { padding: 24px 32px 40px; min-width: 0; }
+.skip-link { position: fixed; left: 12px; top: -100px; z-index: 1100; padding: 10px 16px; background: #fff; color: #212529; border: 2px solid #395f8e; border-radius: 4px; }
+.skip-link:focus { top: 12px; }
+@media (min-width: 768px) and (max-width: 1199.98px) {
+    .enterprise-nav { padding: 0 12px; gap: 0; flex-wrap: wrap; }
+    .module-link { padding: 12px 9px; font-size: 12px; gap: 6px; }
+    .module-link .nav-icon { display: none; }
+    .account-bar { padding: 12px 22px; }
 }
-
-body {
-    background: #f5f6f8;
+@media (max-width: 767.98px) {
+    .account-bar { padding: 12px 16px; gap: 12px; align-items: flex-start; }
+    .company-brand { gap: 2px; flex-direction: column; }
+    .company-brand strong { font-size: 13px; }
+    .company-brand > span { padding: 0; border: 0; font-size: 10px; }
+    .account-controls { flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .account-identity { flex-basis: 100%; max-width: 180px; }
+    .navigation-ready .navigation-toggle { display: inline-flex; }
+    .enterprise-nav { flex-direction: column; padding: 8px 12px; max-height: 70vh; max-height: 70dvh; overflow-y: auto; }
+    .module-link { padding: 11px 10px; border-bottom: 0; border-radius: 3px; }
+    .module-link.is-active, .nav-dropdown.is-active > .module-link { box-shadow: inset 3px 0 #a8bdd5; }
+    .nav-chevron { margin-left: auto; margin-right: 4px; }
+    .dropdown-panel { position: static; min-width: 0; max-width: none; box-shadow: none; margin: 2px 0 8px 28px; border-radius: 4px; }
+    .page-header { padding: 14px 16px; }
+    .content-area { padding: 20px 16px 32px; }
 }
-
-.erp-layout {
-    min-height: 100vh;
-    display: flex;
-}
-
-.sidebar {
-    width: 250px;
-    background: #212529;
-    color: white;
-    flex-shrink: 0;
-}
-
-.sidebar-brand {
-    padding: 24px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.sidebar-brand h5 {
-    margin: 0;
-}
-
-.sidebar-brand small {
-    color: #adb5bd;
-}
-
-.sidebar-nav {
-    padding: 15px 0;
-}
-
-.sidebar-section {
-    padding: 20px 20px 8px;
-    font-size: 12px;
-    text-transform: uppercase;
-    color: #868e96;
-    font-weight: 600;
-}
-
-.sidebar-link {
-    display: block;
-    padding: 10px 20px;
-    color: #dee2e6;
-    text-decoration: none;
-}
-
-.sidebar-link:hover {
-    background: #343a40;
-    color: white;
-}
-
-.main-area {
-    flex: 1;
-    min-width: 0;
-}
-
-.topbar {
-    height: 72px;
-    background: white;
-    border-bottom: 1px solid #dee2e6;
-    display: flex;  
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 30px;
-}
-
-.content-area {
-    padding: 30px;
+@media print {
+    .topbar, .page-header, .skip-link { display: none !important; }
+    .content-area { padding: 0; }
 }
 
 .dashboard-card {
