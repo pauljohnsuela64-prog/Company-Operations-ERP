@@ -201,16 +201,28 @@
 
                 {% endif %}
 
-                {% if has_permission('roles.manage') %}
-                <a href="#" class="sidebar-link">
-                    Roles & Permissions
-                </a>
-                {% endif %}
+                {% if has_permission("audit_logs.view") %}
 
-                {% if has_permission('audit_logs.view') %}
-                <a href="#" class="sidebar-link">
+                <a href="{{ url_for('audit_logs') }}" class="sidebar-link">
                     Audit Logs
                 </a>
+
+                {% endif %}
+
+                {% if has_permission("roles.manage") %}
+
+                <a href="{{ url_for('admin_roles') }}" class="sidebar-link">
+                    Roles & Permissions
+                </a>
+
+                {% endif %}
+
+                {% if has_permission("audit_logs.view") %}
+
+                <a href="{{ url_for('audit_logs') }}" class="sidebar-link">
+                    Audit Logs
+                </a>
+
                 {% endif %}
 
                 {% if has_permission("attendance.view") %}

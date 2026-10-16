@@ -9,6 +9,12 @@ from datetime import (
 from dotenv import load_dotenv
 from dashboard_repository import get_dashboard_summary
 
+from audit_log_repository import (
+    create_audit_log,
+    get_audit_log_filter_options,
+    get_filtered_audit_logs,
+)
+
 from decimal import Decimal, InvalidOperation
 
 from payroll_workflow_repository import (
@@ -422,6 +428,59 @@ def login():
     return render_template("login.html")
 
 
+
+
+# ==========================================================
+# AUDIT LOG HELPER
+#
+# Audit logging should not stop the original ERP action
+# if the audit insert itself unexpectedly fails.
+# ==========================================================
+
+def record_audit_event(
+    module,
+    action,
+    entity_type=None,
+    entity_id=None,
+    description=None,
+    user_id=None,
+    username=None,
+):
+
+    actor_user_id = (
+        user_id
+        if user_id is not None
+        else session.get("user_id")
+    )
+
+
+    actor_username = (
+        username
+        or session.get("username")
+        or "SYSTEM"
+    )
+
+
+    try:
+
+        create_audit_log(
+            user_id=actor_user_id,
+            username=actor_username,
+            module=module,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            description=description,
+        )
+
+
+    except Exception:
+
+        app.logger.exception(
+            "Unable to write ERP audit log."
+        )
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
@@ -522,6 +581,20 @@ def add_department():
     return render_template(
         "departments/add.html",
     )
+
+        # ==============================================
+        # AUDIT - LOGIN
+        # ==============================================
+
+    record_audit_event(
+        module="AUTH",
+        action="LOGIN",
+        entity_type="USER",
+        entity_id=user["user_id"],
+        description=(
+            "User logged in successfully."
+            ),
+        )
 
 @app.route(
     "/departments/<int:department_id>/edit",
@@ -13251,15 +13324,174 @@ def payroll_payslip(
         adjustment_totals=adjustment_totals,
     )
 
+# ==========================================================
+# ADMIN - AUDIT LOGS
+# ==========================================================
+
+@app.route("/admin/audit-logs")
+@permission_required("audit_logs.view")
+def audit_logs():
+
+    # ======================================================
+    # FILTER INPUT
+    # ==========================================================
+
+    search_text = request.args.get(
+        "search",
+        "",
+    ).strip()
+
+
+    selected_module = request.args.get(
+        "module",
+        "",
+    ).strip().upper()
+
+
+    selected_action = request.args.get(
+        "action",
+        "",
+    ).strip().upper()
+
+
+    start_date_text = request.args.get(
+        "start_date",
+        "",
+    ).strip()
+
+
+    end_date_text = request.args.get(
+        "end_date",
+        "",
+    ).strip()
+
+
+    # ======================================================
+    # DATE VALIDATION
+    # ==========================================================
+
+    start_date_value = None
+
+    end_date_value = None
+
+
+    if start_date_text:
+
+        try:
+
+            start_date_value = (
+                date.fromisoformat(
+                    start_date_text
+                )
+            )
+
+        except ValueError:
+
+            start_date_text = ""
+
+
+    if end_date_text:
+
+        try:
+
+            end_date_value = (
+                date.fromisoformat(
+                    end_date_text
+                )
+            )
+
+        except ValueError:
+
+            end_date_text = ""
+
+
+    if (
+        start_date_value
+        and end_date_value
+        and start_date_value
+        > end_date_value
+    ):
+
+        flash(
+            (
+                "Audit log start date cannot "
+                "be later than end date."
+            ),
+            "danger",
+        )
+
+        start_date_value = None
+        end_date_value = None
+
+        start_date_text = ""
+        end_date_text = ""
+
+
+    # ======================================================
+    # DATA
+    # ==========================================================
+
+    logs = get_filtered_audit_logs(
+        search_text=search_text or None,
+        module=selected_module or None,
+        action=selected_action or None,
+        start_date=start_date_value,
+        end_date=end_date_value,
+    )
+
+
+    filter_options = (
+        get_audit_log_filter_options()
+    )
+
+
+    return render_template(
+        "admin/audit_logs/index.html",
+        logs=logs,
+        modules=filter_options["modules"],
+        actions=filter_options["actions"],
+        search_text=search_text,
+        selected_module=selected_module,
+        selected_action=selected_action,
+        start_date=start_date_text,
+        end_date=end_date_text,
+    )
+
+# ==========================================================
+# LOGOUT
+# ==========================================================
+
 @app.route("/logout")
 @login_required
 def logout():
+
+    # ======================================================
+    # AUDIT BEFORE CLEARING SESSION
+    # ==========================================================
+
+    record_audit_event(
+        module="AUTH",
+        action="LOGOUT",
+        entity_type="USER",
+        entity_id=session.get("user_id"),
+        description=(
+            "User logged out."
+        ),
+    )
+
+
     session.clear()
 
-    flash("You have been logged out.", "success")
 
-    return redirect(url_for("login"))
+    flash(
+        "You have been logged out.",
+        "success",
+    )
 
+
+    return redirect(
+        url_for("login")
+    )
 
 
 

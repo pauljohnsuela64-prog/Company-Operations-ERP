@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+Audit Logs
+{% endblock %}
+
+
+{% block content %}
+
+
+<!-- # ========================================== -->
+<!-- # HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            Audit Logs
+        </h2>
+
+        <p class="text-muted mb-0">
+            Review important activity performed inside the ERP.
+        </p>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # FILTERS -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <form
+            method="GET"
+            action="{{ url_for('audit_logs') }}"
+        >
+
+            <div class="row g-3">
+
+
+                <div class="col-lg-3">
+
+                    <label class="form-label">
+                        Search
+                    </label>
+
+                    <input
+                        type="text"
+                        name="search"
+                        class="form-control"
+                        value="{{ search_text }}"
+                        placeholder="User, action, target..."
+                    >
+
+                </div>
+
+
+                <div class="col-lg-2">
+
+                    <label class="form-label">
+                        Module
+                    </label>
+
+                    <select
+                        name="module"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            All Modules
+                        </option>
+
+                        {% for module in modules %}
+
+                            <option
+                                value="{{ module }}"
+                                {% if selected_module == module %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ module }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <div class="col-lg-2">
+
+                    <label class="form-label">
+                        Action
+                    </label>
+
+                    <select
+                        name="action"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            All Actions
+                        </option>
+
+                        {% for action in actions %}
+
+                            <option
+                                value="{{ action }}"
+                                {% if selected_action == action %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ action }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <div class="col-lg-2">
+
+                    <label class="form-label">
+                        From
+                    </label>
+
+                    <input
+                        type="date"
+                        name="start_date"
+                        class="form-control"
+                        value="{{ start_date }}"
+                    >
+
+                </div>
+
+
+                <div class="col-lg-2">
+
+                    <label class="form-label">
+                        To
+                    </label>
+
+                    <input
+                        type="date"
+                        name="end_date"
+                        class="form-control"
+                        value="{{ end_date }}"
+                    >
+
+                </div>
+
+
+                <div class="col-lg-1 d-flex align-items-end">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary w-100"
+                    >
+                        Filter
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <div class="mt-3">
+
+                <a
+                    href="{{ url_for('audit_logs') }}"
+                    class="btn btn-sm btn-outline-secondary"
+                >
+                    Clear Filters
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # AUDIT TABLE -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Date / Time</th>
+                        <th>User</th>
+                        <th>Module</th>
+                        <th>Action</th>
+                        <th>Target</th>
+                        <th>Description</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for log in logs %}
+
+                        <tr>
+
+
+                            <td class="text-nowrap">
+
+                                {{ log.created_at }}
+
+                            </td>
+
+
+                            <td>
+
+                                <strong>
+                                    {{ log.username }}
+                                </strong>
+
+                            </td>
+
+
+                            <td>
+
+                                <span class="badge bg-secondary">
+                                    {{ log.module }}
+                                </span>
+
+                            </td>
+
+
+                            <td>
+
+                                <span class="badge bg-primary">
+                                    {{ log.action }}
+                                </span>
+
+                            </td>
+
+
+                            <td>
+
+                                {% if log.entity_type %}
+
+                                    <strong>
+                                        {{ log.entity_type }}
+                                    </strong>
+
+                                    {% if log.entity_id %}
+
+                                        <div class="small text-muted">
+                                            {{ log.entity_id }}
+                                        </div>
+
+                                    {% endif %}
+
+                                {% else %}
+
+                                    -
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+
+                                {{ log.description or "-" }}
+
+                            </td>
+
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="6"
+                                class="text-center text-muted py-4"
+                            >
+                                No audit log records found.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+        {% if logs|length >= 500 %}
+
+            <div class="small text-muted mt-3">
+
+                Showing the latest 500 matching records.
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+
+{% endblock %}
