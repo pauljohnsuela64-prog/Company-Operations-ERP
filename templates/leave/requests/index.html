@@ -11,37 +11,40 @@ Leave Requests
 
     <div>
 
-        <h2 class="mb-1">
-            Leave Requests
-        </h2>
+    <a
+        href="{{ url_for('leave_reports') }}"
+        class="btn btn-outline-secondary me-2"
+    >
+        Reports
+    </a>
 
-        <p class="text-muted mb-0">
-            Manage employee leave requests.
-        </p>
+    <a
+        href="{{ url_for('leave_balances') }}"
+        class="btn btn-outline-secondary me-2"
+    >
+        Leave Balances
+    </a>
 
-    </div>
-
-
-    <div>
-
-        <a href="{{ url_for('leave_balances') }}" class="btn btn-outline-secondary me-2">
-            Leave Balances
-        </a>
-
-        <a href="{{ url_for('leave_types') }}" class="btn btn-outline-secondary me-2">
-            Leave Types
-        </a>
+    <a
+        href="{{ url_for('leave_types') }}"
+        class="btn btn-outline-secondary me-2"
+    >
+        Leave Types
+    </a>
 
 
-        {% if has_permission("leave.manage") %}
+    {% if has_permission("leave.manage") %}
 
-        <a href="{{ url_for('add_leave_request') }}" class="btn btn-primary">
+        <a
+            href="{{ url_for('add_leave_request') }}"
+            class="btn btn-primary"
+        >
             New Leave Request
         </a>
 
-        {% endif %}
+    {% endif %}
 
-    </div>
+</div>
 
 </div>
 

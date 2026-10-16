@@ -11,6 +11,10 @@ from dashboard_repository import get_dashboard_summary
 
 from decimal import Decimal, InvalidOperation
 
+from leave_export import (
+    generate_leave_report_excel,
+)
+
 
 from leave_repository import (
     approve_leave_request,
@@ -27,6 +31,9 @@ from leave_repository import (
     set_leave_type_active_status,
     update_leave_type,
     get_employee_leave_balances,
+    get_leave_report_by_type,
+    get_leave_report_records,
+    get_leave_report_summary,
 )
 
 
@@ -10070,6 +10077,435 @@ def cancel_leave_request_route(
             leave_request_id=leave_request_id,
         )
     )
+
+# ==========================================================
+# LEAVE MANAGEMENT - REPORTS
+# ==========================================================
+
+@app.route("/leave/reports")
+@permission_required("leave.view")
+def leave_reports():
+
+    # ======================================================
+    # FILTER INPUT
+    # ==========================================================
+
+    selected_year = request.args.get(
+        "year",
+        str(date.today().year),
+    ).strip()
+
+    selected_status = request.args.get(
+        "status",
+        "",
+    ).strip().upper()
+
+    selected_employee = request.args.get(
+        "employee_id",
+        "",
+    ).strip()
+
+    selected_leave_type = request.args.get(
+        "leave_type_id",
+        "",
+    ).strip()
+
+
+    # ======================================================
+    # YEAR VALIDATION
+    # ==========================================================
+
+    try:
+
+        selected_year_value = int(
+            selected_year
+        )
+
+        if (
+            selected_year_value < 2000
+            or selected_year_value > 2100
+        ):
+
+            raise ValueError
+
+    except ValueError:
+
+        selected_year_value = (
+            date.today().year
+        )
+
+        selected_year = str(
+            selected_year_value
+        )
+
+
+    # ======================================================
+    # STATUS VALIDATION
+    # ==========================================================
+
+    allowed_statuses = {
+        "PENDING",
+        "APPROVED",
+        "REJECTED",
+        "CANCELLED",
+    }
+
+
+    if (
+        selected_status
+        and selected_status
+        not in allowed_statuses
+    ):
+
+        selected_status = ""
+
+
+    # ======================================================
+    # EMPLOYEE VALIDATION
+    # ==========================================================
+
+    employee_id_value = None
+
+
+    if selected_employee:
+
+        try:
+
+            employee_id_value = int(
+                selected_employee
+            )
+
+        except ValueError:
+
+            selected_employee = ""
+
+
+    # ======================================================
+    # LEAVE TYPE VALIDATION
+    # ==========================================================
+
+    leave_type_id_value = None
+
+
+    if selected_leave_type:
+
+        try:
+
+            leave_type_id_value = int(
+                selected_leave_type
+            )
+
+        except ValueError:
+
+            selected_leave_type = ""
+
+
+    # ======================================================
+    # REPORT DATA
+    # ==========================================================
+
+    summary = get_leave_report_summary(
+        year=selected_year_value,
+        status=selected_status or None,
+        employee_id=employee_id_value,
+        leave_type_id=leave_type_id_value,
+    )
+
+
+    type_summary = (
+        get_leave_report_by_type(
+            year=selected_year_value,
+            status=selected_status or None,
+            employee_id=employee_id_value,
+            leave_type_id=leave_type_id_value,
+        )
+    )
+
+
+    records = (
+        get_leave_report_records(
+            year=selected_year_value,
+            status=selected_status or None,
+            employee_id=employee_id_value,
+            leave_type_id=leave_type_id_value,
+        )
+    )
+
+
+    employees = get_all_employees()
+
+    leave_types = get_all_leave_types()
+
+
+    return render_template(
+        "leave/reports/index.html",
+        summary=summary,
+        type_summary=type_summary,
+        records=records,
+        employees=employees,
+        leave_types=leave_types,
+        selected_year=selected_year,
+        selected_status=selected_status,
+        selected_employee=selected_employee,
+        selected_leave_type=selected_leave_type,
+    )
+
+    # ==========================================================
+# LEAVE MANAGEMENT - EXPORT REPORT
+# ==========================================================
+
+@app.route("/leave/reports/export")
+@permission_required("leave.view")
+def export_leave_report():
+
+    # ======================================================
+    # FILTER INPUT
+    # ==========================================================
+
+    selected_year = request.args.get(
+        "year",
+        str(date.today().year),
+    ).strip()
+
+    selected_status = request.args.get(
+        "status",
+        "",
+    ).strip().upper()
+
+    selected_employee = request.args.get(
+        "employee_id",
+        "",
+    ).strip()
+
+    selected_leave_type = request.args.get(
+        "leave_type_id",
+        "",
+    ).strip()
+
+
+    # ======================================================
+    # YEAR
+    # ==========================================================
+
+    try:
+
+        selected_year_value = int(
+            selected_year
+        )
+
+        if (
+            selected_year_value < 2000
+            or selected_year_value > 2100
+        ):
+
+            raise ValueError
+
+    except ValueError:
+
+        selected_year_value = (
+            date.today().year
+        )
+
+
+    # ======================================================
+    # STATUS
+    # ==========================================================
+
+    allowed_statuses = {
+        "PENDING",
+        "APPROVED",
+        "REJECTED",
+        "CANCELLED",
+    }
+
+
+    if (
+        selected_status
+        not in allowed_statuses
+    ):
+
+        selected_status = ""
+
+
+    # ======================================================
+    # EMPLOYEE
+    # ==========================================================
+
+    employee_id_value = None
+
+
+    if selected_employee:
+
+        try:
+
+            employee_id_value = int(
+                selected_employee
+            )
+
+        except ValueError:
+
+            selected_employee = ""
+
+
+    # ======================================================
+    # LEAVE TYPE
+    # ==========================================================
+
+    leave_type_id_value = None
+
+
+    if selected_leave_type:
+
+        try:
+
+            leave_type_id_value = int(
+                selected_leave_type
+            )
+
+        except ValueError:
+
+            selected_leave_type = ""
+
+
+    # ======================================================
+    # REPORT DATA
+    # ==========================================================
+
+    summary = get_leave_report_summary(
+        year=selected_year_value,
+        status=selected_status or None,
+        employee_id=employee_id_value,
+        leave_type_id=leave_type_id_value,
+    )
+
+
+    type_summary = (
+        get_leave_report_by_type(
+            year=selected_year_value,
+            status=selected_status or None,
+            employee_id=employee_id_value,
+            leave_type_id=leave_type_id_value,
+        )
+    )
+
+
+    records = (
+        get_leave_report_records(
+            year=selected_year_value,
+            status=selected_status or None,
+            employee_id=employee_id_value,
+            leave_type_id=leave_type_id_value,
+        )
+    )
+
+
+    # ======================================================
+    # READABLE FILTER LABELS
+    # ==========================================================
+
+    employees = get_all_employees()
+
+    leave_types = get_all_leave_types()
+
+
+    employee_label = "All Employees"
+
+
+    if employee_id_value:
+
+        employee = next(
+            (
+                item
+                for item in employees
+                if item["employee_id"]
+                == employee_id_value
+            ),
+            None,
+        )
+
+        if employee:
+
+            employee_label = (
+                f"{employee['employee_number']} - "
+                f"{employee['first_name']} "
+                f"{employee['last_name']}"
+            )
+
+
+    leave_type_label = (
+        "All Leave Types"
+    )
+
+
+    if leave_type_id_value:
+
+        leave_type = next(
+            (
+                item
+                for item in leave_types
+                if item["leave_type_id"]
+                == leave_type_id_value
+            ),
+            None,
+        )
+
+        if leave_type:
+
+            leave_type_label = (
+                leave_type[
+                    "leave_name"
+                ]
+            )
+
+
+    filter_labels = {
+        "status": (
+            selected_status
+            or "All Statuses"
+        ),
+
+        "employee": (
+            employee_label
+        ),
+
+        "leave_type": (
+            leave_type_label
+        ),
+    }
+
+
+    # ======================================================
+    # CREATE EXCEL
+    # ==========================================================
+
+    excel_file = (
+        generate_leave_report_excel(
+            selected_year=selected_year_value,
+            summary=summary,
+            type_summary=type_summary,
+            records=records,
+            filter_labels=filter_labels,
+        )
+    )
+
+
+    # ======================================================
+    # DOWNLOAD
+    # ==========================================================
+
+    return send_file(
+        excel_file,
+        as_attachment=True,
+        download_name=(
+            f"Leave_Report_"
+            f"{selected_year_value}.xlsx"
+        ),
+        mimetype=(
+            "application/vnd.openxmlformats-"
+            "officedocument.spreadsheetml.sheet"
+        ),
+    )
+
 # ==========================================================
 # ADMINISTRATION - CHANGE USER ROLE
 # ==========================================================

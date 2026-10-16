@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+
+{% block title %}
+Leave Reports
+{% endblock %}
+
+
+{% block content %}
+
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            Leave Reports
+        </h2>
+
+        <p class="text-muted mb-0">
+            Analyze employee leave requests and approved leave usage.
+        </p>
+
+    </div>
+
+
+    <div>
+
+        <a
+            href="{{ url_for(
+                'export_leave_report',
+                year=selected_year,
+                status=selected_status,
+                employee_id=selected_employee,
+                leave_type_id=selected_leave_type
+            ) }}"
+            class="btn btn-success me-2"
+        >
+            Export Excel
+        </a>
+
+
+        <a
+            href="{{ url_for('leave_balances') }}"
+            class="btn btn-outline-secondary me-2"
+        >
+            Leave Balances
+        </a>
+
+
+        <a
+            href="{{ url_for('leave_requests') }}"
+            class="btn btn-outline-secondary"
+        >
+            Back
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # FILTERS -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <form
+            method="GET"
+            class="row g-3 align-items-end"
+        >
+
+
+            <div class="col-md-2">
+
+                <label class="form-label">
+                    Year
+                </label>
+
+                <input
+                    type="number"
+                    name="year"
+                    class="form-control"
+                    min="2000"
+                    max="2100"
+                    value="{{ selected_year }}"
+                >
+
+            </div>
+
+
+            <div class="col-md-2">
+
+                <label class="form-label">
+                    Status
+                </label>
+
+                <select
+                    name="status"
+                    class="form-select"
+                >
+
+                    <option value="">
+                        All Statuses
+                    </option>
+
+
+                    {% for status in [
+                        "PENDING",
+                        "APPROVED",
+                        "REJECTED",
+                        "CANCELLED"
+                    ] %}
+
+                        <option
+                            value="{{ status }}"
+                            {% if selected_status == status %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ status.title() }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <div class="col-md-3">
+
+                <label class="form-label">
+                    Employee
+                </label>
+
+                <select
+                    name="employee_id"
+                    class="form-select"
+                >
+
+                    <option value="">
+                        All Employees
+                    </option>
+
+
+                    {% for employee in employees %}
+
+                        <option
+                            value="{{ employee.employee_id }}"
+                            {% if employee.employee_id|string == selected_employee %}
+                                selected
+                            {% endif %}
+                        >
+
+                            {{ employee.employee_number }}
+                            -
+                            {{ employee.first_name }}
+                            {{ employee.last_name }}
+
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <div class="col-md-3">
+
+                <label class="form-label">
+                    Leave Type
+                </label>
+
+                <select
+                    name="leave_type_id"
+                    class="form-select"
+                >
+
+                    <option value="">
+                        All Leave Types
+                    </option>
+
+
+                    {% for leave_type in leave_types %}
+
+                        <option
+                            value="{{ leave_type.leave_type_id }}"
+                            {% if leave_type.leave_type_id|string == selected_leave_type %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ leave_type.leave_name }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <div class="col-md-2">
+
+                <div class="d-flex gap-2">
+
+                    <button
+                        class="btn btn-primary"
+                    >
+                        Apply
+                    </button>
+
+
+                    <a
+                        href="{{ url_for('leave_reports') }}"
+                        class="btn btn-outline-secondary"
+                    >
+                        Reset
+                    </a>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # SUMMARY -->
+<!-- # ========================================== -->
+
+<div class="row g-3 mb-4">
+
+    {% set cards = [
+        ("Total", summary.total_requests),
+        ("Pending", summary.pending_count),
+        ("Approved", summary.approved_count),
+        ("Rejected", summary.rejected_count),
+        ("Cancelled", summary.cancelled_count),
+        ("Approved Days", summary.approved_days)
+    ] %}
+
+
+    {% for label, value in cards %}
+
+        <div class="col-md-2">
+
+            <div class="card shadow-sm border-0 h-100">
+
+                <div class="card-body">
+
+                    <div class="text-muted">
+                        {{ label }}
+                    </div>
+
+                    <h4 class="mb-0">
+                        {{ value }}
+                    </h4>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    {% endfor %}
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # BY LEAVE TYPE -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Requests by Leave Type
+        </h5>
+
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Leave Type</th>
+                        <th>Total</th>
+                        <th>Pending</th>
+                        <th>Approved</th>
+                        <th>Rejected</th>
+                        <th>Cancelled</th>
+                        <th>Approved Days</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for item in type_summary %}
+
+                        <tr>
+
+                            <td>
+
+                                <strong>
+                                    {{ item.leave_name }}
+                                </strong>
+
+                                <div class="small text-muted">
+                                    {{ item.leave_code }}
+                                </div>
+
+                            </td>
+
+                            <td>
+                                {{ item.total_requests }}
+                            </td>
+
+                            <td>
+                                {{ item.pending_count }}
+                            </td>
+
+                            <td>
+                                {{ item.approved_count }}
+                            </td>
+
+                            <td>
+                                {{ item.rejected_count }}
+                            </td>
+
+                            <td>
+                                {{ item.cancelled_count }}
+                            </td>
+
+                            <td>
+                                {{ item.approved_days }}
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="7"
+                                class="text-center text-muted py-4"
+                            >
+                                No leave data matches the selected filters.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # DETAILED RECORDS -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Leave Records
+        </h5>
+
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Request</th>
+                        <th>Employee</th>
+                        <th>Department</th>
+                        <th>Leave Type</th>
+                        <th>Dates</th>
+                        <th>Days</th>
+                        <th>Status</th>
+                        <th>Reviewed By</th>
+                        <th>Action</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for record in records %}
+
+                        <tr>
+
+                            <td>
+                                <strong>
+                                    {{ record.request_number }}
+                                </strong>
+                            </td>
+
+
+                            <td>
+
+                                {{ record.first_name }}
+                                {{ record.last_name }}
+
+                                <div class="small text-muted">
+                                    {{ record.employee_number }}
+                                </div>
+
+                            </td>
+
+
+                            <td>
+                                {{ record.department_name or "-" }}
+                            </td>
+
+
+                            <td>
+                                {{ record.leave_name }}
+                            </td>
+
+
+                            <td>
+                                {{ record.start_date }}
+                                -
+                                {{ record.end_date }}
+                            </td>
+
+
+                            <td>
+                                {{ record.total_days }}
+                            </td>
+
+
+                            <td>
+                                {{ record.status.replace("_", " ").title() }}
+                            </td>
+
+
+                            <td>
+                                {{ record.reviewed_by_username or "-" }}
+                            </td>
+
+
+                            <td>
+
+                                <a
+                                    href="{{ url_for(
+                                        'view_leave_request',
+                                        leave_request_id=record.leave_request_id
+                                    ) }}"
+                                    class="btn btn-sm btn-outline-primary"
+                                >
+                                    View
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="9"
+                                class="text-center text-muted py-4"
+                            >
+                                No leave records match the selected filters.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

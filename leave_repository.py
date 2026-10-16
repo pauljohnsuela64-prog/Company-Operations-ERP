@@ -1730,3 +1730,478 @@ def approve_leave_request(
 
         cursor.close()
         connection.close()
+
+# ==========================================================
+# LEAVE REPORTS - SUMMARY
+# ==========================================================
+
+def get_leave_report_summary(
+    year,
+    status=None,
+    employee_id=None,
+    leave_type_id=None,
+):
+
+    connection = get_connection()
+
+    cursor = connection.cursor(
+        dictionary=True
+    )
+
+    try:
+
+        year_start = date(
+            year,
+            1,
+            1,
+        )
+
+        year_end = date(
+            year,
+            12,
+            31,
+        )
+
+
+        query = """
+            SELECT
+                COUNT(*) AS total_requests,
+
+                COALESCE(
+                    SUM(status = 'PENDING'),
+                    0
+                ) AS pending_count,
+
+                COALESCE(
+                    SUM(status = 'APPROVED'),
+                    0
+                ) AS approved_count,
+
+                COALESCE(
+                    SUM(status = 'REJECTED'),
+                    0
+                ) AS rejected_count,
+
+                COALESCE(
+                    SUM(status = 'CANCELLED'),
+                    0
+                ) AS cancelled_count,
+
+                COALESCE(
+                    SUM(
+                        CASE
+
+                            WHEN status = 'APPROVED'
+
+                            THEN
+                                DATEDIFF(
+                                    LEAST(
+                                        end_date,
+                                        %s
+                                    ),
+                                    GREATEST(
+                                        start_date,
+                                        %s
+                                    )
+                                ) + 1
+
+                            ELSE 0
+
+                        END
+                    ),
+                    0
+                ) AS approved_days
+
+            FROM leave_requests
+
+            WHERE
+                start_date <= %s
+                AND end_date >= %s
+        """
+
+
+        parameters = [
+            year_end,
+            year_start,
+            year_end,
+            year_start,
+        ]
+
+
+        # ==================================================
+        # STATUS FILTER
+        # ==========================================================
+
+        if status:
+
+            query += """
+                AND status = %s
+            """
+
+            parameters.append(
+                status
+            )
+
+
+        # ==================================================
+        # EMPLOYEE FILTER
+        # ==========================================================
+
+        if employee_id:
+
+            query += """
+                AND employee_id = %s
+            """
+
+            parameters.append(
+                employee_id
+            )
+
+
+        # ==================================================
+        # LEAVE TYPE FILTER
+        # ==========================================================
+
+        if leave_type_id:
+
+            query += """
+                AND leave_type_id = %s
+            """
+
+            parameters.append(
+                leave_type_id
+            )
+
+
+        cursor.execute(
+            query,
+            tuple(parameters),
+        )
+
+
+        return cursor.fetchone()
+
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# LEAVE REPORTS - BY LEAVE TYPE
+# ==========================================================
+
+def get_leave_report_by_type(
+    year,
+    status=None,
+    employee_id=None,
+    leave_type_id=None,
+):
+
+    connection = get_connection()
+
+    cursor = connection.cursor(
+        dictionary=True
+    )
+
+    try:
+
+        year_start = date(
+            year,
+            1,
+            1,
+        )
+
+        year_end = date(
+            year,
+            12,
+            31,
+        )
+
+
+        query = """
+            SELECT
+                lt.leave_type_id,
+                lt.leave_code,
+                lt.leave_name,
+
+                COUNT(
+                    lr.leave_request_id
+                ) AS total_requests,
+
+                COALESCE(
+                    SUM(lr.status = 'PENDING'),
+                    0
+                ) AS pending_count,
+
+                COALESCE(
+                    SUM(lr.status = 'APPROVED'),
+                    0
+                ) AS approved_count,
+
+                COALESCE(
+                    SUM(lr.status = 'REJECTED'),
+                    0
+                ) AS rejected_count,
+
+                COALESCE(
+                    SUM(lr.status = 'CANCELLED'),
+                    0
+                ) AS cancelled_count,
+
+                COALESCE(
+                    SUM(
+                        CASE
+
+                            WHEN lr.status = 'APPROVED'
+
+                            THEN
+                                DATEDIFF(
+                                    LEAST(
+                                        lr.end_date,
+                                        %s
+                                    ),
+                                    GREATEST(
+                                        lr.start_date,
+                                        %s
+                                    )
+                                ) + 1
+
+                            ELSE 0
+
+                        END
+                    ),
+                    0
+                ) AS approved_days
+
+            FROM leave_requests lr
+
+            INNER JOIN leave_types lt
+                ON lr.leave_type_id
+                = lt.leave_type_id
+
+            WHERE
+                lr.start_date <= %s
+                AND lr.end_date >= %s
+        """
+
+
+        parameters = [
+            year_end,
+            year_start,
+            year_end,
+            year_start,
+        ]
+
+
+        if status:
+
+            query += """
+                AND lr.status = %s
+            """
+
+            parameters.append(
+                status
+            )
+
+
+        if employee_id:
+
+            query += """
+                AND lr.employee_id = %s
+            """
+
+            parameters.append(
+                employee_id
+            )
+
+
+        if leave_type_id:
+
+            query += """
+                AND lr.leave_type_id = %s
+            """
+
+            parameters.append(
+                leave_type_id
+            )
+
+
+        query += """
+            GROUP BY
+                lt.leave_type_id,
+                lt.leave_code,
+                lt.leave_name
+
+            ORDER BY
+                lt.leave_name
+        """
+
+
+        cursor.execute(
+            query,
+            tuple(parameters),
+        )
+
+
+        return cursor.fetchall()
+
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
+# ==========================================================
+# LEAVE REPORTS - DETAILED RECORDS
+# ==========================================================
+
+def get_leave_report_records(
+    year,
+    status=None,
+    employee_id=None,
+    leave_type_id=None,
+):
+
+    connection = get_connection()
+
+    cursor = connection.cursor(
+        dictionary=True
+    )
+
+    try:
+
+        year_start = date(
+            year,
+            1,
+            1,
+        )
+
+        year_end = date(
+            year,
+            12,
+            31,
+        )
+
+
+        query = """
+            SELECT
+                lr.leave_request_id,
+                lr.request_number,
+                lr.employee_id,
+                lr.leave_type_id,
+                lr.start_date,
+                lr.end_date,
+                lr.total_days,
+                lr.reason,
+                lr.status,
+                lr.reviewed_at,
+                lr.rejection_reason,
+                lr.created_at,
+
+                e.employee_number,
+                e.first_name,
+                e.middle_name,
+                e.last_name,
+
+                d.department_name,
+
+                lt.leave_code,
+                lt.leave_name,
+                lt.is_paid,
+
+                requester.username
+                    AS requested_by_username,
+
+                reviewer.username
+                    AS reviewed_by_username
+
+            FROM leave_requests lr
+
+            INNER JOIN employees e
+                ON lr.employee_id
+                = e.employee_id
+
+            LEFT JOIN departments d
+                ON e.department_id
+                = d.department_id
+
+            INNER JOIN leave_types lt
+                ON lr.leave_type_id
+                = lt.leave_type_id
+
+            INNER JOIN users requester
+                ON lr.requested_by
+                = requester.user_id
+
+            LEFT JOIN users reviewer
+                ON lr.reviewed_by
+                = reviewer.user_id
+
+            WHERE
+                lr.start_date <= %s
+                AND lr.end_date >= %s
+        """
+
+
+        parameters = [
+            year_end,
+            year_start,
+        ]
+
+
+        if status:
+
+            query += """
+                AND lr.status = %s
+            """
+
+            parameters.append(
+                status
+            )
+
+
+        if employee_id:
+
+            query += """
+                AND lr.employee_id = %s
+            """
+
+            parameters.append(
+                employee_id
+            )
+
+
+        if leave_type_id:
+
+            query += """
+                AND lr.leave_type_id = %s
+            """
+
+            parameters.append(
+                leave_type_id
+            )
+
+
+        query += """
+            ORDER BY
+                lr.start_date DESC,
+                lr.leave_request_id DESC
+        """
+
+
+        cursor.execute(
+            query,
+            tuple(parameters),
+        )
+
+
+        return cursor.fetchall()
+
+
+    finally:
+
+        cursor.close()
+        connection.close()
