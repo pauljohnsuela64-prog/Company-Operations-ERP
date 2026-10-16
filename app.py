@@ -445,6 +445,8 @@ def record_audit_event(
     description=None,
     user_id=None,
     username=None,
+    entity_lookup=None,
+    identifier_key=None,
 ):
 
     actor_user_id = (
@@ -462,6 +464,16 @@ def record_audit_event(
 
 
     try:
+
+        # AUDIT LOG: Resolve display identifiers without affecting the action.
+        if entity_lookup is not None:
+            try:
+                entity = entity_lookup(entity_id)
+                if entity:
+                    entity_id = entity.get(identifier_key) or entity_id
+            except Exception:
+                # Keep the internal ID if the optional display lookup fails.
+                app.logger.exception("Unable to resolve audit entity identifier.")
 
         create_audit_log(
             user_id=actor_user_id,
@@ -2654,6 +2666,15 @@ def submit_purchase_request_route(request_id):
             "danger",
         )
     else:
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="PROCUREMENT",
+            action="SUBMIT",
+            entity_type="PURCHASE_REQUEST",
+            entity_id=purchase_request.get("request_number") or request_id,
+            description="Purchase request submitted.",
+        )
+
         flash(
             "Purchase request submitted successfully.",
             "success",
@@ -2703,6 +2724,15 @@ def approve_purchase_request_route(request_id):
     )
 
     if approved:
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="PROCUREMENT",
+            action="APPROVE",
+            entity_type="PURCHASE_REQUEST",
+            entity_id=purchase_request.get("request_number") or request_id,
+            description="Purchase request approved.",
+        )
+
         flash(
             "Purchase request approved successfully.",
             "success",
@@ -2773,6 +2803,15 @@ def reject_purchase_request_route(request_id):
         )
 
         if rejected:
+            # AUDIT LOG: The business action has committed successfully.
+            record_audit_event(
+                module="PROCUREMENT",
+                action="REJECT",
+                entity_type="PURCHASE_REQUEST",
+                entity_id=purchase_request.get("request_number") or request_id,
+                description="Purchase request rejected.",
+            )
+
             flash(
                 "Purchase request rejected successfully.",
                 "success",
@@ -3956,6 +3995,7 @@ def change_expense_category_status(category_id):
 
 
     # ======================================================
+    # ======================================================
     # SUCCESS MESSAGE
     # ======================================================
 
@@ -4432,6 +4472,17 @@ def approve_expense_route(expense_id):
             session["user_id"],
         )
 
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="FINANCE",
+            action="APPROVE",
+            entity_type="EXPENSE",
+            entity_id=expense_id,
+            description="Expense approved.",
+            entity_lookup=get_expense_by_id,
+            identifier_key="expense_number",
+        )
+
         flash(
             "Expense approved successfully.",
             "success",
@@ -4532,6 +4583,17 @@ def mark_expense_as_paid_route(expense_id):
 
         mark_expense_as_paid(
             expense_id
+        )
+
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="FINANCE",
+            action="MARK_PAID",
+            entity_type="EXPENSE",
+            entity_id=expense_id,
+            description="Expense marked as paid.",
+            entity_lookup=get_expense_by_id,
+            identifier_key="expense_number",
         )
 
         flash(
@@ -6465,6 +6527,17 @@ def submit_payroll_for_approval_route(
         )
 
 
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="PAYROLL",
+            action="SUBMIT",
+            entity_type="PAYROLL_PERIOD",
+            entity_id=payroll_period_id,
+            description="Payroll period submitted for approval.",
+            entity_lookup=get_payroll_period_by_id,
+            identifier_key="period_number",
+        )
+
         flash(
             (
                 "Payroll submitted for approval successfully. "
@@ -6490,6 +6563,8 @@ def submit_payroll_for_approval_route(
         )
     )
 
+
+
 # ==========================================================
 # PAYROLL - RETURN TO DRAFT
 # ==========================================================
@@ -6509,7 +6584,16 @@ def return_payroll_to_draft_route(
             payroll_period_id=payroll_period_id,
             updated_by=session["user_id"],
         )
-
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="PAYROLL",
+            action="RETURN_TO_DRAFT",
+            entity_type="PAYROLL_PERIOD",
+            entity_id=payroll_period_id,
+            description="Payroll period returned to draft.",
+            entity_lookup=get_payroll_period_by_id,
+            identifier_key="period_number",
+        )
 
         flash(
             (
@@ -6555,6 +6639,17 @@ def approve_payroll_period_route(
             approved_by=session["user_id"],
         )
 
+
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="PAYROLL",
+            action="APPROVE",
+            entity_type="PAYROLL_PERIOD",
+            entity_id=payroll_period_id,
+            description="Payroll period approved.",
+            entity_lookup=get_payroll_period_by_id,
+            identifier_key="period_number",
+        )
 
         flash(
             (
@@ -10238,6 +10333,15 @@ def add_admin_user():
             raise
 
 
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="ADMINISTRATION",
+            action="CREATE",
+            entity_type="USER",
+            entity_id=username,
+            description="User account created.",
+        )
+
         flash(
             "User account created successfully.",
             "success",
@@ -11912,6 +12016,17 @@ def approve_leave_request_route(
         )
 
 
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="LEAVE",
+            action="APPROVE",
+            entity_type="LEAVE_REQUEST",
+            entity_id=leave_request_id,
+            description="Leave request approved.",
+            entity_lookup=get_leave_request_by_id,
+            identifier_key="request_number",
+        )
+
         flash(
             (
                 "Leave request approved successfully. "
@@ -12003,6 +12118,17 @@ def reject_leave_request_route(
         )
 
 
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="LEAVE",
+            action="REJECT",
+            entity_type="LEAVE_REQUEST",
+            entity_id=leave_request_id,
+            description="Leave request rejected.",
+            entity_lookup=get_leave_request_by_id,
+            identifier_key="request_number",
+        )
+
         flash(
             "Leave request rejected.",
             "success",
@@ -12043,6 +12169,17 @@ def cancel_leave_request_route(
             leave_request_id
         )
 
+
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="LEAVE",
+            action="CANCEL",
+            entity_type="LEAVE_REQUEST",
+            entity_id=leave_request_id,
+            description="Leave request cancelled.",
+            entity_lookup=get_leave_request_by_id,
+            identifier_key="request_number",
+        )
 
         flash(
             "Leave request cancelled successfully.",
@@ -12712,6 +12849,15 @@ def change_admin_user_status(user_id):
     )
 
 
+    # AUDIT LOG: The business action has committed successfully.
+    record_audit_event(
+        module="ADMINISTRATION",
+        action="ACTIVATE" if new_status else "DEACTIVATE",
+        entity_type="USER",
+        entity_id=user["username"],
+        description="User account status updated.",
+    )
+
     # ======================================================
     # SUCCESS MESSAGE
     # ======================================================
@@ -12834,6 +12980,15 @@ def reset_admin_user_password(user_id):
             password_hash,
         )
 
+
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="ADMINISTRATION",
+            action="RESET_PASSWORD",
+            entity_type="USER",
+            entity_id=user["username"],
+            description="User password reset.",
+        )
 
         flash(
             (
@@ -12995,6 +13150,15 @@ def admin_role_permissions(role_id):
             selected_permission_ids,
         )
 
+
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="ADMINISTRATION",
+            action="UPDATE_PERMISSIONS",
+            entity_type="ROLE",
+            entity_id=role["role_name"],
+            description="Role permissions updated.",
+        )
 
         flash(
             (
@@ -13224,6 +13388,17 @@ def mark_payroll_period_as_paid_route(
             )
         )
 
+
+        # AUDIT LOG: The business action has committed successfully.
+        record_audit_event(
+            module="PAYROLL",
+            action="MARK_PAID",
+            entity_type="PAYROLL_PERIOD",
+            entity_id=payroll_period_id,
+            description="Payroll period marked as paid.",
+            entity_lookup=get_payroll_period_by_id,
+            identifier_key="period_number",
+        )
 
         flash(
             (
