@@ -32,29 +32,22 @@ Payroll Period
         <!-- # GENERATE ENTRIES -->
 
         {% if (
-            period.status == "DRAFT"
-            and has_permission("payroll.process")
+        period.status == "DRAFT"
+        and has_permission("payroll.process")
         ) %}
 
-            <form
-                method="POST"
-                action="{{ url_for(
+        <form method="POST" action="{{ url_for(
                     'generate_payroll_entries_route',
                     payroll_period_id=period.payroll_period_id
-                ) }}"
-                onsubmit="return confirm(
+                ) }}" onsubmit="return confirm(
                     'Generate payroll entries for eligible employees?'
-                );"
-            >
+                );">
 
-                <button
-                    type="submit"
-                    class="btn btn-outline-primary"
-                >
-                    Generate Entries
-                </button>
+            <button type="submit" class="btn btn-outline-primary">
+                Generate Entries
+            </button>
 
-            </form>
+        </form>
 
         {% endif %}
 
@@ -62,38 +55,28 @@ Payroll Period
         <!-- # CALCULATE MONTHLY -->
 
         {% if (
-            period.status == "DRAFT"
-            and entries
-            and has_permission("payroll.process")
+        period.status == "DRAFT"
+        and entries
+        and has_permission("payroll.process")
         ) %}
 
-            <form
-                method="POST"
-                action="{{ url_for(
+        <form method="POST" action="{{ url_for(
                     'calculate_monthly_payroll_route',
                     payroll_period_id=period.payroll_period_id
-                ) }}"
-                onsubmit="return confirm(
+                ) }}" onsubmit="return confirm(
                     'Calculate monthly payroll using current attendance and leave records?'
-                );"
-            >
+                );">
 
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                >
-                    Calculate Monthly Payroll
-                </button>
+            <button type="submit" class="btn btn-primary">
+                Calculate Monthly Payroll
+            </button>
 
-            </form>
+        </form>
 
         {% endif %}
 
 
-        <a
-            href="{{ url_for('payroll_periods') }}"
-            class="btn btn-outline-secondary"
-        >
+        <a href="{{ url_for('payroll_periods') }}" class="btn btn-outline-secondary">
             Back to Payroll Periods
         </a>
 
@@ -239,6 +222,7 @@ Payroll Period
                         <th>Gross Pay</th>
                         <th>Net Pay</th>
                         <th>Status</th>
+                        <th>Action</th>
                     </tr>
 
                 </thead>
@@ -248,232 +232,248 @@ Payroll Period
 
                     {% for entry in entries %}
 
-                        <tr>
+                    <tr>
 
 
-                            <!-- # EMPLOYEE -->
+                        <!-- # EMPLOYEE -->
 
-                            <td>
+                        <td>
 
-                                <strong>
-                                    {{ entry.first_name }}
+                            <strong>
+                                {{ entry.first_name }}
 
-                                    {% if entry.middle_name %}
-                                        {{ entry.middle_name }}
-                                    {% endif %}
-
-                                    {{ entry.last_name }}
-                                </strong>
-
-                                <div class="small text-muted">
-                                    {{ entry.employee_number }}
-                                </div>
-
-                                <div class="small text-muted">
-                                    {{ entry.department_name or "-" }}
-                                </div>
-
-                            </td>
-
-
-                            <!-- # PAY TYPE -->
-
-                            <td>
-
-                                <span class="badge bg-primary">
-                                    {{ entry.pay_type.title() }}
-                                </span>
-
-                            </td>
-
-
-                            <!-- # BASIC RATE -->
-
-                            <td>
-
-                                ₱{{ "{:,.2f}".format(entry.basic_rate) }}
-
-                                <div class="small text-muted">
-                                    monthly
-                                </div>
-
-                            </td>
-
-
-                            <!-- # ATTENDANCE -->
-
-                            <td>
-
-                                <div>
-                                    Scheduled:
-                                    <strong>
-                                        {{ entry.scheduled_work_days }}
-                                    </strong>
-                                </div>
-
-                                <div class="small text-muted">
-                                    Present:
-                                    {{ entry.present_days }}
-                                    |
-                                    Late:
-                                    {{ entry.late_days }}
-                                </div>
-
-                                <div class="small text-muted">
-                                    Absent:
-                                    {{ entry.absent_days }}
-                                    |
-                                    Half:
-                                    {{ entry.half_day_count }}
-                                </div>
-
-                                <div class="small text-muted">
-                                    Paid Leave:
-                                    {{ entry.paid_leave_days }}
-                                </div>
-
-                                <div class="small text-muted">
-                                    Unpaid Leave:
-                                    {{ entry.unpaid_leave_days }}
-                                </div>
-
-
-                                {% if entry.unrecorded_days > 0 %}
-
-                                    <div class="text-warning small fw-bold">
-                                        Unrecorded:
-                                        {{ entry.unrecorded_days }}
-                                    </div>
-
+                                {% if entry.middle_name %}
+                                {{ entry.middle_name }}
                                 {% endif %}
 
-                            </td>
+                                {{ entry.last_name }}
+                            </strong>
+
+                            <div class="small text-muted">
+                                {{ entry.employee_number }}
+                            </div>
+
+                            <div class="small text-muted">
+                                {{ entry.department_name or "-" }}
+                            </div>
+
+                        </td>
 
 
-                            <!-- # DAILY RATE -->
+                        <!-- # PAY TYPE -->
 
-                            <td>
+                        <td>
 
-                                ₱{{ "{:,.2f}".format(entry.daily_rate) }}
+                            <span class="badge bg-primary">
+                                {{ entry.pay_type.title() }}
+                            </span>
 
-                                <div class="small text-muted">
-                                    deduction basis
-                                </div>
-
-                            </td>
+                        </td>
 
 
-                            <!-- # REGULAR PAY -->
+                        <!-- # BASIC RATE -->
 
-                            <td>
+                        <td>
 
+                            ₱{{ "{:,.2f}".format(entry.basic_rate) }}
+
+                            <div class="small text-muted">
+                                monthly
+                            </div>
+
+                        </td>
+
+
+                        <!-- # ATTENDANCE -->
+
+                        <td>
+
+                            <div>
+                                Scheduled:
                                 <strong>
-                                    ₱{{ "{:,.2f}".format(entry.regular_pay) }}
+                                    {{ entry.scheduled_work_days }}
                                 </strong>
+                            </div>
 
-                            </td>
+                            <div class="small text-muted">
+                                Present:
+                                {{ entry.present_days }}
+                                |
+                                Late:
+                                {{ entry.late_days }}
+                            </div>
 
+                            <div class="small text-muted">
+                                Absent:
+                                {{ entry.absent_days }}
+                                |
+                                Half:
+                                {{ entry.half_day_count }}
+                            </div>
 
-                            <!-- # ATTENDANCE DEDUCTION -->
+                            <div class="small text-muted">
+                                Paid Leave:
+                                {{ entry.paid_leave_days }}
+                            </div>
 
-                            <td>
-
-                                {% if entry.attendance_deduction > 0 %}
-
-                                    <strong class="text-danger">
-                                        -₱{{ "{:,.2f}".format(entry.attendance_deduction) }}
-                                    </strong>
-
-                                {% else %}
-
-                                    ₱0.00
-
-                                {% endif %}
-
-                            </td>
-
-
-                            <!-- # GROSS PAY -->
-
-                            <td>
-
-                                ₱{{ "{:,.2f}".format(entry.gross_pay) }}
-
-                            </td>
+                            <div class="small text-muted">
+                                Unpaid Leave:
+                                {{ entry.unpaid_leave_days }}
+                            </div>
 
 
-                            <!-- # NET PAY -->
+                            {% if entry.unrecorded_days > 0 %}
 
-                            <td>
+                            <div class="text-warning small fw-bold">
+                                Unrecorded:
+                                {{ entry.unrecorded_days }}
+                            </div>
 
-                                <strong>
-                                    ₱{{ "{:,.2f}".format(entry.net_pay) }}
-                                </strong>
+                            {% endif %}
 
-                            </td>
-
-
-                            <!-- # STATUS -->
-
-                            <td>
-
-                                {% if entry.status == "DRAFT" %}
-
-                                    <span class="badge bg-secondary">
-                                        Draft
-                                    </span>
+                        </td>
 
 
-                                {% elif entry.status == "CALCULATED" %}
+                        <!-- # DAILY RATE -->
 
-                                    <span class="badge bg-primary">
-                                        Calculated
-                                    </span>
+                        <td>
 
+                            ₱{{ "{:,.2f}".format(entry.daily_rate) }}
 
-                                    {% if entry.unrecorded_days > 0 %}
+                            <div class="small text-muted">
+                                deduction basis
+                            </div>
 
-                                        <div class="small text-warning mt-1">
-                                            Attendance incomplete
-                                        </div>
-
-                                    {% endif %}
+                        </td>
 
 
-                                {% elif entry.status == "APPROVED" %}
-
-                                    <span class="badge bg-success">
-                                        Approved
-                                    </span>
 
 
-                                {% elif entry.status == "PAID" %}
+                        <!-- # REGULAR PAY -->
 
-                                    <span class="badge bg-dark">
-                                        Paid
-                                    </span>
+                        <td>
 
-                                {% endif %}
+                            <strong>
+                                ₱{{ "{:,.2f}".format(entry.regular_pay) }}
+                            </strong>
 
-                            </td>
+                        </td>
 
-                        </tr>
+
+                        <!-- # ATTENDANCE DEDUCTION -->
+
+                        <td>
+
+                            {% if entry.attendance_deduction > 0 %}
+
+                            <strong class="text-danger">
+                                -₱{{ "{:,.2f}".format(entry.attendance_deduction) }}
+                            </strong>
+
+                            {% else %}
+
+                            ₱0.00
+
+                            {% endif %}
+
+                        </td>
+
+
+
+
+                        <!-- # GROSS PAY -->
+
+                        <td>
+
+                            ₱{{ "{:,.2f}".format(entry.gross_pay) }}
+
+                        </td>
+
+
+                        <!-- # NET PAY -->
+
+                        <td>
+
+                            <strong>
+                                ₱{{ "{:,.2f}".format(entry.net_pay) }}
+                            </strong>
+
+                        </td>
+
+
+
+
+                        <!-- # STATUS -->
+
+                        <td>
+
+                            {% if entry.status == "DRAFT" %}
+
+                            <span class="badge bg-secondary">
+                                Draft
+                            </span>
+
+
+                            {% elif entry.status == "CALCULATED" %}
+
+                            <span class="badge bg-primary">
+                                Calculated
+                            </span>
+
+
+                            {% if entry.unrecorded_days > 0 %}
+
+                            <div class="small text-warning mt-1">
+                                Attendance incomplete
+                            </div>
+
+                            {% endif %}
+
+
+                            {% elif entry.status == "APPROVED" %}
+
+                            <span class="badge bg-success">
+                                Approved
+                            </span>
+
+
+                            {% elif entry.status == "PAID" %}
+
+                            <span class="badge bg-dark">
+                                Paid
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <!-- # ENTRY ACTION -->
+
+                        <td>
+
+                            <a href="{{ url_for(
+            'view_payroll_entry',
+            payroll_entry_id=entry.payroll_entry_id
+        ) }}" class="btn btn-sm btn-outline-primary">
+                                View
+                            </a>
+
+                        </td>
+
+                    </tr>
 
 
                     {% else %}
 
-                        <tr>
+                    <tr>
 
-                            <td
-                                colspan="10"
-                                class="text-center text-muted py-4"
-                            >
+                        <td colspan="11" class="text-center text-muted py-4">
 
-                                No payroll entries have been generated yet.
+                            No payroll entries have been generated yet.
 
-                            </td>
+                        </td>
 
-                        </tr>
+                    </tr>
 
                     {% endfor %}
 

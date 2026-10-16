@@ -1,0 +1,556 @@
+{% extends "base.html" %}
+
+{% block title %}
+Payroll Entry
+{% endblock %}
+
+
+{% block content %}
+
+<!-- # ========================================== -->
+<!-- # HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+
+            {{ entry.first_name }}
+
+            {% if entry.middle_name %}
+                {{ entry.middle_name }}
+            {% endif %}
+
+            {{ entry.last_name }}
+
+        </h2>
+
+        <p class="text-muted mb-0">
+
+            {{ entry.employee_number }}
+            ·
+            {{ entry.period_number }}
+            ·
+            {{ entry.period_name }}
+
+        </p>
+
+    </div>
+
+
+    <a
+        href="{{ url_for(
+            'view_payroll_period',
+            payroll_period_id=entry.payroll_period_id
+        ) }}"
+        class="btn btn-outline-secondary"
+    >
+        Back to Payroll Period
+    </a>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # PAY SUMMARY -->
+<!-- # ========================================== -->
+
+<div class="row g-3 mb-4">
+
+
+    <div class="col-md-3">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted small">
+                    Regular Pay
+                </div>
+
+                <h4>
+                    ₱{{ "{:,.2f}".format(entry.regular_pay) }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-3">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted small">
+                    Additional Earnings
+                </div>
+
+                <h4 class="text-success">
+                    +₱{{ "{:,.2f}".format(entry.additional_earnings) }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-3">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted small">
+                    Total Deductions
+                </div>
+
+                <h4 class="text-danger">
+                    -₱{{ "{:,.2f}".format(entry.total_deductions) }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-3">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <div class="text-muted small">
+                    Net Pay
+                </div>
+
+                <h4>
+                    ₱{{ "{:,.2f}".format(entry.net_pay) }}
+                </h4>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # CALCULATION BREAKDOWN -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Calculation Breakdown
+        </h5>
+
+
+        <div class="row g-3">
+
+            <div class="col-md-3">
+
+                <div class="text-muted small">
+                    Basic Rate
+                </div>
+
+                <strong>
+                    ₱{{ "{:,.2f}".format(entry.basic_rate) }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-3">
+
+                <div class="text-muted small">
+                    Gross Pay
+                </div>
+
+                <strong>
+                    ₱{{ "{:,.2f}".format(entry.gross_pay) }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-3">
+
+                <div class="text-muted small">
+                    Attendance Deduction
+                </div>
+
+                <strong>
+                    ₱{{ "{:,.2f}".format(entry.attendance_deduction) }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-3">
+
+                <div class="text-muted small">
+                    Other Deductions
+                </div>
+
+                <strong>
+                    ₱{{ "{:,.2f}".format(adjustment_totals.deductions) }}
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <hr>
+
+
+        <div class="small text-muted">
+
+            Scheduled:
+            {{ entry.scheduled_work_days }}
+
+            · Present:
+            {{ entry.present_days }}
+
+            · Late:
+            {{ entry.late_days }}
+
+            · Absent:
+            {{ entry.absent_days }}
+
+            · Half Day:
+            {{ entry.half_day_count }}
+
+            · Paid Leave:
+            {{ entry.paid_leave_days }}
+
+            · Unpaid Leave:
+            {{ entry.unpaid_leave_days }}
+
+            · Unrecorded:
+            {{ entry.unrecorded_days }}
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # ADD ADJUSTMENT -->
+<!-- # ========================================== -->
+
+{% if (
+    entry.period_status == "DRAFT"
+    and has_permission("payroll.process")
+) %}
+
+    <div class="card shadow-sm border-0 mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-3">
+                Add Earnings / Deduction
+            </h5>
+
+
+            <form
+                method="POST"
+                action="{{ url_for(
+                    'add_payroll_adjustment_route',
+                    payroll_entry_id=entry.payroll_entry_id
+                ) }}"
+            >
+
+                <div class="row g-3">
+
+
+                    <!-- # TYPE -->
+
+                    <div class="col-md-2">
+
+                        <label class="form-label">
+                            Type
+                        </label>
+
+                        <select
+                            name="adjustment_type"
+                            class="form-select"
+                            required
+                        >
+
+                            <option value="EARNING">
+                                Earning
+                            </option>
+
+                            <option value="DEDUCTION">
+                                Deduction
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- # NAME -->
+
+                    <div class="col-md-3">
+
+                        <label class="form-label">
+                            Name
+                        </label>
+
+                        <input
+                            type="text"
+                            name="adjustment_name"
+                            class="form-control"
+                            maxlength="100"
+                            placeholder="Example: Transportation Allowance"
+                            required
+                        >
+
+                    </div>
+
+
+                    <!-- # AMOUNT -->
+
+                    <div class="col-md-2">
+
+                        <label class="form-label">
+                            Amount
+                        </label>
+
+                        <input
+                            type="number"
+                            name="amount"
+                            class="form-control"
+                            min="0.01"
+                            step="0.01"
+                            required
+                        >
+
+                    </div>
+
+
+                    <!-- # NOTES -->
+
+                    <div class="col-md-3">
+
+                        <label class="form-label">
+                            Notes
+                        </label>
+
+                        <input
+                            type="text"
+                            name="notes"
+                            class="form-control"
+                            maxlength="255"
+                        >
+
+                    </div>
+
+
+                    <!-- # SUBMIT -->
+
+                    <div class="col-md-2 d-flex align-items-end">
+
+                        <button
+                            class="btn btn-primary w-100"
+                        >
+                            Add Item
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+{% endif %}
+
+
+<!-- # ========================================== -->
+<!-- # ADJUSTMENTS -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Earnings & Deduction Items
+        </h5>
+
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+                        <th>Type</th>
+                        <th>Name</th>
+                        <th>Amount</th>
+                        <th>Notes</th>
+                        <th>Added By</th>
+                        <th>Action</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for adjustment in adjustments %}
+
+                        <tr>
+
+
+                            <td>
+
+                                {% if adjustment.adjustment_type == "EARNING" %}
+
+                                    <span class="badge bg-success">
+                                        Earning
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge bg-danger">
+                                        Deduction
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+
+                                <strong>
+                                    {{ adjustment.adjustment_name }}
+                                </strong>
+
+                            </td>
+
+
+                            <td>
+
+                                {% if adjustment.adjustment_type == "EARNING" %}
+
+                                    <span class="text-success">
+                                        +₱{{ "{:,.2f}".format(adjustment.amount) }}
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="text-danger">
+                                        -₱{{ "{:,.2f}".format(adjustment.amount) }}
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+                                {{ adjustment.notes or "-" }}
+                            </td>
+
+
+                            <td>
+
+                                {{ adjustment.created_by_username }}
+
+                                <div class="small text-muted">
+                                    {{ adjustment.created_at }}
+                                </div>
+
+                            </td>
+
+
+                            <td>
+
+                                {% if (
+                                    entry.period_status == "DRAFT"
+                                    and has_permission("payroll.process")
+                                ) %}
+
+                                    <form
+                                        method="POST"
+                                        action="{{ url_for(
+                                            'delete_payroll_adjustment_route',
+                                            payroll_entry_id=entry.payroll_entry_id,
+                                            adjustment_id=adjustment.adjustment_id
+                                        ) }}"
+                                        onsubmit="return confirm(
+                                            'Remove this payroll item?'
+                                        );"
+                                    >
+
+                                        <button
+                                            class="btn btn-sm btn-outline-danger"
+                                        >
+                                            Remove
+                                        </button>
+
+                                    </form>
+
+                                {% else %}
+
+                                    —
+
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="6"
+                                class="text-center text-muted py-4"
+                            >
+                                No additional earnings or deduction items.
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

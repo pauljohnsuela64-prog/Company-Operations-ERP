@@ -11,6 +11,19 @@ from dashboard_repository import get_dashboard_summary
 
 from decimal import Decimal, InvalidOperation
 
+from payroll_adjustment_repository import (
+    add_payroll_adjustment,
+    delete_payroll_adjustment,
+    get_payroll_adjustments,
+    get_payroll_adjustment_totals,
+)
+
+from payroll_entry_repository import (
+    generate_payroll_entries,
+    get_payroll_entries_by_period,
+    get_payroll_entry_by_id,
+)
+
 
 from payroll_calculation_repository import (
     calculate_monthly_payroll_period,
@@ -6463,17 +6476,6 @@ def generate_payroll_entries_route(
     )
 
 
-
-# ==========================================================
-# PAYROLL ENTRIES
-# ==========================================================
-
-from payroll_entry_repository import (
-    generate_payroll_entries,
-    get_payroll_entries_by_period,
-)
-
-
 # ==========================================================
 # IT MANAGEMENT - IT ASSETS
 # ==========================================================
@@ -6596,6 +6598,332 @@ def it_assets():
         selected_category=selected_category,
         selected_department=selected_department,
     )
+
+# ==========================================================
+# PAYROLL - VIEW ENTRY
+# ==========================================================
+
+@app.route(
+    "/payroll/entries/<int:payroll_entry_id>"
+)
+@permission_required("payroll.view")
+def view_payroll_entry(
+    payroll_entry_id,
+):
+
+    entry = get_payroll_entry_by_id(
+        payroll_entry_id
+    )
+
+
+    if not entry:
+
+        flash(
+            "Payroll entry not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "payroll_periods"
+            )
+        )
+
+
+    adjustments = (
+        get_payroll_adjustments(
+            payroll_entry_id
+        )
+    )
+
+
+    adjustment_totals = (
+        get_payroll_adjustment_totals(
+            payroll_entry_id
+        )
+    )
+
+
+    return render_template(
+        "payroll/entries/view.html",
+        entry=entry,
+        adjustments=adjustments,
+        adjustment_totals=adjustment_totals,
+    )
+
+# ==========================================================
+# PAYROLL - ADD ADJUSTMENT
+# ==========================================================
+
+@app.route(
+    "/payroll/entries/<int:payroll_entry_id>/adjustments/add",
+    methods=["POST"],
+)
+@permission_required("payroll.process")
+def add_payroll_adjustment_route(
+    payroll_entry_id,
+):
+
+    entry = get_payroll_entry_by_id(
+        payroll_entry_id
+    )
+
+
+    if not entry:
+
+        flash(
+            "Payroll entry not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "payroll_periods"
+            )
+        )
+
+
+    adjustment_type = request.form.get(
+        "adjustment_type",
+        "",
+    ).strip().upper()
+
+    adjustment_name = request.form.get(
+        "adjustment_name",
+        "",
+    ).strip()
+
+    amount = request.form.get(
+        "amount",
+        "",
+    ).strip()
+
+    notes = request.form.get(
+        "notes",
+        "",
+    ).strip()
+
+
+    # ======================================================
+    # TYPE
+    # ==========================================================
+
+    if adjustment_type not in {
+        "EARNING",
+        "DEDUCTION",
+    }:
+
+        flash(
+            "Invalid payroll adjustment type.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_payroll_entry",
+                payroll_entry_id=payroll_entry_id,
+            )
+        )
+
+
+    # ======================================================
+    # NAME
+    # ==========================================================
+
+    if not adjustment_name:
+
+        flash(
+            "Adjustment name is required.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_payroll_entry",
+                payroll_entry_id=payroll_entry_id,
+            )
+        )
+
+
+    if len(adjustment_name) > 100:
+
+        flash(
+            (
+                "Adjustment name must not "
+                "exceed 100 characters."
+            ),
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_payroll_entry",
+                payroll_entry_id=payroll_entry_id,
+            )
+        )
+
+
+    # ======================================================
+    # AMOUNT
+    # ==========================================================
+
+    try:
+
+        amount_value = Decimal(
+            amount
+        )
+
+
+        if amount_value <= 0:
+
+            raise ValueError
+
+
+        if (
+            amount_value
+            > Decimal("9999999999.99")
+        ):
+
+            raise ValueError
+
+
+    except (
+        InvalidOperation,
+        ValueError,
+    ):
+
+        flash(
+            (
+                "Amount must be a valid "
+                "positive value."
+            ),
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_payroll_entry",
+                payroll_entry_id=payroll_entry_id,
+            )
+        )
+
+
+    # ======================================================
+    # NOTES
+    # ==========================================================
+
+    if len(notes) > 255:
+
+        flash(
+            (
+                "Notes must not exceed "
+                "255 characters."
+            ),
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_payroll_entry",
+                payroll_entry_id=payroll_entry_id,
+            )
+        )
+
+
+    # ======================================================
+    # DATABASE
+    # ==========================================================
+
+    try:
+
+        add_payroll_adjustment(
+            payroll_entry_id=payroll_entry_id,
+            adjustment_type=adjustment_type,
+            adjustment_name=adjustment_name,
+            amount=amount_value,
+            notes=notes or None,
+            created_by=session["user_id"],
+        )
+
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_payroll_entry",
+                payroll_entry_id=payroll_entry_id,
+            )
+        )
+
+
+    flash(
+        "Payroll adjustment added successfully.",
+        "success",
+    )
+
+
+    return redirect(
+        url_for(
+            "view_payroll_entry",
+            payroll_entry_id=payroll_entry_id,
+        )
+    )
+
+# ==========================================================
+# PAYROLL - DELETE ADJUSTMENT
+# ==========================================================
+
+@app.route(
+    "/payroll/entries/<int:payroll_entry_id>/adjustments/<int:adjustment_id>/delete",
+    methods=["POST"],
+)
+@permission_required("payroll.process")
+def delete_payroll_adjustment_route(
+    payroll_entry_id,
+    adjustment_id,
+):
+
+    try:
+
+        delete_payroll_adjustment(
+            payroll_entry_id=payroll_entry_id,
+            adjustment_id=adjustment_id,
+        )
+
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_payroll_entry",
+                payroll_entry_id=payroll_entry_id,
+            )
+        )
+
+
+    flash(
+        "Payroll adjustment removed successfully.",
+        "success",
+    )
+
+
+    return redirect(
+        url_for(
+            "view_payroll_entry",
+            payroll_entry_id=payroll_entry_id,
+        )
+    )
+
 # ==========================================================
 # PAYROLL - CREATE PERIOD
 # ==========================================================

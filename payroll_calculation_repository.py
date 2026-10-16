@@ -557,13 +557,69 @@ def calculate_monthly_payroll_period(
 
 
             # ==============================================
-            # ADDITIONAL EARNINGS
+            # PAYROLL ADJUSTMENTS
+            #
+            # These are stored separately so recalculating
+            # Attendance never deletes allowances, bonuses,
+            # loans, or other manual payroll items.
             # ==============================================
+
+            cursor.execute(
+                """
+                SELECT
+                    COALESCE(
+                        SUM(
+                            CASE
+                                WHEN adjustment_type = 'EARNING'
+                                THEN amount
+                                ELSE 0
+                            END
+                        ),
+                        0
+                    ) AS earnings,
+
+                    COALESCE(
+                        SUM(
+                            CASE
+                                WHEN adjustment_type = 'DEDUCTION'
+                                THEN amount
+                                ELSE 0
+                            END
+                        ),
+                        0
+                    ) AS deductions
+
+                FROM payroll_adjustments
+
+                WHERE payroll_entry_id = %s
+                """,
+                (
+                    entry[
+                        "payroll_entry_id"
+                    ],
+                ),
+            )
+
+
+            adjustment_totals = (
+                cursor.fetchone()
+            )
+
 
             additional_earnings = Decimal(
                 str(
-                    entry[
-                        "additional_earnings"
+                    adjustment_totals[
+                        "earnings"
+                    ]
+                    or 0
+                )
+            )
+
+
+            other_deductions = Decimal(
+                str(
+                    adjustment_totals[
+                        "deductions"
                     ]
                     or 0
                 )
@@ -574,9 +630,16 @@ def calculate_monthly_payroll_period(
                 additional_earnings
             )
 
+            other_deductions = _money(
+                other_deductions
+            )
+
 
             # ==============================================
             # GROSS PAY
+            #
+            # Regular Pay
+            # + Additional Earnings
             # ==============================================
 
             gross_pay = _money(
@@ -588,14 +651,13 @@ def calculate_monthly_payroll_period(
             # ==============================================
             # TOTAL DEDUCTIONS
             #
-            # For now:
-            # total deductions = attendance deduction.
-            #
-            # Government and other deductions come later.
+            # Attendance Deduction
+            # + Manual Deduction Items
             # ==============================================
 
-            total_deductions = (
+            total_deductions = _money(
                 attendance_deduction
+                + other_deductions
             )
 
 
@@ -621,7 +683,7 @@ def calculate_monthly_payroll_period(
             )
 
 
-            # ==============================================
+                        # ==============================================
             # DATABASE UPDATE
             # ==============================================
 
@@ -643,6 +705,7 @@ def calculate_monthly_payroll_period(
                     daily_rate = %s,
 
                     regular_pay = %s,
+                    additional_earnings = %s,
 
                     attendance_deduction = %s,
 
@@ -673,6 +736,7 @@ def calculate_monthly_payroll_period(
                     daily_rate,
 
                     regular_pay,
+                    additional_earnings,
 
                     attendance_deduction,
 
@@ -683,12 +747,12 @@ def calculate_monthly_payroll_period(
                     net_pay,
 
                     calculated_by,
+
                     entry[
                         "payroll_entry_id"
                     ],
                 ),
             )
-
 
             calculated_count += 1
 

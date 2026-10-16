@@ -139,15 +139,33 @@ def get_payroll_entry_by_id(
                 pe.payroll_period_id,
                 pe.employee_id,
                 pe.compensation_id,
+
                 pe.pay_type,
                 pe.basic_rate,
                 pe.currency_code,
+
+                pe.scheduled_work_days,
+                pe.present_days,
+                pe.late_days,
+                pe.absent_days,
+                pe.paid_leave_days,
+                pe.unpaid_leave_days,
+                pe.half_day_count,
+                pe.unrecorded_days,
+
+                pe.daily_rate,
+
                 pe.regular_pay,
                 pe.additional_earnings,
                 pe.gross_pay,
+
+                pe.attendance_deduction,
                 pe.total_deductions,
+
                 pe.net_pay,
                 pe.status,
+
+                pe.calculated_at,
                 pe.created_at,
                 pe.updated_at,
 
@@ -157,7 +175,16 @@ def get_payroll_entry_by_id(
                 e.last_name,
                 e.job_title,
 
-                d.department_name
+                d.department_name,
+
+                pp.period_number,
+                pp.period_name,
+                pp.start_date,
+                pp.end_date,
+                pp.pay_date,
+
+                pp.status
+                    AS period_status
 
             FROM payroll_entries pe
 
@@ -169,6 +196,10 @@ def get_payroll_entry_by_id(
                 ON e.department_id
                 = d.department_id
 
+            INNER JOIN payroll_periods pp
+                ON pe.payroll_period_id
+                = pp.payroll_period_id
+
             WHERE pe.payroll_entry_id = %s
             """,
             (
@@ -176,7 +207,9 @@ def get_payroll_entry_by_id(
             ),
         )
 
+
         return cursor.fetchone()
+
 
     finally:
 
