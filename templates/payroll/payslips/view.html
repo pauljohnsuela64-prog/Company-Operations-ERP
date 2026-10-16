@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+
+{% block title %}
+Payslip
+{% endblock %}
+
+
+{% block content %}
+
+<!-- # ========================================== -->
+<!-- # PRINT STYLE -->
+<!-- # ========================================== -->
+
+<style>
+
+@media print {
+
+    .sidebar,
+    .topbar,
+    .no-print {
+        display: none !important;
+    }
+
+    body {
+        background: white !important;
+    }
+
+    .main-content,
+    .content,
+    main {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+
+}
+
+</style>
+
+
+<!-- # ========================================== -->
+<!-- # HEADER -->
+<!-- # ========================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            Employee Payslip
+        </h2>
+
+        <p class="text-muted mb-0">
+            {{ entry.period_number }}
+            ·
+            {{ entry.period_name }}
+        </p>
+
+    </div>
+
+
+    <div class="d-flex gap-2 no-print">
+
+        <button
+            type="button"
+            class="btn btn-primary"
+            onclick="window.print();"
+        >
+            Print Payslip
+        </button>
+
+
+        <a
+            href="{{ url_for(
+                'view_payroll_entry',
+                payroll_entry_id=entry.payroll_entry_id
+            ) }}"
+            class="btn btn-outline-secondary"
+        >
+            Back
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # EMPLOYEE INFORMATION -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mb-4">
+
+    <div class="card-body">
+
+        <div class="row g-3">
+
+
+            <div class="col-md-4">
+
+                <div class="small text-muted">
+                    Employee
+                </div>
+
+                <strong>
+
+                    {{ entry.first_name }}
+
+                    {% if entry.middle_name %}
+                        {{ entry.middle_name }}
+                    {% endif %}
+
+                    {{ entry.last_name }}
+
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <div class="small text-muted">
+                    Employee Number
+                </div>
+
+                <strong>
+                    {{ entry.employee_number }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <div class="small text-muted">
+                    Department
+                </div>
+
+                <strong>
+                    {{ entry.department_name or "-" }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <div class="small text-muted">
+                    Job Title
+                </div>
+
+                <strong>
+                    {{ entry.job_title or "-" }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <div class="small text-muted">
+                    Payroll Period
+                </div>
+
+                <strong>
+                    {{ entry.start_date }}
+                    to
+                    {{ entry.end_date }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <div class="small text-muted">
+                    Pay Date
+                </div>
+
+                <strong>
+                    {{ entry.pay_date }}
+                </strong>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<div class="row g-4">
+
+
+    <!-- # ====================================== -->
+    <!-- # EARNINGS -->
+    <!-- # ====================================== -->
+
+    <div class="col-md-6">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <h5 class="mb-3">
+                    Earnings
+                </h5>
+
+
+                <div class="d-flex justify-content-between mb-2">
+
+                    <span>
+                        Regular Pay
+                    </span>
+
+                    <strong>
+                        ₱{{ "{:,.2f}".format(entry.regular_pay) }}
+                    </strong>
+
+                </div>
+
+
+                {% for adjustment in adjustments %}
+
+                    {% if adjustment.adjustment_type == "EARNING" %}
+
+                        <div class="d-flex justify-content-between mb-2">
+
+                            <span>
+                                {{ adjustment.adjustment_name }}
+                            </span>
+
+                            <span>
+                                ₱{{ "{:,.2f}".format(adjustment.amount) }}
+                            </span>
+
+                        </div>
+
+                    {% endif %}
+
+                {% endfor %}
+
+
+                <hr>
+
+
+                <div class="d-flex justify-content-between">
+
+                    <strong>
+                        Gross Pay
+                    </strong>
+
+                    <strong>
+                        ₱{{ "{:,.2f}".format(entry.gross_pay) }}
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- # ====================================== -->
+    <!-- # DEDUCTIONS -->
+    <!-- # ====================================== -->
+
+    <div class="col-md-6">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-body">
+
+                <h5 class="mb-3">
+                    Deductions
+                </h5>
+
+
+                <div class="d-flex justify-content-between mb-2">
+
+                    <span>
+                        Attendance Deduction
+                    </span>
+
+                    <span>
+                        ₱{{ "{:,.2f}".format(entry.attendance_deduction) }}
+                    </span>
+
+                </div>
+
+
+                {% for adjustment in adjustments %}
+
+                    {% if adjustment.adjustment_type == "DEDUCTION" %}
+
+                        <div class="d-flex justify-content-between mb-2">
+
+                            <span>
+                                {{ adjustment.adjustment_name }}
+                            </span>
+
+                            <span>
+                                ₱{{ "{:,.2f}".format(adjustment.amount) }}
+                            </span>
+
+                        </div>
+
+                    {% endif %}
+
+                {% endfor %}
+
+
+                <hr>
+
+
+                <div class="d-flex justify-content-between">
+
+                    <strong>
+                        Total Deductions
+                    </strong>
+
+                    <strong>
+                        ₱{{ "{:,.2f}".format(entry.total_deductions) }}
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # NET PAY -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mt-4">
+
+    <div class="card-body text-center">
+
+        <div class="text-muted mb-1">
+            Net Pay
+        </div>
+
+        <h2 class="mb-0">
+            ₱{{ "{:,.2f}".format(entry.net_pay) }}
+        </h2>
+
+    </div>
+
+</div>
+
+
+<!-- # ========================================== -->
+<!-- # ATTENDANCE SUMMARY -->
+<!-- # ========================================== -->
+
+<div class="card shadow-sm border-0 mt-4">
+
+    <div class="card-body">
+
+        <h5 class="mb-3">
+            Attendance Summary
+        </h5>
+
+
+        <div class="row g-3 text-center">
+
+
+            <div class="col">
+                <div class="small text-muted">Scheduled</div>
+                <strong>{{ entry.scheduled_work_days }}</strong>
+            </div>
+
+
+            <div class="col">
+                <div class="small text-muted">Present</div>
+                <strong>{{ entry.present_days }}</strong>
+            </div>
+
+
+            <div class="col">
+                <div class="small text-muted">Late</div>
+                <strong>{{ entry.late_days }}</strong>
+            </div>
+
+
+            <div class="col">
+                <div class="small text-muted">Absent</div>
+                <strong>{{ entry.absent_days }}</strong>
+            </div>
+
+
+            <div class="col">
+                <div class="small text-muted">Half Day</div>
+                <strong>{{ entry.half_day_count }}</strong>
+            </div>
+
+
+            <div class="col">
+                <div class="small text-muted">Paid Leave</div>
+                <strong>{{ entry.paid_leave_days }}</strong>
+            </div>
+
+
+            <div class="col">
+                <div class="small text-muted">Unpaid Leave</div>
+                <strong>{{ entry.unpaid_leave_days }}</strong>
+            </div>
+
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

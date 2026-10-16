@@ -13,6 +13,7 @@ from decimal import Decimal, InvalidOperation
 
 from payroll_workflow_repository import (
     approve_payroll_period,
+    mark_payroll_period_as_paid,
     return_payroll_to_draft,
     submit_payroll_for_approval,
 )
@@ -13126,6 +13127,128 @@ def calculate_monthly_payroll_route(
             "view_payroll_period",
             payroll_period_id=payroll_period_id,
         )
+    )
+
+# ==========================================================
+# PAYROLL - MARK AS PAID
+# ==========================================================
+
+@app.route(
+    "/payroll/periods/<int:payroll_period_id>/paid",
+    methods=["POST"],
+)
+@permission_required("payroll.pay")
+def mark_payroll_period_as_paid_route(
+    payroll_period_id,
+):
+
+    try:
+
+        result = (
+            mark_payroll_period_as_paid(
+                payroll_period_id=payroll_period_id,
+                paid_by=session["user_id"],
+            )
+        )
+
+
+        flash(
+            (
+                "Payroll marked as paid successfully. "
+                f"{result['total_entries']} payroll "
+                "entry/entries are now paid."
+            ),
+            "success",
+        )
+
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+
+    return redirect(
+        url_for(
+            "view_payroll_period",
+            payroll_period_id=payroll_period_id,
+        )
+    )
+
+# ==========================================================
+# PAYROLL - PAYSLIP
+# ==========================================================
+
+@app.route(
+    "/payroll/entries/<int:payroll_entry_id>/payslip"
+)
+@permission_required("payroll.view")
+def payroll_payslip(
+    payroll_entry_id,
+):
+
+    entry = get_payroll_entry_by_id(
+        payroll_entry_id
+    )
+
+
+    if not entry:
+
+        flash(
+            "Payroll entry not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "payroll_periods"
+            )
+        )
+
+
+    # ======================================================
+    # PAYSLIP ONLY AFTER PAYMENT
+    # ==========================================================
+
+    if entry["period_status"] != "PAID":
+
+        flash(
+            (
+                "Payslip is available only after "
+                "the payroll period has been marked as paid."
+            ),
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_payroll_entry",
+                payroll_entry_id=payroll_entry_id,
+            )
+        )
+
+
+    adjustments = (
+        get_payroll_adjustments(
+            payroll_entry_id
+        )
+    )
+
+
+    adjustment_totals = (
+        get_payroll_adjustment_totals(
+            payroll_entry_id
+        )
+    )
+
+
+    return render_template(
+        "payroll/payslips/view.html",
+        entry=entry,
+        adjustments=adjustments,
+        adjustment_totals=adjustment_totals,
     )
 
 @app.route("/logout")

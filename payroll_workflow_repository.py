@@ -566,3 +566,198 @@ def approve_payroll_period(
 
         cursor.close()
         connection.close()
+
+
+# ==========================================================
+# MARK PAYROLL AS PAID
+#
+# APPROVED -> PAID
+# ==========================================================
+
+def mark_payroll_period_as_paid(
+    payroll_period_id,
+    paid_by,
+):
+
+    connection = get_connection()
+
+    cursor = connection.cursor(
+        dictionary=True
+    )
+
+    try:
+
+        connection.start_transaction()
+
+
+        # ==================================================
+        # LOCK PAYROLL PERIOD
+        # ==========================================================
+
+        cursor.execute(
+            """
+            SELECT
+                payroll_period_id,
+                period_number,
+                status,
+                approved_at
+
+            FROM payroll_periods
+
+            WHERE payroll_period_id = %s
+
+            FOR UPDATE
+            """,
+            (
+                payroll_period_id,
+            ),
+        )
+
+
+        period = cursor.fetchone()
+
+
+        if not period:
+
+            raise ValueError(
+                "Payroll period not found."
+            )
+
+
+        if period["status"] != "APPROVED":
+
+            raise ValueError(
+                (
+                    "Only an approved payroll period "
+                    "can be marked as paid."
+                )
+            )
+
+
+        # ==================================================
+        # VERIFY PAYROLL ENTRIES
+        # ==========================================================
+
+        cursor.execute(
+            """
+            SELECT
+                COUNT(*) AS total_entries,
+
+                COALESCE(
+                    SUM(
+                        status = 'APPROVED'
+                    ),
+                    0
+                ) AS approved_entries
+
+            FROM payroll_entries
+
+            WHERE payroll_period_id = %s
+
+            FOR UPDATE
+            """,
+            (
+                payroll_period_id,
+            ),
+        )
+
+
+        summary = cursor.fetchone()
+
+
+        total_entries = (
+            summary["total_entries"]
+            or 0
+        )
+
+
+        approved_entries = (
+            summary["approved_entries"]
+            or 0
+        )
+
+
+        if total_entries == 0:
+
+            raise ValueError(
+                (
+                    "Payroll cannot be marked as paid "
+                    "because it has no payroll entries."
+                )
+            )
+
+
+        if approved_entries != total_entries:
+
+            raise ValueError(
+                (
+                    "Payroll cannot be marked as paid "
+                    "because not all payroll entries "
+                    "are approved."
+                )
+            )
+
+
+        # ==================================================
+        # MARK ENTRIES PAID
+        # ==========================================================
+
+        cursor.execute(
+            """
+            UPDATE payroll_entries
+
+            SET status = 'PAID'
+
+            WHERE
+                payroll_period_id = %s
+                AND status = 'APPROVED'
+            """,
+            (
+                payroll_period_id,
+            ),
+        )
+
+
+        # ==================================================
+        # MARK PERIOD PAID
+        # ==========================================================
+
+        cursor.execute(
+            """
+            UPDATE payroll_periods
+
+            SET
+                status = 'PAID',
+                paid_by = %s,
+                paid_at = NOW(),
+                updated_by = %s
+
+            WHERE payroll_period_id = %s
+            """,
+            (
+                paid_by,
+                paid_by,
+                payroll_period_id,
+            ),
+        )
+
+
+        connection.commit()
+
+
+        return {
+            "total_entries":
+                total_entries,
+        }
+
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+
+    finally:
+
+        cursor.close()
+        connection.close()
