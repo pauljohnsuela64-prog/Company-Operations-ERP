@@ -2,323 +2,935 @@
 
 
 {% block title %}
-Dashboard | Company Operations ERP
-{% endblock %}
-
-
-{% block page_title %}
 Dashboard
 {% endblock %}
 
 
 {% block content %}
 
-<div class="mb-4">
 
-    <h2>
-        Welcome, {{ session.username }}!
-    </h2>
+<!-- # ========================================== -->
+<!-- # PAGE HEADER -->
+<!-- # ========================================== -->
 
-    <p class="text-muted mb-0">
-        You are signed in as
-        <strong>{{ session.role_name }}</strong>.
-    </p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="mb-1">
+            Operations Dashboard
+        </h2>
+
+        <p class="text-muted mb-0">
+            Live overview across company operations.
+        </p>
+
+    </div>
+
+
+    <div class="text-end">
+
+        <div class="small text-muted">
+            Dashboard Date
+        </div>
+
+        <strong>
+            {{ summary.today.strftime("%B %d, %Y") }}
+        </strong>
+
+    </div>
 
 </div>
 
 
-<!-- ===================================================== -->
-<!-- HUMAN RESOURCES -->
-<!-- ===================================================== -->
+<!-- # ========================================== -->
+<!-- # HR & WORKFORCE -->
+<!-- # ========================================== -->
 
-{% if
-    has_permission('employees.view')
-    or has_permission('departments.view')
-%}
+{% if (
+    has_permission("employees.view")
+    or has_permission("attendance.view")
+    or has_permission("leave.view")
+) %}
 
-<div class="mb-3">
-    <h5>Human Resources</h5>
-</div>
+    <div class="mb-4">
 
-
-<div class="row g-4 mb-5">
-
-    <div class="col-md-6 col-xl-3">
-
-        <div class="card dashboard-card shadow-sm h-100">
-
-            <div class="card-body">
-
-                <small class="text-muted">
-                    Total Employees
-                </small>
-
-                <h2 class="mt-2 mb-1">
-                    {{ summary.total_employees }}
-                </h2>
-
-                {% if has_permission('employees.view') %}
-
-                    <a
-                        href="{{ url_for('employees') }}"
-                        class="small text-decoration-none"
-                    >
-                        View employees
-                    </a>
-
-                {% endif %}
-
-            </div>
-
-        </div>
-
-    </div>
+        <h5 class="mb-3">
+            HR & Workforce
+        </h5>
 
 
-    <div class="col-md-6 col-xl-3">
-
-        <div class="card dashboard-card shadow-sm h-100">
-
-            <div class="card-body">
-
-                <small class="text-muted">
-                    Active Employees
-                </small>
-
-                <h2 class="mt-2 mb-1">
-                    {{ summary.active_employees }}
-                </h2>
-
-                <span class="badge text-bg-success">
-                    Active
-                </span>
-
-            </div>
-
-        </div>
-
-    </div>
+        <div class="row g-3">
 
 
-    <div class="col-md-6 col-xl-3">
+            <!-- # EMPLOYEES -->
 
-        <div class="card dashboard-card shadow-sm h-100">
+            {% if has_permission("employees.view") %}
 
-            <div class="card-body">
+                <div class="col-xl-4 col-md-6">
 
-                <small class="text-muted">
-                    Non-Active Employees
-                </small>
+                    <div class="card shadow-sm border-0 h-100">
 
-                <h2 class="mt-2 mb-1">
-                    {{ summary.non_active_employees }}
-                </h2>
+                        <div class="card-body">
 
-                <small class="text-muted">
-                    Inactive, On Leave, Resigned or Terminated
-                </small>
+                            <div class="d-flex justify-content-between">
 
-            </div>
+                                <div>
 
-        </div>
+                                    <div class="text-muted small">
+                                        Employees
+                                    </div>
 
-    </div>
+                                    <h2 class="mb-0">
+                                        {{ summary.employees.total }}
+                                    </h2>
+
+                                </div>
+
+                                <a
+                                    href="{{ url_for('employees') }}"
+                                    class="btn btn-sm btn-outline-primary align-self-start"
+                                >
+                                    View
+                                </a>
+
+                            </div>
 
 
-    <div class="col-md-6 col-xl-3">
+                            <hr>
 
-        <div class="card dashboard-card shadow-sm h-100">
 
-            <div class="card-body">
+                            <div class="row text-center">
 
-                <small class="text-muted">
-                    Departments
-                </small>
+                                <div class="col">
 
-                <h2 class="mt-2 mb-1">
-                    {{ summary.total_departments }}
-                </h2>
+                                    <div class="small text-muted">
+                                        Active
+                                    </div>
 
-                <small class="text-muted">
-                    {{ summary.active_departments }}
-                    active
-                </small>
+                                    <strong class="text-success">
+                                        {{ summary.employees.active }}
+                                    </strong>
 
-                {% if has_permission('departments.view') %}
+                                </div>
 
-                    <div class="mt-1">
 
-                        <a
-                            href="{{ url_for('departments') }}"
-                            class="small text-decoration-none"
-                        >
-                            View departments
-                        </a>
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        On Leave
+                                    </div>
+
+                                    <strong>
+                                        {{ summary.employees.on_leave }}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Inactive
+                                    </div>
+
+                                    <strong>
+                                        {{ summary.employees.inactive }}
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+                        </div>
 
                     </div>
 
-                {% endif %}
+                </div>
 
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-{% endif %}
+            {% endif %}
 
 
-<!-- ===================================================== -->
-<!-- INVENTORY -->
-<!-- ===================================================== -->
+            <!-- # ATTENDANCE TODAY -->
 
-{% if has_permission('inventory.view') %}
+            {% if has_permission("attendance.view") %}
 
-<div class="mb-3">
-    <h5>Inventory</h5>
-</div>
+                <div class="col-xl-4 col-md-6">
 
+                    <div class="card shadow-sm border-0 h-100">
 
-<div class="row g-4">
+                        <div class="card-body">
 
-    <div class="col-md-6 col-xl-3">
+                            <div class="d-flex justify-content-between">
 
-        <div class="card dashboard-card shadow-sm h-100">
+                                <div>
 
-            <div class="card-body">
+                                    <div class="text-muted small">
+                                        Attendance Today
+                                    </div>
 
-                <small class="text-muted">
-                    Inventory Items
-                </small>
+                                    <h2 class="mb-0">
+                                        {{ summary.attendance.total }}
+                                    </h2>
 
-                <h2 class="mt-2 mb-1">
-                    {{ summary.total_inventory_items }}
-                </h2>
+                                </div>
 
-                <a
-                    href="{{ url_for('inventory_items') }}"
-                    class="small text-decoration-none"
-                >
-                    View items
-                </a>
+                                <a
+                                    href="{{ url_for('attendance') }}"
+                                    class="btn btn-sm btn-outline-primary align-self-start"
+                                >
+                                    View
+                                </a>
 
-            </div>
-
-        </div>
-
-    </div>
+                            </div>
 
 
-    <div class="col-md-6 col-xl-3">
-
-        <div class="card dashboard-card shadow-sm h-100">
-
-            <div class="card-body">
-
-                <small class="text-muted">
-                    Low Stock Items
-                </small>
-
-                <h2 class="mt-2 mb-1">
-                    {{ summary.low_stock_items }}
-                </h2>
-
-                {% if summary.low_stock_items > 0 %}
-
-                    <span class="badge text-bg-warning">
-                        Needs Attention
-                    </span>
-
-                {% else %}
-
-                    <span class="badge text-bg-success">
-                        Good
-                    </span>
-
-                {% endif %}
-
-            </div>
-
-        </div>
-
-    </div>
+                            <hr>
 
 
-    <div class="col-md-6 col-xl-3">
+                            <div class="row text-center">
 
-        <div class="card dashboard-card shadow-sm h-100">
+                                <div class="col">
 
-            <div class="card-body">
+                                    <div class="small text-muted">
+                                        Present
+                                    </div>
 
-                <small class="text-muted">
-                    Out of Stock
-                </small>
+                                    <strong class="text-success">
+                                        {{ summary.attendance.present }}
+                                    </strong>
 
-                <h2 class="mt-2 mb-1">
-                    {{ summary.out_of_stock_items }}
-                </h2>
-
-                {% if summary.out_of_stock_items > 0 %}
-
-                    <span class="badge text-bg-danger">
-                        Attention Required
-                    </span>
-
-                {% else %}
-
-                    <span class="badge text-bg-success">
-                        No Issues
-                    </span>
-
-                {% endif %}
-
-            </div>
-
-        </div>
-
-    </div>
+                                </div>
 
 
-    <div class="col-md-6 col-xl-3">
+                                <div class="col">
 
-        <div class="card dashboard-card shadow-sm h-100">
+                                    <div class="small text-muted">
+                                        Late
+                                    </div>
 
-            <div class="card-body">
+                                    <strong class="text-warning">
+                                        {{ summary.attendance.late }}
+                                    </strong>
 
-                <small class="text-muted">
-                    Warehouses
-                </small>
+                                </div>
 
-                <h2 class="mt-2 mb-1">
-                    {{ summary.total_warehouses }}
-                </h2>
 
-                <small class="text-muted">
-                    {{ summary.active_warehouses }}
-                    active
-                </small>
+                                <div class="col">
 
-                <div class="mt-1">
+                                    <div class="small text-muted">
+                                        Absent
+                                    </div>
 
-                    <a
-                        href="{{ url_for('warehouses') }}"
-                        class="small text-decoration-none"
-                    >
-                        View warehouses
-                    </a>
+                                    <strong class="text-danger">
+                                        {{ summary.attendance.absent }}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Leave
+                                    </div>
+
+                                    <strong>
+                                        {{ summary.attendance.on_leave }}
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
 
                 </div>
 
-            </div>
+            {% endif %}
+
+
+            <!-- # LEAVE -->
+
+            {% if has_permission("leave.view") %}
+
+                <div class="col-xl-4 col-md-6">
+
+                    <div class="card shadow-sm border-0 h-100">
+
+                        <div class="card-body">
+
+                            <div class="d-flex justify-content-between">
+
+                                <div>
+
+                                    <div class="text-muted small">
+                                        Pending Leave Requests
+                                    </div>
+
+                                    <h2 class="mb-0">
+                                        {{ summary.leave.pending }}
+                                    </h2>
+
+                                </div>
+
+                                <a
+                                    href="{{ url_for('leave_requests') }}"
+                                    class="btn btn-sm btn-outline-primary align-self-start"
+                                >
+                                    View
+                                </a>
+
+                            </div>
+
+
+                            <hr>
+
+
+                            <div>
+
+                                <span class="text-muted">
+                                    Approved requests:
+                                </span>
+
+                                <strong>
+                                    {{ summary.leave.approved }}
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
 
         </div>
 
     </div>
 
-</div>
+{% endif %}
+
+
+<!-- # ========================================== -->
+<!-- # OPERATIONS & FINANCE -->
+<!-- # ========================================== -->
+
+{% if (
+    has_permission("inventory.view")
+    or has_permission("procurement.view")
+    or has_permission("finance.view")
+) %}
+
+    <div class="mb-4">
+
+        <h5 class="mb-3">
+            Operations & Finance
+        </h5>
+
+
+        <div class="row g-3">
+
+
+            <!-- # INVENTORY -->
+
+            {% if has_permission("inventory.view") %}
+
+                <div class="col-xl-4 col-md-6">
+
+                    <div class="card shadow-sm border-0 h-100">
+
+                        <div class="card-body">
+
+                            <div class="d-flex justify-content-between">
+
+                                <div>
+
+                                    <div class="text-muted small">
+                                        Inventory Items
+                                    </div>
+
+                                    <h2 class="mb-0">
+                                        {{ summary.inventory.total_items }}
+                                    </h2>
+
+                                </div>
+
+                                <a
+                                    href="{{ url_for('inventory_items') }}"
+                                    class="btn btn-sm btn-outline-primary align-self-start"
+                                >
+                                    View
+                                </a>
+
+                            </div>
+
+
+                            <hr>
+
+
+                            <span class="text-muted">
+                                Active items:
+                            </span>
+
+                            <strong class="text-success">
+                                {{ summary.inventory.active_items }}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
+
+
+            <!-- # PROCUREMENT -->
+
+            {% if has_permission("procurement.view") %}
+
+                <div class="col-xl-4 col-md-6">
+
+                    <div class="card shadow-sm border-0 h-100">
+
+                        <div class="card-body">
+
+                            <div class="d-flex justify-content-between">
+
+                                <div>
+
+                                    <div class="text-muted small">
+                                        Purchase Requests
+                                    </div>
+
+                                    <h2 class="mb-0">
+                                        {{ summary.procurement.pending_approval }}
+                                    </h2>
+
+                                    <div class="small text-muted">
+                                        awaiting approval
+                                    </div>
+
+                                </div>
+
+                                <a
+                                    href="{{ url_for('purchase_requests') }}"
+                                    class="btn btn-sm btn-outline-primary align-self-start"
+                                >
+                                    View
+                                </a>
+
+                            </div>
+
+
+                            <hr>
+
+
+                            <div class="row text-center">
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Draft
+                                    </div>
+
+                                    <strong>
+                                        {{ summary.procurement.draft }}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Submitted
+                                    </div>
+
+                                    <strong class="text-warning">
+                                        {{ summary.procurement.pending_approval }}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Approved
+                                    </div>
+
+                                    <strong class="text-success">
+                                        {{ summary.procurement.approved }}
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
+
+
+            <!-- # FINANCE -->
+
+            {% if has_permission("finance.view") %}
+
+                <div class="col-xl-4 col-md-6">
+
+                    <div class="card shadow-sm border-0 h-100">
+
+                        <div class="card-body">
+
+                            <div class="d-flex justify-content-between">
+
+                                <div>
+
+                                    <div class="text-muted small">
+                                        Expenses Awaiting Payment
+                                    </div>
+
+                                    <h2 class="mb-0">
+                                        {{ summary.finance.approved }}
+                                    </h2>
+
+                                </div>
+
+                                <a
+                                    href="{{ url_for('expenses') }}"
+                                    class="btn btn-sm btn-outline-primary align-self-start"
+                                >
+                                    View
+                                </a>
+
+                            </div>
+
+
+                            <hr>
+
+
+                            <div class="row text-center">
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Draft
+                                    </div>
+
+                                    <strong>
+                                        {{ summary.finance.draft }}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Approved
+                                    </div>
+
+                                    <strong class="text-warning">
+                                        {{ summary.finance.approved }}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Paid
+                                    </div>
+
+                                    <strong class="text-success">
+                                        {{ summary.finance.paid }}
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
 
 {% endif %}
+
+
+<!-- # ========================================== -->
+<!-- # IT & PAYROLL -->
+<!-- # ========================================== -->
+
+{% if (
+    has_permission("it_assets.view")
+    or has_permission("payroll.view")
+) %}
+
+    <div class="mb-4">
+
+        <h5 class="mb-3">
+            IT & Payroll
+        </h5>
+
+
+        <div class="row g-3">
+
+
+            <!-- # IT ASSETS -->
+
+            {% if has_permission("it_assets.view") %}
+
+                <div class="col-xl-4 col-md-6">
+
+                    <div class="card shadow-sm border-0 h-100">
+
+                        <div class="card-body">
+
+                            <div class="d-flex justify-content-between">
+
+                                <div>
+
+                                    <div class="text-muted small">
+                                        IT Assets
+                                    </div>
+
+                                    <h2 class="mb-0">
+                                        {{ summary.it_assets.total }}
+                                    </h2>
+
+                                </div>
+
+                                <a
+                                    href="{{ url_for('it_assets') }}"
+                                    class="btn btn-sm btn-outline-primary align-self-start"
+                                >
+                                    View
+                                </a>
+
+                            </div>
+
+
+                            <hr>
+
+
+                            <div class="row text-center">
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Available
+                                    </div>
+
+                                    <strong class="text-success">
+                                        {{ summary.it_assets.available }}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Assigned
+                                    </div>
+
+                                    <strong>
+                                        {{ summary.it_assets.assigned }}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Maintenance
+                                    </div>
+
+                                    <strong class="text-warning">
+                                        {{ summary.it_assets.maintenance }}
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- # HELP DESK -->
+
+                <div class="col-xl-4 col-md-6">
+
+                    <div class="card shadow-sm border-0 h-100">
+
+                        <div class="card-body">
+
+                            <div class="d-flex justify-content-between">
+
+                                <div>
+
+                                    <div class="text-muted small">
+                                        Open Help Desk Tickets
+                                    </div>
+
+                                    <h2 class="mb-0">
+                                        {{ summary.helpdesk.open }}
+                                    </h2>
+
+                                </div>
+
+                                <a
+                                    href="{{ url_for('help_desk') }}"
+                                    class="btn btn-sm btn-outline-primary align-self-start"
+                                >
+                                    View
+                                </a>
+
+                            </div>
+
+
+                            <hr>
+
+
+                            <div class="row text-center">
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Total
+                                    </div>
+
+                                    <strong>
+                                        {{ summary.helpdesk.total }}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Urgent Open
+                                    </div>
+
+                                    <strong class="text-danger">
+                                        {{ summary.helpdesk.urgent_open }}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Resolved
+                                    </div>
+
+                                    <strong class="text-success">
+                                        {{ summary.helpdesk.resolved }}
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
+
+
+            <!-- # PAYROLL -->
+
+            {% if has_permission("payroll.view") %}
+
+                <div class="col-xl-4 col-md-6">
+
+                    <div class="card shadow-sm border-0 h-100">
+
+                        <div class="card-body">
+
+                            <div class="d-flex justify-content-between">
+
+                                <div>
+
+                                    <div class="text-muted small">
+                                        Payroll
+                                    </div>
+
+                                    <h2 class="mb-0">
+                                        {{ summary.payroll.processing }}
+                                    </h2>
+
+                                    <div class="small text-muted">
+                                        awaiting approval
+                                    </div>
+
+                                </div>
+
+                                <a
+                                    href="{{ url_for('payroll_periods') }}"
+                                    class="btn btn-sm btn-outline-primary align-self-start"
+                                >
+                                    View
+                                </a>
+
+                            </div>
+
+
+                            <hr>
+
+
+                            <div class="row text-center mb-3">
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Draft
+                                    </div>
+
+                                    <strong>
+                                        {{ summary.payroll.draft }}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Processing
+                                    </div>
+
+                                    <strong class="text-warning">
+                                        {{ summary.payroll.processing }}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Approved
+                                    </div>
+
+                                    <strong class="text-success">
+                                        {{ summary.payroll.approved }}
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="col">
+
+                                    <div class="small text-muted">
+                                        Paid
+                                    </div>
+
+                                    <strong>
+                                        {{ summary.payroll.paid }}
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+
+                            {% if summary.payroll.latest_paid %}
+
+                                <div class="border-top pt-3">
+
+                                    <div class="small text-muted">
+                                        Latest Paid Payroll
+                                    </div>
+
+                                    <strong>
+                                        {{ summary.payroll.latest_paid.period_number }}
+                                    </strong>
+
+                                    <div class="small text-muted">
+
+                                        {{ summary.payroll.latest_paid.period_name }}
+
+                                    </div>
+
+                                </div>
+
+                            {% else %}
+
+                                <div class="small text-muted border-top pt-3">
+                                    No paid payroll period yet.
+                                </div>
+
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
+
+
+        </div>
+
+    </div>
+
+{% endif %}
+
+
+<!-- # ========================================== -->
+<!-- # EMPTY DASHBOARD -->
+<!-- # ========================================== -->
+
+{% if not (
+    has_permission("employees.view")
+    or has_permission("attendance.view")
+    or has_permission("leave.view")
+    or has_permission("inventory.view")
+    or has_permission("procurement.view")
+    or has_permission("finance.view")
+    or has_permission("it_assets.view")
+    or has_permission("payroll.view")
+) %}
+
+    <div class="alert alert-info">
+
+        Your account does not currently have access to any
+        dashboard modules.
+
+    </div>
+
+{% endif %}
+
 
 {% endblock %}

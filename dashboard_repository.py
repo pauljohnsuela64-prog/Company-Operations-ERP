@@ -1,170 +1,549 @@
-from database import get_connection
+# ==========================================================
+# DASHBOARD REPOSITORY
+# ==========================================================
 
+from datetime import date
+
+from attendance_repository import (
+    get_filtered_attendance_records,
+)
+
+from employee_repository import (
+    get_all_employees,
+)
+
+from expense_repository import (
+    get_all_expenses,
+)
+
+from help_desk_repository import (
+    get_all_helpdesk_tickets,
+)
+
+from inventory_item_repository import (
+    get_all_inventory_items,
+)
+
+from it_asset_repository import (
+    get_all_it_assets,
+)
+
+from leave_repository import (
+    get_all_leave_requests,
+)
+
+from payroll_period_repository import (
+    get_all_payroll_periods,
+)
+
+from purchase_request_repository import (
+    get_all_purchase_requests,
+)
+
+
+# ==========================================================
+# HELPER - COUNT STATUS
+# ==========================================================
+
+def _count_status(
+    records,
+    target_status,
+):
+
+    target_status = (
+        str(target_status)
+        .strip()
+        .upper()
+    )
+
+
+    return sum(
+        1
+        for record in records
+
+        if (
+            str(
+                record.get(
+                    "status",
+                    "",
+                )
+            )
+            .strip()
+            .upper()
+            == target_status
+        )
+    )
+
+
+# ==========================================================
+# HELPER - COUNT EMPLOYMENT STATUS
+# ==========================================================
+
+def _count_employment_status(
+    employees,
+    target_status,
+):
+
+    target_status = (
+        str(target_status)
+        .strip()
+        .upper()
+    )
+
+
+    return sum(
+        1
+        for employee in employees
+
+        if (
+            str(
+                employee.get(
+                    "employment_status",
+                    "",
+                )
+            )
+            .strip()
+            .upper()
+            == target_status
+        )
+    )
+
+
+# ==========================================================
+# DASHBOARD SUMMARY
+# ==========================================================
 
 def get_dashboard_summary():
-    connection = get_connection()
-    cursor = connection.cursor(dictionary=True)
 
-    try:
-        # =====================================================
-        # EMPLOYEES
-        # =====================================================
+    today = date.today()
 
-        cursor.execute(
-            """
-            SELECT
-                COUNT(*) AS total_employees,
 
-                COALESCE(
-                    SUM(employment_status = 'Active'),
-                    0
-                ) AS active_employees,
+    # ======================================================
+    # LOAD MODULE DATA
+    # ==========================================================
 
-                COALESCE(
-                    SUM(employment_status <> 'Active'),
-                    0
-                ) AS non_active_employees
+    employees = (
+        get_all_employees()
+    )
 
-            FROM employees
-            """
+
+    attendance_today = (
+        get_filtered_attendance_records(
+            attendance_date=today,
         )
+    )
 
-        employee_summary = cursor.fetchone()
+
+    leave_requests = (
+        get_all_leave_requests()
+    )
 
 
-        # =====================================================
-        # DEPARTMENTS
-        # =====================================================
+    inventory_items = (
+        get_all_inventory_items()
+    )
 
-        cursor.execute(
-            """
-            SELECT
-                COUNT(*) AS total_departments,
 
-                COALESCE(
-                    SUM(is_active = TRUE),
-                    0
-                ) AS active_departments
+    purchase_requests = (
+        get_all_purchase_requests()
+    )
 
-            FROM departments
-            """
+
+    expenses = (
+        get_all_expenses()
+    )
+
+
+    it_assets = (
+        get_all_it_assets()
+    )
+
+
+    helpdesk_tickets = (
+        get_all_helpdesk_tickets()
+    )
+
+
+    payroll_periods = (
+        get_all_payroll_periods()
+    )
+
+
+    # ======================================================
+    # EMPLOYEES
+    # ==========================================================
+
+    employee_summary = {
+
+        "total":
+            len(employees),
+
+        "active":
+            _count_employment_status(
+                employees,
+                "ACTIVE",
+            ),
+
+        "on_leave":
+            _count_employment_status(
+                employees,
+                "ON LEAVE",
+            ),
+
+        "inactive":
+            _count_employment_status(
+                employees,
+                "INACTIVE",
+            ),
+    }
+
+
+    # ======================================================
+    # ATTENDANCE TODAY
+    # ==========================================================
+
+    attendance_summary = {
+
+        "total":
+            len(attendance_today),
+
+        "present":
+            _count_status(
+                attendance_today,
+                "PRESENT",
+            ),
+
+        "late":
+            _count_status(
+                attendance_today,
+                "LATE",
+            ),
+
+        "absent":
+            _count_status(
+                attendance_today,
+                "ABSENT",
+            ),
+
+        "on_leave":
+            _count_status(
+                attendance_today,
+                "ON_LEAVE",
+            ),
+
+        "half_day":
+            _count_status(
+                attendance_today,
+                "HALF_DAY",
+            ),
+    }
+
+
+    # ======================================================
+    # LEAVE
+    # ==========================================================
+
+    leave_summary = {
+
+        "pending":
+            _count_status(
+                leave_requests,
+                "PENDING",
+            ),
+
+        "approved":
+            _count_status(
+                leave_requests,
+                "APPROVED",
+            ),
+    }
+
+
+    # ======================================================
+    # INVENTORY
+    #
+    # Low-stock calculation will be added later once we
+    # finalize the exact stock/reorder policy.
+    # ==========================================================
+
+    inventory_summary = {
+
+        "total_items":
+            len(inventory_items),
+
+        "active_items":
+            sum(
+                1
+                for item in inventory_items
+
+                if bool(
+                    item.get(
+                        "is_active"
+                    )
+                )
+            ),
+    }
+
+
+    # ======================================================
+    # PROCUREMENT
+    # ==========================================================
+
+    procurement_summary = {
+
+        "draft":
+            _count_status(
+                purchase_requests,
+                "DRAFT",
+            ),
+
+        "pending_approval":
+            _count_status(
+                purchase_requests,
+                "SUBMITTED",
+            ),
+
+        "approved":
+            _count_status(
+                purchase_requests,
+                "APPROVED",
+            ),
+    }
+
+
+    # ======================================================
+    # FINANCE
+    # ==========================================================
+
+    finance_summary = {
+
+        "draft":
+            _count_status(
+                expenses,
+                "DRAFT",
+            ),
+
+        "approved":
+            _count_status(
+                expenses,
+                "APPROVED",
+            ),
+
+        "paid":
+            _count_status(
+                expenses,
+                "PAID",
+            ),
+    }
+
+
+    # ======================================================
+    # IT ASSETS
+    # ==========================================================
+
+    it_asset_summary = {
+
+        "total":
+            len(it_assets),
+
+        "available":
+            _count_status(
+                it_assets,
+                "AVAILABLE",
+            ),
+
+        "assigned":
+            _count_status(
+                it_assets,
+                "ASSIGNED",
+            ),
+
+        "maintenance":
+            _count_status(
+                it_assets,
+                "MAINTENANCE",
+            ),
+
+        "lost":
+            _count_status(
+                it_assets,
+                "LOST",
+            ),
+    }
+
+
+    # ======================================================
+    # HELP DESK
+    # ==========================================================
+
+    open_helpdesk_statuses = {
+        "OPEN",
+        "IN_PROGRESS",
+    }
+
+
+    open_tickets = sum(
+        1
+        for ticket in helpdesk_tickets
+
+        if (
+            str(
+                ticket.get(
+                    "status",
+                    "",
+                )
+            )
+            .strip()
+            .upper()
+
+            in open_helpdesk_statuses
         )
+    )
 
-        department_summary = cursor.fetchone()
 
+    urgent_open_tickets = sum(
+        1
+        for ticket in helpdesk_tickets
 
-        # =====================================================
-        # INVENTORY ITEMS
-        # =====================================================
+        if (
+            str(
+                ticket.get(
+                    "priority",
+                    "",
+                )
+            )
+            .strip()
+            .upper()
+            == "URGENT"
 
-        cursor.execute(
-            """
-            SELECT
-                COUNT(*) AS total_inventory_items
+            and
 
-            FROM inventory_items
-            """
+            str(
+                ticket.get(
+                    "status",
+                    "",
+                )
+            )
+            .strip()
+            .upper()
+
+            in open_helpdesk_statuses
         )
+    )
 
-        inventory_summary = cursor.fetchone()
+
+    helpdesk_summary = {
+
+        "total":
+            len(helpdesk_tickets),
+
+        "open":
+            open_tickets,
+
+        "urgent_open":
+            urgent_open_tickets,
+
+        "resolved":
+            _count_status(
+                helpdesk_tickets,
+                "RESOLVED",
+            ),
+    }
 
 
-        # =====================================================
-        # LOW STOCK / OUT OF STOCK
-        # =====================================================
+    # ======================================================
+    # PAYROLL
+    # ==========================================================
 
-        cursor.execute(
-            """
-            SELECT
-                COALESCE(
-                    SUM(
-                        total_quantity > 0
-                        AND total_quantity <= reorder_level
-                    ),
-                    0
-                ) AS low_stock_items,
+    paid_payrolls = [
+        period
+        for period in payroll_periods
 
-                COALESCE(
-                    SUM(total_quantity <= 0),
-                    0
-                ) AS out_of_stock_items
-
-            FROM (
-                SELECT
-                    i.item_id,
-                    i.reorder_level,
-                    COALESCE(SUM(s.quantity), 0) AS total_quantity
-
-                FROM inventory_items i
-
-                LEFT JOIN inventory_stock s
-                    ON i.item_id = s.item_id
-
-                WHERE i.is_active = TRUE
-
-                GROUP BY
-                    i.item_id,
-                    i.reorder_level
-            ) AS inventory_totals
-            """
+        if (
+            str(
+                period.get(
+                    "status",
+                    "",
+                )
+            )
+            .strip()
+            .upper()
+            == "PAID"
         )
-
-        stock_summary = cursor.fetchone()
-
-
-        # =====================================================
-        # WAREHOUSES
-        # =====================================================
-
-        cursor.execute(
-            """
-            SELECT
-                COUNT(*) AS total_warehouses,
-
-                COALESCE(
-                    SUM(is_active = TRUE),
-                    0
-                ) AS active_warehouses
-
-            FROM warehouses
-            """
-        )
-
-        warehouse_summary = cursor.fetchone()
+    ]
 
 
-        return {
-            "total_employees":
-                employee_summary["total_employees"],
+    latest_paid_payroll = (
+        paid_payrolls[0]
+        if paid_payrolls
+        else None
+    )
 
-            "active_employees":
-                employee_summary["active_employees"],
 
-            "non_active_employees":
-                employee_summary["non_active_employees"],
+    payroll_summary = {
 
-            "total_departments":
-                department_summary["total_departments"],
+        "draft":
+            _count_status(
+                payroll_periods,
+                "DRAFT",
+            ),
 
-            "active_departments":
-                department_summary["active_departments"],
+        "processing":
+            _count_status(
+                payroll_periods,
+                "PROCESSING",
+            ),
 
-            "total_inventory_items":
-                inventory_summary["total_inventory_items"],
+        "approved":
+            _count_status(
+                payroll_periods,
+                "APPROVED",
+            ),
 
-            "low_stock_items":
-                stock_summary["low_stock_items"],
+        "paid":
+            _count_status(
+                payroll_periods,
+                "PAID",
+            ),
 
-            "out_of_stock_items":
-                stock_summary["out_of_stock_items"],
+        "latest_paid":
+            latest_paid_payroll,
+    }
 
-            "total_warehouses":
-                warehouse_summary["total_warehouses"],
 
-            "active_warehouses":
-                warehouse_summary["active_warehouses"],
-        }
+    # ======================================================
+    # FINAL DASHBOARD DATA
+    # ==========================================================
 
-    finally:
-        cursor.close()
-        connection.close()
+    return {
+
+        "today":
+            today,
+
+        "employees":
+            employee_summary,
+
+        "attendance":
+            attendance_summary,
+
+        "leave":
+            leave_summary,
+
+        "inventory":
+            inventory_summary,
+
+        "procurement":
+            procurement_summary,
+
+        "finance":
+            finance_summary,
+
+        "it_assets":
+            it_asset_summary,
+
+        "helpdesk":
+            helpdesk_summary,
+
+        "payroll":
+            payroll_summary,
+    }
