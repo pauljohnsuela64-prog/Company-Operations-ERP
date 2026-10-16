@@ -172,6 +172,14 @@
 
                 {% endif %}
 
+                {% if has_permission("payroll.view") %}
+
+                <a href="{{ url_for('payroll_compensation') }}" class="sidebar-link">
+                    Payroll
+                </a>
+
+                {% endif %}
+
 
                 {% if
                 has_permission('users.manage')

@@ -15,6 +15,15 @@ from leave_export import (
     generate_leave_report_excel,
 )
 
+from payroll_repository import (
+    create_employee_compensation,
+    get_all_employee_compensation,
+    get_employee_compensation_by_id,
+    get_employee_compensation_by_employee_id,
+    get_employees_without_compensation,
+    update_employee_compensation,
+)
+
 
 from leave_repository import (
     approve_leave_request,
@@ -5708,6 +5717,565 @@ def export_finance_report():
             "application/vnd.openxmlformats-"
             "officedocument.spreadsheetml.sheet"
         ),
+    )
+
+# ==========================================================
+# PAYROLL - EMPLOYEE COMPENSATION
+# ==========================================================
+
+@app.route("/payroll/compensation")
+@permission_required("payroll.view")
+def payroll_compensation():
+
+    compensation_records = (
+        get_all_employee_compensation()
+    )
+
+    return render_template(
+        "payroll/compensation/index.html",
+        compensation_records=compensation_records,
+    )
+
+# ==========================================================
+# PAYROLL - ADD EMPLOYEE COMPENSATION
+# ==========================================================
+
+@app.route(
+    "/payroll/compensation/add",
+    methods=["GET", "POST"],
+)
+@permission_required(
+    "payroll.compensation.manage"
+)
+def add_payroll_compensation():
+
+    employees = (
+        get_employees_without_compensation()
+    )
+
+
+    allowed_pay_types = {
+        "MONTHLY",
+        "DAILY",
+        "HOURLY",
+    }
+
+
+    if request.method == "POST":
+
+        # ==================================================
+        # FORM INPUT
+        # ==========================================================
+
+        employee_id = request.form.get(
+            "employee_id",
+            "",
+        ).strip()
+
+        pay_type = request.form.get(
+            "pay_type",
+            "",
+        ).strip().upper()
+
+        basic_rate = request.form.get(
+            "basic_rate",
+            "",
+        ).strip()
+
+        effective_date = request.form.get(
+            "effective_date",
+            "",
+        ).strip()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+
+        # ==================================================
+        # REQUIRED FIELDS
+        # ==========================================================
+
+        if (
+            not employee_id
+            or not pay_type
+            or not basic_rate
+            or not effective_date
+        ):
+
+            flash(
+                (
+                    "Employee, pay type, basic rate, "
+                    "and effective date are required."
+                ),
+                "danger",
+            )
+
+            return render_template(
+                "payroll/compensation/add.html",
+                employees=employees,
+                today=date.today().isoformat(),
+            )
+
+
+        # ==================================================
+        # EMPLOYEE VALIDATION
+        # ==========================================================
+
+        try:
+
+            employee_id_value = int(
+                employee_id
+            )
+
+        except ValueError:
+
+            flash(
+                "Invalid employee.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "add_payroll_compensation"
+                )
+            )
+
+
+        employee = get_employee_by_id(
+            employee_id_value
+        )
+
+
+        if not employee:
+
+            flash(
+                "Employee not found.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "add_payroll_compensation"
+                )
+            )
+
+
+        existing_compensation = (
+            get_employee_compensation_by_employee_id(
+                employee_id_value
+            )
+        )
+
+
+        if existing_compensation:
+
+            flash(
+                (
+                    "This employee already has "
+                    "compensation configured."
+                ),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "payroll_compensation"
+                )
+            )
+
+
+        # ==================================================
+        # PAY TYPE VALIDATION
+        # ==========================================================
+
+        if (
+            pay_type
+            not in allowed_pay_types
+        ):
+
+            flash(
+                "Invalid pay type.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "add_payroll_compensation"
+                )
+            )
+
+
+        # ==================================================
+        # RATE VALIDATION
+        # ==========================================================
+
+        try:
+
+            basic_rate_value = Decimal(
+                basic_rate
+            )
+
+
+            if basic_rate_value <= 0:
+
+                raise ValueError
+
+
+            if (
+                basic_rate_value
+                > Decimal("9999999999.99")
+            ):
+
+                raise ValueError
+
+
+        except (
+            InvalidOperation,
+            ValueError,
+        ):
+
+            flash(
+                (
+                    "Basic rate must be a valid "
+                    "positive amount."
+                ),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "add_payroll_compensation"
+                )
+            )
+
+
+        # ==================================================
+        # EFFECTIVE DATE
+        # ==========================================================
+
+        try:
+
+            effective_date_value = (
+                date.fromisoformat(
+                    effective_date
+                )
+            )
+
+        except ValueError:
+
+            flash(
+                "Invalid effective date.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "add_payroll_compensation"
+                )
+            )
+
+
+        # ==================================================
+        # NOTES
+        # ==========================================================
+
+        if len(notes) > 255:
+
+            flash(
+                (
+                    "Notes must not exceed "
+                    "255 characters."
+                ),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "add_payroll_compensation"
+                )
+            )
+
+
+        # ==================================================
+        # CREATE
+        # ==========================================================
+
+        try:
+
+            create_employee_compensation(
+                employee_id=employee_id_value,
+                pay_type=pay_type,
+                basic_rate=basic_rate_value,
+                effective_date=effective_date_value,
+                notes=notes or None,
+                created_by=session["user_id"],
+            )
+
+
+        except Exception as error:
+
+            if getattr(
+                error,
+                "errno",
+                None,
+            ) == 1062:
+
+                flash(
+                    (
+                        "This employee already has "
+                        "compensation configured."
+                    ),
+                    "danger",
+                )
+
+                return redirect(
+                    url_for(
+                        "payroll_compensation"
+                    )
+                )
+
+            raise
+
+
+        flash(
+            (
+                "Employee compensation "
+                "created successfully."
+            ),
+            "success",
+        )
+
+
+        return redirect(
+            url_for(
+                "payroll_compensation"
+            )
+        )
+
+
+    return render_template(
+        "payroll/compensation/add.html",
+        employees=employees,
+        today=date.today().isoformat(),
+    )
+
+# ==========================================================
+# PAYROLL - EDIT EMPLOYEE COMPENSATION
+# ==========================================================
+
+@app.route(
+    "/payroll/compensation/<int:compensation_id>/edit",
+    methods=["GET", "POST"],
+)
+@permission_required(
+    "payroll.compensation.manage"
+)
+def edit_payroll_compensation(
+    compensation_id,
+):
+
+    compensation = (
+        get_employee_compensation_by_id(
+            compensation_id
+        )
+    )
+
+
+    if not compensation:
+
+        flash(
+            "Compensation record not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "payroll_compensation"
+            )
+        )
+
+
+    allowed_pay_types = {
+        "MONTHLY",
+        "DAILY",
+        "HOURLY",
+    }
+
+
+    if request.method == "POST":
+
+        pay_type = request.form.get(
+            "pay_type",
+            "",
+        ).strip().upper()
+
+        basic_rate = request.form.get(
+            "basic_rate",
+            "",
+        ).strip()
+
+        effective_date = request.form.get(
+            "effective_date",
+            "",
+        ).strip()
+
+        notes = request.form.get(
+            "notes",
+            "",
+        ).strip()
+
+
+        # ==================================================
+        # PAY TYPE
+        # ==========================================================
+
+        if (
+            pay_type
+            not in allowed_pay_types
+        ):
+
+            flash(
+                "Invalid pay type.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_payroll_compensation",
+                    compensation_id=compensation_id,
+                )
+            )
+
+
+        # ==================================================
+        # RATE
+        # ==========================================================
+
+        try:
+
+            basic_rate_value = Decimal(
+                basic_rate
+            )
+
+
+            if basic_rate_value <= 0:
+
+                raise ValueError
+
+
+            if (
+                basic_rate_value
+                > Decimal("9999999999.99")
+            ):
+
+                raise ValueError
+
+
+        except (
+            InvalidOperation,
+            ValueError,
+        ):
+
+            flash(
+                (
+                    "Basic rate must be a valid "
+                    "positive amount."
+                ),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_payroll_compensation",
+                    compensation_id=compensation_id,
+                )
+            )
+
+
+        # ==================================================
+        # EFFECTIVE DATE
+        # ==========================================================
+
+        try:
+
+            effective_date_value = (
+                date.fromisoformat(
+                    effective_date
+                )
+            )
+
+        except ValueError:
+
+            flash(
+                "Invalid effective date.",
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_payroll_compensation",
+                    compensation_id=compensation_id,
+                )
+            )
+
+
+        # ==================================================
+        # NOTES
+        # ==========================================================
+
+        if len(notes) > 255:
+
+            flash(
+                (
+                    "Notes must not exceed "
+                    "255 characters."
+                ),
+                "danger",
+            )
+
+            return redirect(
+                url_for(
+                    "edit_payroll_compensation",
+                    compensation_id=compensation_id,
+                )
+            )
+
+
+        # ==================================================
+        # DATABASE UPDATE
+        # ==========================================================
+
+        update_employee_compensation(
+            compensation_id=compensation_id,
+            pay_type=pay_type,
+            basic_rate=basic_rate_value,
+            effective_date=effective_date_value,
+            notes=notes or None,
+            updated_by=session["user_id"],
+        )
+
+
+        flash(
+            (
+                "Employee compensation "
+                "updated successfully."
+            ),
+            "success",
+        )
+
+
+        return redirect(
+            url_for(
+                "payroll_compensation"
+            )
+        )
+
+
+    return render_template(
+        "payroll/compensation/edit.html",
+        compensation=compensation,
     )
 
 
