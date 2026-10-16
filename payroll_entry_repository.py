@@ -28,15 +28,37 @@ def get_payroll_entries_by_period(
                 pe.payroll_period_id,
                 pe.employee_id,
                 pe.compensation_id,
+
                 pe.pay_type,
                 pe.basic_rate,
                 pe.currency_code,
+
+                pe.scheduled_work_days,
+                pe.present_days,
+                pe.late_days,
+                pe.absent_days,
+                pe.paid_leave_days,
+                pe.unpaid_leave_days,
+                pe.half_day_count,
+                pe.unrecorded_days,
+
+                pe.daily_rate,
+
                 pe.regular_pay,
                 pe.additional_earnings,
                 pe.gross_pay,
+
+                pe.attendance_deduction,
                 pe.total_deductions,
+
                 pe.net_pay,
+
                 pe.status,
+
+                pe.generated_by,
+                pe.calculated_by,
+                pe.calculated_at,
+
                 pe.created_at,
                 pe.updated_at,
 
@@ -50,7 +72,10 @@ def get_payroll_entries_by_period(
                 d.department_name,
 
                 generator.username
-                    AS generated_by_username
+                    AS generated_by_username,
+
+                calculator.username
+                    AS calculated_by_username
 
             FROM payroll_entries pe
 
@@ -66,6 +91,10 @@ def get_payroll_entries_by_period(
                 ON pe.generated_by
                 = generator.user_id
 
+            LEFT JOIN users calculator
+                ON pe.calculated_by
+                = calculator.user_id
+
             WHERE pe.payroll_period_id = %s
 
             ORDER BY
@@ -77,7 +106,9 @@ def get_payroll_entries_by_period(
             ),
         )
 
+
         return cursor.fetchall()
+
 
     finally:
 

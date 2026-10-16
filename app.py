@@ -11,6 +11,11 @@ from dashboard_repository import get_dashboard_summary
 
 from decimal import Decimal, InvalidOperation
 
+
+from payroll_calculation_repository import (
+    calculate_monthly_payroll_period,
+)
+
 from leave_export import (
     generate_leave_report_excel,
 )
@@ -12541,6 +12546,115 @@ def admin_role_permissions(role_id):
 
     return redirect(
         url_for("admin_users")
+    )
+# ==========================================================
+# PAYROLL - CALCULATE MONTHLY PAYROLL
+# ==========================================================
+
+@app.route(
+    "/payroll/periods/<int:payroll_period_id>/calculate-monthly",
+    methods=["POST"],
+)
+@permission_required("payroll.process")
+def calculate_monthly_payroll_route(
+    payroll_period_id,
+):
+
+    period = get_payroll_period_by_id(
+        payroll_period_id
+    )
+
+
+    if not period:
+
+        flash(
+            "Payroll period not found.",
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "payroll_periods"
+            )
+        )
+
+
+    if period["status"] != "DRAFT":
+
+        flash(
+            (
+                "Payroll can only be calculated "
+                "while the period is in Draft status."
+            ),
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_payroll_period",
+                payroll_period_id=payroll_period_id,
+            )
+        )
+
+
+    try:
+
+        result = (
+            calculate_monthly_payroll_period(
+                payroll_period_id=payroll_period_id,
+                calculated_by=session["user_id"],
+            )
+        )
+
+
+    except ValueError as error:
+
+        flash(
+            str(error),
+            "danger",
+        )
+
+        return redirect(
+            url_for(
+                "view_payroll_period",
+                payroll_period_id=payroll_period_id,
+            )
+        )
+
+
+    # ======================================================
+    # RESULT MESSAGE
+    # ==========================================================
+
+    if result["unrecorded_days"] > 0:
+
+        flash(
+            (
+                f"{result['calculated_count']} monthly "
+                "payroll entries calculated. "
+                f"{result['unrecorded_days']} scheduled "
+                "attendance day(s) are still unrecorded. "
+                "No deduction was assumed for those dates."
+            ),
+            "warning",
+        )
+
+    else:
+
+        flash(
+            (
+                f"{result['calculated_count']} monthly "
+                "payroll entries calculated successfully."
+            ),
+            "success",
+        )
+
+
+    return redirect(
+        url_for(
+            "view_payroll_period",
+            payroll_period_id=payroll_period_id,
+        )
     )
 
 @app.route("/logout")
