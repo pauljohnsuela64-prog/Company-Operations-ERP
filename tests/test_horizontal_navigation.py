@@ -1,3 +1,4 @@
+from security_helpers import user_state, stamp_session
 """Render navigation without invoking business routes or connecting to a database."""
 
 from contextlib import ExitStack
@@ -7,7 +8,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from flask import render_template_string, session
+from flask import render_template_string, session, g
 
 
 class NavigationHTML(HTMLParser):
@@ -57,13 +58,15 @@ class HorizontalNavigationTests(unittest.TestCase):
         cls.stack = ExitStack()
         cls.addClassCleanup(cls.stack.close)
         cls.stack.enter_context(patch("dotenv.load_dotenv", return_value=False))
-        cls.stack.enter_context(patch.dict(os.environ, {"SECRET_KEY": "isolated-navigation-tests"}))
+        cls.stack.enter_context(patch.dict(os.environ, {"SECRET_KEY": "isolated-navigation-tests", "ERP_ENV": "testing", "ERP_DEBUG": "false"}))
         cls.stack.enter_context(patch("mysql.connector.connect", side_effect=AssertionError("No database access allowed")))
         cls.erp = importlib.import_module("app")
 
     def render(self, path="/dashboard", permissions=PERMISSIONS):
         with self.erp.app.test_request_context(path):
-            session.update(user_id=7, username="navigation.tester", role_name="Test role", permissions=list(permissions))
+            state = user_state(username="navigation.tester", permissions=permissions)
+            stamp_session(self.erp.app, session, state)
+            g.authorization = state
             html = render_template_string('{% extends "base.html" %}{% block title %}Current page title{% endblock %}')
             return html, NavigationHTML(html)
 

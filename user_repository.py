@@ -619,3 +619,24 @@ def update_role_permissions(
 
         cursor.close()
         connection.close()
+
+def get_authorization_state(user_id):
+    """One consistent query, including roles with no granted permissions."""
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            "SELECT u.user_id, u.username, u.password_hash, u.is_active, u.role_id, r.role_name, p.permission_code "
+            "FROM users u LEFT JOIN roles r ON r.role_id = u.role_id "
+            "LEFT JOIN role_permissions rp ON rp.role_id = r.role_id "
+            "LEFT JOIN permissions p ON p.permission_id = rp.permission_id "
+            "WHERE u.user_id = %s", (user_id,))
+        rows = cursor.fetchall()
+        if not rows:
+            return None
+        user = {key: value for key, value in rows[0].items() if key != "permission_code"}
+        user["permissions"] = frozenset(row["permission_code"] for row in rows if row["permission_code"] is not None)
+        return user
+    finally:
+        cursor.close()
+        connection.close()

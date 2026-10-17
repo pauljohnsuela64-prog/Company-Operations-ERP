@@ -1,3 +1,4 @@
+from security import configure_security, init_security, begin_session, authenticated, has_permission
 import os
 from functools import wraps
 
@@ -293,6 +294,7 @@ from user_repository import (
     get_role_permission_ids,
     get_user_by_id,
     get_user_by_username,
+    get_authorization_state,
     set_user_active_status,
     update_last_login,
     update_role_permissions,
@@ -322,18 +324,14 @@ load_dotenv()
 
 app = Flask(__name__)
 
-secret_key = os.getenv("SECRET_KEY")
-
-if not secret_key:
-    raise RuntimeError("SECRET_KEY is missing from the environment.")
-
-app.secret_key = secret_key
+configure_security(app)
+init_security(app, lambda user_id: get_authorization_state(user_id))
 
 
 def login_required(view_function):
     @wraps(view_function)
     def wrapped_view(*args, **kwargs):
-        if "user_id" not in session:
+        if not authenticated():
             flash("Please log in first.", "warning")
             return redirect(url_for("login"))
 
@@ -345,11 +343,11 @@ def permission_required(permission_code):
     def decorator(view_function):
         @wraps(view_function)
         def wrapped_view(*args, **kwargs):
-            if "user_id" not in session:
+            if not authenticated():
                 flash("Please log in first.", "warning")
                 return redirect(url_for("login"))
 
-            if permission_code not in session.get("permissions", []):
+            if not has_permission(permission_code):
                 flash(
                     "You do not have permission to access that page.",
                     "danger",
@@ -363,10 +361,6 @@ def permission_required(permission_code):
     return decorator
 
 
-def has_permission(permission_code):
-    return permission_code in session.get("permissions", [])
-
-
 @app.context_processor
 def inject_permission_helper():
     return {
@@ -376,7 +370,7 @@ def inject_permission_helper():
 
 @app.route("/")
 def index():
-    if "user_id" in session:
+    if authenticated():
         return redirect(url_for("dashboard"))
 
     return redirect(url_for("login"))
@@ -384,7 +378,7 @@ def index():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if "user_id" in session:
+    if authenticated():
         return redirect(url_for("dashboard"))
 
     if request.method == "POST":
@@ -409,15 +403,7 @@ def login():
             flash("Invalid username or password.", "danger")
             return render_template("login.html")
 
-        permissions = get_permissions_by_role_id(user["role_id"])
-
-        session.clear()
-
-        session["user_id"] = user["user_id"]
-        session["username"] = user["username"]
-        session["role_id"] = user["role_id"]
-        session["role_name"] = user["role_name"]
-        session["permissions"] = permissions
+        begin_session(user)
 
         update_last_login(user["user_id"])
 
@@ -13671,4 +13657,4 @@ def logout():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=app.config["DEBUG"])
