@@ -1,3 +1,4 @@
+from procurement_validation import validate_supplier
 from database import get_connection
 
 
@@ -69,6 +70,7 @@ def create_supplier(
     phone=None,
     address=None,
 ):
+    validate_supplier(supplier_code, supplier_name, contact_person, email, phone, address)
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -116,6 +118,7 @@ def update_supplier(
     phone=None,
     address=None,
 ):
+    validate_supplier(supplier_code, supplier_name, contact_person, email, phone, address)
     connection = get_connection()
     cursor = connection.cursor()
 

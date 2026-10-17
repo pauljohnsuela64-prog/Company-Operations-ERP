@@ -73,10 +73,10 @@
             <thead><tr><th>Item Code</th><th>Description</th><th class="number">Ordered Quantity</th><th>Unit</th><th class="number">Unit Cost (PHP)</th><th class="number">Amount (PHP)</th></tr></thead>
             <tbody>
                 {% for item in items %}
-                <tr><td>{{ item.item_code }}</td><td>{{ item.item_name }}{% if item.notes %}<div class="notes muted">{{ item.notes }}</div>{% endif %}</td><td class="number">{{ "{:,.2f}".format(item.quantity) }}</td><td>{{ item.unit_of_measure }}</td><td class="number">{{ "{:,.2f}".format(item.unit_cost) }}</td><td class="number">{{ "{:,.2f}".format(item.line_total) }}</td></tr>
+                <tr><td>{{ item.item_code }}</td><td>{{ item.item_name }}{% if item.notes %}<div class="notes muted">{{ item.notes }}</div>{% endif %}</td><td class="number">{{ "{:,.2f}".format(item.quantity) }}</td><td>{{ item.unit_of_measure }}</td><td class="number">{{ item.unit_cost|procurement_currency }}</td><td class="number">{{ item.line_total|procurement_currency }}</td></tr>
                 {% else %}<tr><td colspan="6">No purchase order items.</td></tr>{% endfor %}
             </tbody>
-            <tfoot><tr><th colspan="5" class="number">Order Total (PHP)</th><td class="number">{{ "{:,.2f}".format(total) }}</td></tr></tfoot>
+            <tfoot><tr><th colspan="5" class="number">Order Total (PHP)</th><td class="number">{{ total|procurement_currency }}</td></tr></tfoot>
         </table>
         {% if purchase_order.notes %}<section><h2>Notes</h2><p class="notes">{{ purchase_order.notes }}</p></section>{% endif %}
     </main>

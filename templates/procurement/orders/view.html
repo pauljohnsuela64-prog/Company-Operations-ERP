@@ -445,7 +445,7 @@ Purchase Order
 
                             <td>
 
-                                ₱{{ "{:,.2f}".format(item.unit_cost) }}
+                                ₱{{ item.unit_cost|procurement_currency }}
 
                             </td>
 
@@ -456,7 +456,7 @@ Purchase Order
 
                             <td>
 
-                                ₱{{ "{:,.2f}".format(item.line_total) }}
+                                ₱{{ item.line_total|procurement_currency }}
 
                             </td>
 
@@ -531,7 +531,7 @@ Purchase Order
 
 
                 </tbody>
-                <tfoot><tr><th colspan="6" class="text-end">Order Total</th><td colspan="{{ 3 if purchase_order.status == 'DRAFT' and has_permission('procurement.orders.manage') else 2 }}">&#8369;{{ "{:,.2f}".format(total) }}</td></tr></tfoot>
+                <tfoot><tr><th colspan="6" class="text-end">Order Total</th><td colspan="{{ 3 if purchase_order.status == 'DRAFT' and has_permission('procurement.orders.manage') else 2 }}">&#8369;{{ total|procurement_currency }}</td></tr></tfoot>
 
             </table>
 

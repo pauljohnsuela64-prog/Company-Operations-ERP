@@ -1,4 +1,4 @@
-{# Keep the original effective visibility rules, including inherited parent gates. #}
+{# Procurement follows its own page permission; other visibility rules are preserved. #}
 {% set admin_visible = has_permission('users.manage') or has_permission('roles.manage') or has_permission('audit_logs.view') %}
 {% set groups = [
     ('hr', 'Human Resources', 'people', [
@@ -16,10 +16,10 @@
         ('Movement History', 'stock_movement_history', '/inventory/stock/movements', has_permission('inventory.view'))
     ]),
     ('procurement', 'Procurement', 'cart', [
-        ('Suppliers', 'suppliers', '/procurement/suppliers', has_permission('inventory.view') and has_permission('procurement.view')),
-        ('Purchase Requests', 'purchase_requests', '/procurement/requests', has_permission('inventory.view') and has_permission('procurement.view')),
-        ('Purchase Orders', 'purchase_orders', '/procurement/orders', has_permission('inventory.view') and has_permission('procurement.view')),
-        ('Goods Receipts', 'goods_receipts', '/procurement/receipts', has_permission('inventory.view') and has_permission('procurement.view'))
+        ('Suppliers', 'suppliers', '/procurement/suppliers', has_permission('procurement.view')),
+        ('Purchase Requests', 'purchase_requests', '/procurement/requests', has_permission('procurement.view')),
+        ('Purchase Orders', 'purchase_orders', '/procurement/orders', has_permission('procurement.view')),
+        ('Goods Receipts', 'goods_receipts', '/procurement/receipts', has_permission('procurement.view'))
     ]),
     ('it', 'IT Management', 'monitor', [
         ('IT Assets', 'it_assets', '/it/assets', has_permission('it_assets.view')),

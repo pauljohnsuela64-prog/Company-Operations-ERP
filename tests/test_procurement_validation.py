@@ -38,6 +38,32 @@ class ProcurementValidationTests(unittest.TestCase):
                     action()
                 connect.assert_not_called()
 
+    def test_supplier_field_boundaries_and_no_write_on_overflow(self):
+        from procurement_validation import SUPPLIER_LIMITS, validate_supplier
+        import supplier_repository as supplier
+        valid = {name: 'x' * limit for name, limit in SUPPLIER_LIMITS.items()}
+        validate_supplier(**valid)
+        for name, limit in SUPPLIER_LIMITS.items():
+            values = dict(valid, **{name: 'x' * (limit + 1)})
+            for action in (lambda: supplier.create_supplier(**values),
+                           lambda: supplier.update_supplier(1, **values)):
+                with self.subTest(field=name), patch.object(supplier, 'get_connection') as connect:
+                    with self.assertRaisesRegex(ValueError, str(limit) + ' characters'):
+                        action()
+                    connect.assert_not_called()
+
+    def test_purpose_overflow_before_connection(self):
+        with patch.object(pr, 'get_connection') as connect:
+            with self.assertRaisesRegex(ValueError, '255 characters'):
+                pr.create_purchase_request(1, None, 'x' * 256)
+            connect.assert_not_called()
+
+    def test_currency_half_up_boundaries(self):
+        from procurement_validation import currency_amount
+        for value, expected in [('25.625','25.63'),('0.005','0.01'),('1.0049','1.00'),
+                                ('1.005','1.01'),('1.015','1.02'),('99999999999999999999.995','100000000000000000000.00')]:
+            self.assertEqual(currency_amount(value), Decimal(expected))
+
 
 if __name__ == '__main__':
     unittest.main()

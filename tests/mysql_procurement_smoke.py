@@ -73,6 +73,10 @@ def run(port, data_dir):
             assert sql('SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=%s AND column_name=%s', (table,column), True) == [(255,)]
         for table, column in [('purchase_request_items','quantity'), ('purchase_request_items','estimated_unit_cost'), ('purchase_order_items','unit_cost'), ('goods_receipt_items','quantity_received')]:
             assert sql('SELECT NUMERIC_PRECISION,NUMERIC_SCALE FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=%s AND column_name=%s', (table,column), True) == [(12,2)]
+        from procurement_validation import SUPPLIER_LIMITS
+        for column, limit in SUPPLIER_LIMITS.items():
+            assert sql('SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=%s AND column_name=%s', ('suppliers',column), True)==[(limit,)]
+        assert sql("SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='purchase_requests' AND column_name='purpose'",fetch=True)==[(255,)]
         print('PASS actual MySQL column compatibility')
 
         def draft():
@@ -236,6 +240,32 @@ def run(port, data_dir):
             with client.session_transaction() as session:
                 messages = str(session.pop('_flashes', []))
             assert expected in response.get_data(as_text=True) + messages, (endpoint, messages)
+        # Step 4B: actual route errors must preserve persisted data and emit no success audit.
+        def validation_snapshot():
+            return [sql('SELECT * FROM '+table,fetch=True) for table in ('suppliers','purchase_requests','purchase_request_items')]
+        sql("INSERT INTO permissions(permission_code) VALUES ('procurement.suppliers.manage')")
+        sql("INSERT INTO role_permissions(role_id,permission_id) SELECT 1,permission_id FROM permissions WHERE permission_code='procurement.suppliers.manage'")
+        with patch.object(erp,'create_audit_log') as audit:
+            before=validation_snapshot()
+            for field,limit in SUPPLIER_LIMITS.items():
+                data=dict(supplier_code='VALID',supplier_name='Valid')
+                data[field]='x'*(limit+1)
+                post('add_supplier',data,str(limit)+' characters')
+                post('edit_supplier',data,str(limit)+' characters',supplier_id=1)
+                assert validation_snapshot()==before
+            # A real department is needed to reach purpose validation.
+            sql("INSERT INTO departments(department_id,department_code,department_name) VALUES (1,'TEST','Isolated')")
+            post('add_purchase_request',{'department_id':'1','purpose':'x'*256},'255 characters')
+            assert validation_snapshot()==before
+            sql("INSERT INTO inventory_items(item_id,item_code,item_name,is_active) VALUES (2,'INACTIVE','Inactive',FALSE)")
+            for item_id in ('2','999999'):
+                post('add_purchase_request_item_route',{'item_id':item_id,'quantity':'1'},'does not exist or is inactive',request_id=rid)
+                post('edit_purchase_request_item_route',{'item_id':item_id,'quantity':'1'},'does not exist or is inactive',request_id=rid,request_item_id=iid)
+                assert validation_snapshot()==before
+            audit.assert_not_called()
+        post('add_supplier',{name:'x'*limit for name,limit in SUPPLIER_LIMITS.items()},'created successfully')
+        post('add_purchase_request',{'department_id':'1','purpose':'x'*255},'created successfully')
+        print('PASS supplier/purpose overflows and nonexistent/inactive items: real route errors, unchanged data and no success audit')
         post('add_purchase_request_item_route', {'item_id':'1','quantity':'NaN'}, 'finite', request_id=rid)
         post('edit_purchase_request_item_route', {'item_id':'1','quantity':'1.001'}, 'two decimal', request_id=rid, request_item_id=iid)
         pr.submit_purchase_request(rid)
@@ -291,6 +321,10 @@ def run(port, data_dir):
         assert response.status_code == 302
         linked = po.get_purchase_orders_by_request(rid)
         assert len(linked) == 2 and [row['status'] for row in linked] == ['DRAFT','CANCELLED']
+        rid,oid,oi=order()
+        assert po.send_purchase_order(oid)
+        receipt_id,_,_=receive(oid,1,1,{oi:'10.25'})
+        assert '25.63' in client.get(f'/procurement/receipts/history/{receipt_id}').get_data(as_text=True)
         print('PASS PO UI transitions, linked orders/replacement, receipt quantities and printable totals on real MySQL')
 
 

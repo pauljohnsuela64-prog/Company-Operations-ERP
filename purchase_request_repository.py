@@ -1,3 +1,4 @@
+from procurement_validation import lock_active_inventory_item
 import uuid
 
 from database import get_connection
@@ -51,6 +52,7 @@ def create_purchase_request(
     department_id,
     purpose,
 ):
+    validate_notes(purpose, "Purchase request purpose")
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -212,6 +214,7 @@ def add_purchase_request_item(
     try:
         connection.start_transaction()
         lock_draft(cursor, "purchase_requests", "request_id", request_id)
+        lock_active_inventory_item(cursor, item_id)
         cursor.execute(
             """
             INSERT INTO purchase_request_items (
@@ -288,6 +291,7 @@ def update_purchase_request_item(
     try:
         connection.start_transaction()
         lock_item_parent(cursor, "purchase_request_items", "request_item_id", request_item_id, "purchase_requests", "request_id")
+        lock_active_inventory_item(cursor, item_id)
         cursor.execute(
             """
             UPDATE purchase_request_items

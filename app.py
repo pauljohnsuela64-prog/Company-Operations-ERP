@@ -1,4 +1,4 @@
-from procurement_validation import decimal_value
+from procurement_validation import decimal_value, currency_amount
 from csrf_security import init_csrf
 from security import configure_security, init_security, begin_session, authenticated, has_permission
 import os
@@ -19,7 +19,7 @@ from audit_log_repository import (
     get_filtered_audit_logs,
 )
 
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, localcontext
+from decimal import Decimal, InvalidOperation, localcontext
 
 from payroll_workflow_repository import (
     approve_payroll_period,
@@ -331,6 +331,7 @@ app = Flask(__name__)
 configure_security(app)
 init_security(app, lambda user_id: get_authorization_state(user_id))
 init_csrf(app)
+app.jinja_env.filters["procurement_currency"] = lambda value: format(currency_amount(value), ",.2f")
 
 
 def login_required(view_function):
@@ -1971,6 +1972,10 @@ def add_supplier():
                 address or None,
             )
 
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("procurement/suppliers/add.html")
+
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
                 flash(
@@ -2060,6 +2065,10 @@ def edit_supplier(supplier_id):
                 phone or None,
                 address or None,
             )
+
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("procurement/suppliers/edit.html", supplier=supplier)
 
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
@@ -2194,13 +2203,12 @@ def add_purchase_request():
                 departments=departments,
             )
 
-        request_id, request_number = (
-            create_purchase_request(
-                session["user_id"],
-                department_id_value,
-                purpose,
-            )
-        )
+        try:
+            request_id, request_number = create_purchase_request(
+                session["user_id"], department_id_value, purpose)
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("procurement/requests/add.html", departments=departments)
 
         flash(
             f"Purchase request {request_number} created successfully.",
@@ -3057,8 +3065,7 @@ def _purchase_order_display_totals(items):
     with localcontext() as context:
         context.prec = 40
         for item in items:
-            item["line_total"] = (item["quantity"] * item["unit_cost"]).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP)
+            item["line_total"] = currency_amount(item["quantity"] * item["unit_cost"])
         return sum((item["line_total"] for item in items), Decimal("0.00"))
 
 
