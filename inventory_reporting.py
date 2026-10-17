@@ -155,4 +155,3 @@ def get_reconciliation_page(**filters):
             row['comparison'] = ('Matches recorded history — coverage unverified' if row['difference'] == 0
                                  else 'Difference — history coverage unverified')
     return result
-

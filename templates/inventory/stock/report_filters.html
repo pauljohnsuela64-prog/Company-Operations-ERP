@@ -16,4 +16,4 @@
     {% endif %}
     <div class="col-md-2"><label class="form-label" for="report-size">Rows per page</label><input id="report-size" class="form-control" name="page_size" type="number" min="1" max="100" value="{{ filters.get('page_size', 50) }}"></div>
     <div class="col-md-4 d-flex align-items-end gap-2"><button class="btn btn-primary" type="submit">Apply filters</button><a class="btn btn-outline-secondary" href="{{ url_for(request.endpoint) }}">Clear</a></div>
-</form>
+</form>
