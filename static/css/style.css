@@ -72,3 +72,6 @@ body { background: #f5f6f8; color: #252d38; }
     margin-top: 8px;
     margin-bottom: 0;
 }
+
+.logout-form { margin: 0; display: inline-flex; }
+button.logout-link { background: transparent; font-family: inherit; cursor: pointer; }

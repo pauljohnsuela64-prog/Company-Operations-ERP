@@ -277,6 +277,7 @@ Payroll Entry
                     payroll_entry_id=entry.payroll_entry_id
                 ) }}"
             >
+                    {% include 'partials/csrf_field.html' %}
 
                 <div class="row g-3">
 
@@ -508,6 +509,7 @@ Payroll Entry
                                             'Remove this payroll item?'
                                         );"
                                     >
+                    {% include 'partials/csrf_field.html' %}
 
                                         <button
                                             class="btn btn-sm btn-outline-danger"

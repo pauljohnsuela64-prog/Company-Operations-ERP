@@ -350,6 +350,7 @@ Leave Request
                                     leave_request_id=leave_request.leave_request_id
                                 ) }}"
                             >
+                    {% include 'partials/csrf_field.html' %}
 
                                 <button
                                     type="submit"
@@ -383,6 +384,7 @@ Leave Request
                                     leave_request_id=leave_request.leave_request_id
                                 ) }}"
                             >
+                    {% include 'partials/csrf_field.html' %}
 
                                 <textarea
                                     name="rejection_reason"
@@ -434,6 +436,7 @@ Leave Request
                                     leave_request_id=leave_request.leave_request_id
                                 ) }}"
                             >
+                    {% include 'partials/csrf_field.html' %}
 
                                 <button
                                     type="submit"

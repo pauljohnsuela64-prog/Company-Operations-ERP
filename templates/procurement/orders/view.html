@@ -59,6 +59,7 @@ Purchase Order
                 'Send this purchase order to the supplier?'
             );"
         >
+                    {% include 'partials/csrf_field.html' %}
 
             <button
                 type="submit"
@@ -89,6 +90,7 @@ Purchase Order
             'Are you sure you want to cancel this purchase order?'
         );"
     >
+                    {% include 'partials/csrf_field.html' %}
 
         <button
             type="submit"

@@ -159,6 +159,7 @@ User Administration
                                         ) }}"
                                         class="d-flex gap-2"
                                     >
+                    {% include 'partials/csrf_field.html' %}
 
                                         <select
                                             name="role_id"
@@ -265,6 +266,7 @@ User Administration
                                                 user_id=user.user_id
                                             ) }}"
                                         >
+                    {% include 'partials/csrf_field.html' %}
 
                                             {% if user.is_active %}
 

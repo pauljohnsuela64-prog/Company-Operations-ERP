@@ -27,6 +27,8 @@ sys.path.insert(0, str(ROOT))
 from test_business_audit import ACTIONS, SECRETS
 
 
+from security_helpers import csrf_client
+
 def run(port, data_dir):
     options = dict(host="127.0.0.1", port=port, user="root", password="", connection_timeout=3)
     server = mysql.connector.connect(**options)
@@ -48,8 +50,8 @@ def run(port, data_dir):
                 continue
             assert "company_operations_erp" not in statement
             cursor.execute(statement)
-    cursor.execute("INSERT INTO roles(role_id,role_name) VALUES (42,'Operations')")
-    cursor.execute("INSERT INTO users(user_id,role_id,username,password_hash,is_active) VALUES (7,42,'acting.user','test-only',1),(42,42,'target.user','test-only',0)")
+    cursor.execute("INSERT INTO roles(role_id,role_name) VALUES (41,'Acting role'),(42,'Operations'),(43,'Denied role')")
+    cursor.execute("INSERT INTO users(user_id,role_id,username,password_hash,is_active) VALUES (7,41,'acting.user','test-only',1),(8,43,'denied.user','test-only',1),(42,42,'target.user','test-only',0)")
     cursor.execute("INSERT INTO employees(employee_id,employee_number,first_name,last_name) VALUES (9,'SMOKE-9','Smoke','Employee')")
     cursor.execute("INSERT INTO employee_compensation(compensation_id,employee_id,pay_type,basic_rate,effective_date,created_by) VALUES (1,9,'MONTHLY',1000,'2026-01-01',7)")
     cursor.execute("INSERT INTO expense_categories(category_id,category_code,category_name) VALUES (1,'SMOKE','Smoke')")
@@ -74,7 +76,7 @@ def run(port, data_dir):
 
     with ExitStack() as stack:
         stack.enter_context(patch("dotenv.load_dotenv", return_value=False))
-        stack.enter_context(patch.dict(os.environ, {"SECRET_KEY": "isolated-smoke-key"}))
+        stack.enter_context(patch.dict(os.environ, {"SECRET_KEY": "isolated-smoke-key", "ERP_ENV": "testing", "ERP_DEBUG": "false"}))
         database = importlib.import_module("database")
         stack.enter_context(patch.object(database, "get_connection", side_effect=connect))
         erp = importlib.import_module("app")
@@ -84,10 +86,17 @@ def run(port, data_dir):
         # operation, identifier lookup, template, or audit writer is mocked.
         permissions = sorted({case.permission for case in ACTIONS} | {"audit_logs.view"})
 
+        for permission in permissions:
+            pid = sql("INSERT INTO permissions(permission_code) VALUES (%s) ON DUPLICATE KEY UPDATE permission_id=LAST_INSERT_ID(permission_id)", (permission,))
+            sql("INSERT INTO role_permissions(role_id,permission_id) VALUES (41,%s)", (pid,))
+
         def client(allowed=True):
-            c = erp.app.test_client()
+            c = csrf_client(erp.app)
             with c.session_transaction() as sess:
-                sess.update(user_id=7, username="acting.user", permissions=permissions if allowed else [], **SECRETS)
+                from security_helpers import user_state, stamp_session
+                state = user_state(user_id=7 if allowed else 8, username="acting.user" if allowed else "denied.user", role_id=41 if allowed else 43)
+                stamp_session(erp.app, sess, state)
+                sess.update(**SECRETS)
                 # Secrets must not override the acting user's identity.
             return c
 

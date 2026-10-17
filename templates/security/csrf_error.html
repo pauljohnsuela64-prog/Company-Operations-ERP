@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Submission not processed | Company Operations ERP{% endblock %}
+{% block content %}
+<div class="card"><div class="card-body">
+    <h2>Submission not processed</h2>
+    <p>Your form's security token is missing, invalid, or expired. {{ reason }}</p>
+    <p>This request did not run the requested transaction. Nothing will be repeated automatically.</p>
+    {% if retry_fields is not none %}
+        <p>Review the original values below. You can explicitly resubmit them using a renewed security token.</p>
+        <p>Destination: <code>{{ retry_path }}</code></p>
+        <dl>
+        {% for name, value in retry_fields if name != 'submission_id' %}
+            <dt>{{ name.replace('_', ' ').title() }}</dt><dd style="white-space: pre-wrap; overflow-wrap: anywhere">{{ value }}</dd>
+        {% endfor %}
+        </dl>
+        <form method="POST" action="{{ retry_path }}">
+            {% include 'partials/csrf_field.html' %}
+            {% for name, value in retry_fields %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+            <button type="submit" class="btn btn-primary">Resubmit reviewed values</button>
+        </form>
+        <p class="mt-3">For a delivery retry, its original submission reference has been retained. If an earlier attempt's result is uncertain, check receipt history before recording a new delivery.</p>
+    {% else %}
+        <p>Return to the original page and obtain a fresh form before trying again. Passwords must be entered again.</p>
+        <p>If a delivery's outcome is uncertain, retain its original submission reference and check receipt history. Do not record it again as a new delivery.</p>
+    {% endif %}
+    <a href="{{ url_for('login') }}" class="btn btn-outline-secondary mt-3">Return to sign in</a>
+</div></div>
+{% endblock %}

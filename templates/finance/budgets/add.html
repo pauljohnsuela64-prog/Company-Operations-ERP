@@ -33,6 +33,7 @@ Add Department Budget
     <div class="card-body">
 
         <form method="POST" action="{{ url_for('add_department_budget') }}">
+                    {% include 'partials/csrf_field.html' %}
 
             <div class="row g-3">
 
