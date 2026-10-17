@@ -1084,7 +1084,7 @@ def add_inventory_category():
             )
 
         try:
-            create_inventory_category(
+            category_id = create_inventory_category(
                 category_code,
                 category_name,
                 description or None,
@@ -1106,6 +1106,9 @@ def add_inventory_category():
                 )
 
             raise
+
+        record_audit_event("INVENTORY", "CREATE", "INVENTORY_CATEGORY", category_id,
+                           f"Inventory category {category_code} (ID {category_id}) created.")
 
         flash(
             "Inventory category created successfully.",
@@ -1185,6 +1188,9 @@ def edit_inventory_category(category_id):
 
             raise
 
+        record_audit_event("INVENTORY", "UPDATE", "INVENTORY_CATEGORY", category_id,
+                           f"Inventory category {category_code} (ID {category_id}) updated.")
+
         flash(
             "Inventory category updated successfully.",
             "success",
@@ -1212,10 +1218,17 @@ def change_inventory_category_status(category_id):
 
     new_status = not bool(category["is_active"])
 
-    set_inventory_category_active_status(
+    changed = set_inventory_category_active_status(
         category_id,
         new_status,
     )
+
+    if not changed:
+        flash("Inventory category status was not changed. Refresh the page before trying again.", "info")
+        return redirect(url_for("inventory_categories"))
+    record_audit_event("INVENTORY", "ACTIVATE" if new_status else "DEACTIVATE",
+                       "INVENTORY_CATEGORY", category_id,
+                       f"Inventory category {category['category_code']} (ID {category_id}) {'activated' if new_status else 'deactivated'}.")
 
     if new_status:
         flash(
@@ -1295,7 +1308,7 @@ def add_warehouse():
             )
 
         try:
-            create_warehouse(
+            warehouse_id = create_warehouse(
                 warehouse_code,
                 warehouse_name,
                 location or None,
@@ -1317,6 +1330,9 @@ def add_warehouse():
                 )
 
             raise
+
+        record_audit_event("INVENTORY", "CREATE", "WAREHOUSE", warehouse_id,
+                           f"Warehouse {warehouse_code} (ID {warehouse_id}) created.")
 
         flash(
             "Warehouse created successfully.",
@@ -1395,6 +1411,9 @@ def edit_warehouse(warehouse_id):
 
             raise
 
+        record_audit_event("INVENTORY", "UPDATE", "WAREHOUSE", warehouse_id,
+                           f"Warehouse {warehouse_code} (ID {warehouse_id}) updated.")
+
         flash(
             "Warehouse updated successfully.",
             "success",
@@ -1422,10 +1441,17 @@ def change_warehouse_status(warehouse_id):
 
     new_status = not bool(warehouse["is_active"])
 
-    set_warehouse_active_status(
+    changed = set_warehouse_active_status(
         warehouse_id,
         new_status,
     )
+
+    if not changed:
+        flash("Warehouse status was not changed. Refresh the page before trying again.", "info")
+        return redirect(url_for("warehouses"))
+    record_audit_event("INVENTORY", "ACTIVATE" if new_status else "DEACTIVATE",
+                       "WAREHOUSE", warehouse_id,
+                       f"Warehouse {warehouse['warehouse_code']} (ID {warehouse_id}) {'activated' if new_status else 'deactivated'}.")
 
     if new_status:
         flash(
@@ -1516,7 +1542,7 @@ def add_inventory_item():
             )
 
         try:
-            create_inventory_item(
+            item_id = create_inventory_item(
                 item_code,
                 item_name,
                 category_id if category_id else None,
@@ -1542,6 +1568,9 @@ def add_inventory_item():
                 )
 
             raise
+
+        record_audit_event("INVENTORY", "CREATE", "INVENTORY_ITEM", item_id,
+                           f"Inventory item {item_code} (ID {item_id}) created.")
 
         flash(
             "Inventory item created successfully.",
@@ -1659,6 +1688,9 @@ def edit_inventory_item(item_id):
 
             raise
 
+        record_audit_event("INVENTORY", "UPDATE", "INVENTORY_ITEM", item_id,
+                           f"Inventory item {item_code} (ID {item_id}) updated.")
+
         flash(
             "Inventory item updated successfully.",
             "success",
@@ -1686,10 +1718,17 @@ def change_inventory_item_status(item_id):
 
     new_status = not bool(item["is_active"])
 
-    set_inventory_item_active_status(
+    changed = set_inventory_item_active_status(
         item_id,
         new_status,
     )
+
+    if not changed:
+        flash("Inventory item status was not changed. Refresh the page before trying again.", "info")
+        return redirect(url_for("inventory_items"))
+    record_audit_event("INVENTORY", "ACTIVATE" if new_status else "DEACTIVATE",
+                       "INVENTORY_ITEM", item_id,
+                       f"Inventory item {item['item_code']} (ID {item_id}) {'activated' if new_status else 'deactivated'}.")
 
     if new_status:
         flash(
@@ -1714,6 +1753,16 @@ def inventory_stock():
         "inventory/stock/index.html",
         stock_records=stock_records,
     )
+
+def _record_manual_stock_audit(result, action, item_id, warehouse_id, items, warehouses):
+    if not result.created:
+        return
+    item_code = next((item.get("item_code") for item in items if item["item_id"] == item_id), None) or str(item_id)
+    warehouse_code = next((warehouse.get("warehouse_code") for warehouse in warehouses
+                           if warehouse["warehouse_id"] == warehouse_id), None) or str(warehouse_id)
+    record_audit_event("INVENTORY", action, "STOCK_MOVEMENT", result.movement_id,
+                       f"Manual stock movement {result.movement_id}: {action.replace('_', ' ').lower()} for item {item_code} (ID {item_id}) at warehouse {warehouse_code} (ID {warehouse_id}).")
+
 
 @app.route(
     "/inventory/stock/in",
@@ -1792,12 +1841,15 @@ def inventory_stock_in():
             )
 
         try:
-            stock_in(item_id_value, warehouse_id_value, quantity_value,
-                     notes or None, session["user_id"], submission_id=submission_id)
+            result = stock_in(item_id_value, warehouse_id_value, quantity_value,
+                              notes or None, session["user_id"], submission_id=submission_id)
         except ValueError as error:
             flash(str(error), "danger")
             return render_template("inventory/stock/in.html", items=active_items,
                                    warehouses=active_warehouses, submission_id=submission_id)
+
+        _record_manual_stock_audit(result, "STOCK_IN", item_id_value, warehouse_id_value,
+                                   items, warehouses)
 
         flash(
             "Stock added successfully.",
@@ -1863,7 +1915,7 @@ def inventory_stock_out():
             )
 
         try:
-            stock_out(
+            result = stock_out(
                 item_id_value,
                 warehouse_id_value,
                 quantity_value,
@@ -1881,6 +1933,9 @@ def inventory_stock_out():
                 warehouses=active_warehouses,
                 submission_id=submission_id,
             )
+
+        _record_manual_stock_audit(result, "STOCK_OUT", item_id_value, warehouse_id_value,
+                                   items, warehouses)
 
         flash(
             "Stock removed successfully.",

@@ -103,7 +103,9 @@ def create_inventory_item(
             ),
         )
 
+        item_id = cursor.lastrowid
         connection.commit()
+        return item_id
 
     except Exception:
         connection.rollback()
@@ -181,15 +183,18 @@ def set_inventory_item_active_status(
             """
             UPDATE inventory_items
             SET is_active = %s
-            WHERE item_id = %s
+            WHERE item_id = %s AND is_active <> %s
             """,
             (
                 is_active,
                 item_id,
+                is_active,
             ),
         )
 
+        changed = cursor.rowcount == 1
         connection.commit()
+        return changed
 
     except Exception:
         connection.rollback()

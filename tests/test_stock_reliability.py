@@ -84,12 +84,14 @@ class StockRouteTests(unittest.TestCase):
 
     def test_valid_routes_pass_decimal_and_invalid_quantities_do_not_write(self):
         for direction in ('in','out'):
-            with patch.object(self.erp,'stock_'+direction) as write:
+            with patch.object(self.erp,'stock_'+direction,return_value=stock.StockResult(1,True)) as write:
                 path='/inventory/stock/'+direction
                 self.assertEqual(self.client.post(path,data={'item_id':'1','warehouse_id':'1','quantity':'0.10','submission_id':str(uuid.uuid4())}).status_code,302)
                 self.assertEqual(write.call_args.args[2],Decimal('0.10'))
                 self.assertIsInstance(write.call_args.args[2],Decimal)
-                write.reset_mock()
+                self.audit.assert_called_once()
+                self.assertEqual(self.audit.call_args.kwargs['action'],'STOCK_'+direction.upper())
+                self.audit.reset_mock();write.reset_mock()
                 for value in ('NaN','Infinity','0','-1','0.001','10000000000'):
                     self.assertEqual(self.client.post(path,data={'item_id':'1','warehouse_id':'1','quantity':value,'submission_id':str(uuid.uuid4())}).status_code,200)
                 write.assert_not_called();self.audit.assert_not_called()

@@ -83,7 +83,9 @@ def create_warehouse(
             ),
         )
 
+        warehouse_id = cursor.lastrowid
         connection.commit()
+        return warehouse_id
 
     except Exception:
         connection.rollback()
@@ -149,15 +151,18 @@ def set_warehouse_active_status(
             """
             UPDATE warehouses
             SET is_active = %s
-            WHERE warehouse_id = %s
+            WHERE warehouse_id = %s AND is_active <> %s
             """,
             (
                 is_active,
                 warehouse_id,
+                is_active,
             ),
         )
 
+        changed = cursor.rowcount == 1
         connection.commit()
+        return changed
 
     except Exception:
         connection.rollback()

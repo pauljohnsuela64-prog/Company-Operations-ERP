@@ -251,6 +251,13 @@ def run(port,data_dir):
             fails(lambda:stock.stock_in(3,1,'1',None,1,submission_id=token),'could not be confirmed');assert snapshot()==before
         finally:sql('DROP TRIGGER uuid_rollback')
         assert stock.stock_in(3,1,'1',None,1,submission_id=token).created
+        def audit_count():return sql("SELECT COUNT(*) FROM audit_logs WHERE module='INVENTORY'",fetch=True)[0][0]
+        def check_movement_event(token,action):
+            movement_id=sql('SELECT movement_id FROM stock_movements WHERE submission_id=%s',(token,),True)[0][0]
+            rows=sql("SELECT user_id,username,module,action,entity_type,entity_id,description FROM audit_logs WHERE entity_type='STOCK_MOVEMENT' AND entity_id=%s",(str(movement_id),),True)
+            assert len(rows)==1 and rows[0][:6]==(1,'stock.test','INVENTORY',action,'STOCK_MOVEMENT',str(movement_id)),rows
+            assert 'I3' in rows[0][6] and 'W1' in rows[0][6] and str(movement_id) in rows[0][6]
+            assert token not in rows[0][6] and 'private-notes' not in rows[0][6]
         # Actual HTTP submissions, CSRF recovery and renewal keep their UUID.
         for direction in ('in','out'):
             path='/inventory/stock/'+direction
@@ -269,7 +276,10 @@ def run(port,data_dir):
             response=raw.post(path,data=dict(form,csrf_token=expired_token(erp.app,raw)))
             assert response.status_code==400 and snapshot()==before
             assert f'name="submission_id" value="{token}"' in response.get_data(as_text=True)
+            before_events=audit_count()
             assert raw.post(path,data=dict(form,csrf_token=form_token(response))).status_code==302
+            assert audit_count()==before_events+1
+            check_movement_event(token,'STOCK_'+direction.upper())
             saved=snapshot()
             fresh=raw.get('/auth/csrf-token').json['csrf_token']
             assert raw.post(path,data=dict(form,csrf_token=fresh)).status_code==302 and snapshot()==saved
@@ -277,13 +287,42 @@ def run(port,data_dir):
             for other in clients:
                 with other.session_transaction() as mapping:stamp_session(erp.app,mapping,erp.get_authorization_state(1))
             form['submission_id']=str(uuid.uuid4())
+            before_events=audit_count()
             results=parallel(*(lambda c=c:c.post(path,data=form) for c in clients))
             assert all(response.status_code==302 for response in results)
             assert sql('SELECT COUNT(*) FROM stock_movements WHERE submission_id=%s',(form['submission_id'],),True)==[(1,)]
+            assert audit_count()==before_events+1
+            check_movement_event(form['submission_id'],'STOCK_'+direction.upper())
             # Validation redisplay keeps the same key, never inventing a new delivery.
             form['quantity']='NaN'
             html=client.post(path,data=form).get_data(as_text=True)
             assert f'name="submission_id" value="{form["submission_id"]}"' in html
+        # Lost acknowledgment after a real route commit must not emit RECEIVE-like duplicates.
+        for direction in ('in','out'):
+            path='/inventory/stock/'+direction;token=str(uuid.uuid4())
+            form={'item_id':'3','warehouse_id':'1','quantity':'0.10','notes':'private-notes','submission_id':token}
+            before_events=audit_count();local.lost=True
+            assert client.post(path,data=form).status_code==200
+            assert audit_count()==before_events
+            assert client.post(path,data=form).status_code==302 and audit_count()==before_events
+            assert sql('SELECT COUNT(*) FROM stock_movements WHERE submission_id=%s',(token,),True)==[(1,)]
+            # A failed stock transaction cannot create a success audit.
+            form['submission_id']=str(uuid.uuid4());before=snapshot()
+            sql("CREATE TRIGGER audit_stock_rollback BEFORE INSERT ON stock_movements FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic rollback'")
+            try:
+                assert client.post(path,data=form).status_code==200 and snapshot()==before
+            finally:sql('DROP TRIGGER audit_stock_rollback')
+            # Audit-only SQL failure leaves stock/movement committed; retry does not backfill.
+            sql("CREATE TRIGGER stock_audit_failure BEFORE INSERT ON audit_logs FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic audit failure'")
+            before_events=audit_count()
+            try:
+                with patch.object(erp.app.logger,'exception'):
+                    assert client.post(path,data=form).status_code==302
+                assert audit_count()==before_events
+            finally:sql('DROP TRIGGER stock_audit_failure')
+            assert client.post(path,data=form).status_code==302 and audit_count()==before_events
+            assert sql('SELECT COUNT(*) FROM stock_movements WHERE submission_id=%s',(form['submission_id'],),True)==[(1,)]
+        print('PASS actual STOCK_IN/OUT audit identity, sequential/concurrent UUID deduplication, lost acknowledgment, rollback and audit SQL failure isolation')
         print('PASS sequential/concurrent UUID replay, different-payload and cross-item conflicts, lost response, rollback reuse, actual CSRF expiry/renewal and retained form UUID')
         before=snapshot()
         sql('DELETE FROM role_permissions WHERE role_id=1')
