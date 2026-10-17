@@ -205,7 +205,9 @@ class BusinessAuditTests(unittest.TestCase):
         }
 
         def reset_rows():
-            if case.name == "leave_approve":
+            if case.name == "purchase_submit":
+                cursor.fetchone.side_effect = [("DRAFT",), (1,)]
+            elif case.name == "leave_approve":
                 cursor.fetchone.side_effect = [row, None, None]
             elif case.name == "payroll_paid":
                 cursor.fetchone.side_effect = [row, {"total_entries": 1, "approved_entries": 1}]
@@ -266,7 +268,7 @@ class BusinessAuditTests(unittest.TestCase):
             business.commit.side_effect = None
             cursor.rowcount = 0
             cursor.fetchone.side_effect = None
-            cursor.fetchone.return_value = {**row, "status": "COMPLETED"}
+            cursor.fetchone.return_value = ("COMPLETED",) if case.name == "purchase_submit" else {**row, "status": "COMPLETED"}
             self.assertEqual(self.client.post(case.path, data=self.form).status_code, 302)
             self.insert.assert_not_called()
             audit.cursor.assert_not_called()

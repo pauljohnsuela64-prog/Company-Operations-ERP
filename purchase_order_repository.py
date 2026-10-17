@@ -1,5 +1,6 @@
 import uuid
 from database import get_connection
+from procurement_validation import decimal_value, validate_notes, lock_item_parent
 
 
 
@@ -56,6 +57,7 @@ def create_purchase_order_from_request(
     expected_delivery_date=None,
     notes=None,
 ):
+    validate_notes(notes, "Purchase order notes")
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -273,6 +275,8 @@ def get_purchase_order_items(purchase_order_id):
                 poi.request_item_id,
                 poi.item_id,
                 poi.quantity,
+                COALESCE(received.received_quantity, 0) AS received_quantity,
+                poi.quantity - COALESCE(received.received_quantity, 0) AS remaining_quantity,
                 poi.unit_cost,
                 poi.notes,
 
@@ -284,6 +288,12 @@ def get_purchase_order_items(purchase_order_id):
 
             JOIN inventory_items i
                 ON poi.item_id = i.item_id
+
+            LEFT JOIN (
+                SELECT purchase_order_item_id, SUM(quantity_received) AS received_quantity
+                FROM goods_receipt_items
+                GROUP BY purchase_order_item_id
+            ) received ON received.purchase_order_item_id = poi.purchase_order_item_id
 
             WHERE poi.purchase_order_id = %s
 
@@ -332,10 +342,13 @@ def update_purchase_order_item_cost(
     purchase_order_item_id,
     unit_cost,
 ):
+    unit_cost = decimal_value(unit_cost, "Unit cost")
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_item_parent(cursor, "purchase_order_items", "purchase_order_item_id", purchase_order_item_id, "purchase_orders", "purchase_order_id")
         cursor.execute(
             """
             UPDATE purchase_order_items
@@ -526,5 +539,20 @@ def cancel_purchase_order(purchase_order_id):
 
     finally:
 
+        cursor.close()
+        connection.close()
+
+def get_purchase_orders_by_request(request_id):
+    """Include cancelled history; a non-cancelled PO prevents another active PO."""
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            "SELECT purchase_order_id, po_number, status FROM purchase_orders "
+            "WHERE request_id = %s ORDER BY (status = 'CANCELLED'), purchase_order_id DESC",
+            (request_id,),
+        )
+        return cursor.fetchall()
+    finally:
         cursor.close()
         connection.close()

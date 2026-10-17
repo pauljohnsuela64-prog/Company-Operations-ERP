@@ -109,7 +109,7 @@ class HorizontalNavigationTests(unittest.TestCase):
                 }.items():
                     if permission in permissions:
                         expected.update(paths)
-                if {"inventory.view", "procurement.view"} <= permissions:
+                if "procurement.view" in permissions:
                     expected.update({"/procurement/suppliers", "/procurement/requests", "/procurement/orders", "/procurement/receipts"})
                 if permissions & {"users.manage", "roles.manage", "audit_logs.view"}:
                     if "attendance.view" in permissions:

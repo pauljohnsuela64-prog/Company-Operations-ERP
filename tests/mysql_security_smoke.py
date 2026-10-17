@@ -136,6 +136,10 @@ def run(port,data_dir):
         assert sql('SELECT COUNT(*) FROM audit_logs',fetch=True)==audit_before
         assert raw.post(path,data={'csrf_token':token(error)}).status_code==302
         assert sql('SELECT is_active FROM suppliers WHERE supplier_id=%s',(supplier,),True)==[(0,)]
+        # The explicit valid recovery now has the required supplier success audit.
+        assert sql('SELECT COUNT(*) FROM audit_logs',fetch=True)[0][0]==audit_before[0][0]+1
+        assert sql("SELECT action,entity_type,entity_id FROM audit_logs ORDER BY audit_log_id DESC LIMIT 1",fetch=True)==[('DEACTIVATE','SUPPLIER',str(supplier))]
+        audit_before=sql('SELECT COUNT(*) FROM audit_logs',fetch=True)
         sql('UPDATE suppliers SET is_active=1 WHERE supplier_id=%s',(supplier,))
         with raw.session_transaction() as mapping:auth_before={k:v for k,v in mapping.items() if k not in ('csrf_token','_flashes')}
         fresh=token(raw.get('/logout'))

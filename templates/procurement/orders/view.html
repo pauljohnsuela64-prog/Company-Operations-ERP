@@ -56,7 +56,7 @@ Purchase Order
                 purchase_order_id=purchase_order.purchase_order_id
             ) }}"
             onsubmit="return confirm(
-                'Send this purchase order to the supplier?'
+                'Confirm this purchase order has been manually issued to the supplier?'
             );"
         >
                     {% include 'partials/csrf_field.html' %}
@@ -65,7 +65,7 @@ Purchase Order
                 type="submit"
                 class="btn btn-primary"
             >
-                Send Purchase Order
+                Mark as Sent
             </button>
 
         </form>
@@ -77,7 +77,7 @@ Purchase Order
 <!-- # Only DRAFT or SENT orders can show this -->
 <!-- # ========================================== -->
 
-{% if purchase_order.status in ["DRAFT", "SENT"] %}
+{% if purchase_order.status in ["DRAFT", "SENT"] and not receipts and has_permission('procurement.orders.manage') %}
 
     <form
         method="POST"
@@ -104,6 +104,11 @@ Purchase Order
 {% endif %}
 
 
+    {% if purchase_order.status in ['SENT', 'PARTIALLY_RECEIVED'] and has_permission('procurement.receipts.manage') %}
+        <a href="{{ url_for('receive_purchase_order', purchase_order_id=purchase_order.purchase_order_id) }}" class="btn btn-success">Receive Goods</a>
+    {% endif %}
+    <a href="{{ url_for('print_purchase_order', purchase_order_id=purchase_order.purchase_order_id) }}" class="btn btn-outline-primary">Print Purchase Order</a>
+
     <!-- # BACK BUTTON -->
 
     <a
@@ -116,6 +121,8 @@ Purchase Order
 </div>
 
 
+
+</div>
 
 <!-- # ========================================== -->
 <!-- # PURCHASE ORDER INFORMATION CARD -->
@@ -153,7 +160,7 @@ Purchase Order
                 </div>
 
                 <strong>
-                    {{ purchase_order.request_number or '-' }}
+                    {% if purchase_order.request_id %}<a href="{{ url_for('view_purchase_request', request_id=purchase_order.request_id) }}">{{ purchase_order.request_number }}</a>{% else %}-{% endif %}
                 </strong>
 
             </div>
@@ -199,7 +206,7 @@ Purchase Order
                 {% elif purchase_order.status == 'SENT' %}
 
                     <span class="badge text-bg-primary">
-                        Sent
+                        Sent (manually issued)
                     </span>
 
 
@@ -348,8 +355,10 @@ Purchase Order
                         </th>
 
                         <th>
-                            Quantity
+                            Ordered
                         </th>
+                        <th>Already Received</th>
+                        <th>Remaining</th>
 
                         <th>
                             Unit Cost
@@ -429,13 +438,14 @@ Purchase Order
 
 
 
+                            <td class="received-quantity">{{ item.received_quantity }} {{ item.unit_of_measure }}</td>
+                            <td class="remaining-quantity">{{ item.remaining_quantity }} {{ item.unit_of_measure }}</td>
+
                             <!-- # UNIT COST -->
 
                             <td>
 
-                                ₱{{ "%.2f"|format(
-                                    item.unit_cost
-                                ) }}
+                                ₱{{ item.unit_cost|procurement_currency }}
 
                             </td>
 
@@ -446,11 +456,7 @@ Purchase Order
 
                             <td>
 
-                                ₱{{ "%.2f"|format(
-                                    item.quantity
-                                    *
-                                    item.unit_cost
-                                ) }}
+                                ₱{{ item.line_total|procurement_currency }}
 
                             </td>
 
@@ -512,7 +518,7 @@ Purchase Order
                         <tr>
 
                             <td
-                                colspan="{{ 7 if purchase_order.status == 'DRAFT' and has_permission('procurement.orders.manage') else 6 }}"
+                                colspan="{{ 9 if purchase_order.status == 'DRAFT' and has_permission('procurement.orders.manage') else 8 }}"
                                 class="text-center text-muted py-4"
                             >
                                 No purchase order items found.
@@ -525,6 +531,7 @@ Purchase Order
 
 
                 </tbody>
+                <tfoot><tr><th colspan="6" class="text-end">Order Total</th><td colspan="{{ 3 if purchase_order.status == 'DRAFT' and has_permission('procurement.orders.manage') else 2 }}">&#8369;{{ total|procurement_currency }}</td></tr></tfoot>
 
             </table>
 

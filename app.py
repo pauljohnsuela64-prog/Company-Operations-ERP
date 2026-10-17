@@ -1,6 +1,8 @@
+from procurement_validation import decimal_value, currency_amount
 from csrf_security import init_csrf
 from security import configure_security, init_security, begin_session, authenticated, has_permission
 import os
+import uuid
 from functools import wraps
 
 from datetime import (
@@ -17,7 +19,7 @@ from audit_log_repository import (
     get_filtered_audit_logs,
 )
 
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext
 
 from payroll_workflow_repository import (
     approve_payroll_period,
@@ -208,6 +210,7 @@ from goods_receipt_repository import (
 from purchase_order_repository import (
     create_purchase_order_from_request,
     get_all_purchase_orders,
+    get_purchase_orders_by_request,
     get_purchase_order_by_id,
     get_purchase_order_item_by_id,
     get_purchase_order_items,
@@ -328,6 +331,7 @@ app = Flask(__name__)
 configure_security(app)
 init_security(app, lambda user_id: get_authorization_state(user_id))
 init_csrf(app)
+app.jinja_env.filters["procurement_currency"] = lambda value: format(currency_amount(value), ",.2f")
 
 
 def login_required(view_function):
@@ -1959,7 +1963,7 @@ def add_supplier():
             )
 
         try:
-            create_supplier(
+            supplier_id = create_supplier(
                 supplier_code,
                 supplier_name,
                 contact_person or None,
@@ -1967,6 +1971,10 @@ def add_supplier():
                 phone or None,
                 address or None,
             )
+
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("procurement/suppliers/add.html")
 
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
@@ -1980,6 +1988,9 @@ def add_supplier():
                 )
 
             raise
+
+        record_audit_event("PROCUREMENT", "CREATE", "SUPPLIER", supplier_id,
+                           f"Supplier {supplier_code} (ID {supplier_id}) created.")
 
         flash(
             "Supplier created successfully.",
@@ -2058,6 +2069,10 @@ def edit_supplier(supplier_id):
                 address or None,
             )
 
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("procurement/suppliers/edit.html", supplier=supplier)
+
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
                 flash(
@@ -2071,6 +2086,9 @@ def edit_supplier(supplier_id):
                 )
 
             raise
+
+        record_audit_event("PROCUREMENT", "UPDATE", "SUPPLIER", supplier_id,
+                           f"Supplier {supplier_code} (ID {supplier_id}) updated.")
 
         flash(
             "Supplier updated successfully.",
@@ -2103,6 +2121,10 @@ def change_supplier_status(supplier_id):
         supplier_id,
         new_status,
     )
+
+    record_audit_event("PROCUREMENT", "ACTIVATE" if new_status else "DEACTIVATE",
+                       "SUPPLIER", supplier_id,
+                       f"Supplier {supplier['supplier_code']} (ID {supplier_id}) {'activated' if new_status else 'deactivated'}.")
 
     if new_status:
         flash(
@@ -2191,13 +2213,12 @@ def add_purchase_request():
                 departments=departments,
             )
 
-        request_id, request_number = (
-            create_purchase_request(
-                session["user_id"],
-                department_id_value,
-                purpose,
-            )
-        )
+        try:
+            request_id, request_number = create_purchase_request(
+                session["user_id"], department_id_value, purpose)
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("procurement/requests/add.html", departments=departments)
 
         flash(
             f"Purchase request {request_number} created successfully.",
@@ -2236,10 +2257,15 @@ def view_purchase_request(request_id):
         request_id
     )
 
+    linked_orders = get_purchase_orders_by_request(request_id)
+    active_order = next((order for order in linked_orders if order["status"] != "CANCELLED"), None)
+
     return render_template(
         "procurement/requests/view.html",
         purchase_request=purchase_request,
         items=items,
+        linked_orders=linked_orders,
+        active_order=active_order,
     )
 
 
@@ -2303,14 +2329,14 @@ def add_purchase_request_item_route(request_id):
 
         try:
             item_id_value = int(item_id)
-            quantity_value = float(quantity)
+            quantity_value = decimal_value(quantity, "Quantity", positive=True)
 
             if quantity_value <= 0:
                 raise ValueError
 
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Quantity must be greater than zero.",
+                str(error) or "Quantity must be greater than zero.",
                 "danger",
             )
 
@@ -2324,14 +2350,14 @@ def add_purchase_request_item_route(request_id):
 
         if estimated_unit_cost:
             try:
-                cost_value = float(estimated_unit_cost)
+                cost_value = decimal_value(estimated_unit_cost, "Estimated unit cost")
 
                 if cost_value < 0:
                     raise ValueError
 
-            except ValueError:
+            except ValueError as error:
                 flash(
-                    "Estimated unit cost must be zero or greater.",
+                    str(error) or "Estimated unit cost must be zero or greater.",
                     "danger",
                 )
 
@@ -2341,13 +2367,17 @@ def add_purchase_request_item_route(request_id):
                     inventory_items=inventory_items,
                 )
 
-        add_purchase_request_item(
-            request_id,
-            item_id_value,
-            quantity_value,
-            cost_value,
-            notes or None,
-        )
+        try:
+            add_purchase_request_item(
+                request_id,
+                item_id_value,
+                quantity_value,
+                cost_value,
+                notes or None,
+            )
+        except ValueError as error:
+            flash(str(error), "danger")
+            return redirect(request.url)
 
         flash(
             "Item added to purchase request successfully.",
@@ -2458,14 +2488,14 @@ def edit_purchase_request_item_route(
 
         try:
             item_id_value = int(item_id)
-            quantity_value = float(quantity)
+            quantity_value = decimal_value(quantity, "Quantity", positive=True)
 
             if quantity_value <= 0:
                 raise ValueError
 
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Quantity must be greater than zero.",
+                str(error) or "Quantity must be greater than zero.",
                 "danger",
             )
 
@@ -2480,16 +2510,14 @@ def edit_purchase_request_item_route(
 
         if estimated_unit_cost:
             try:
-                cost_value = float(
-                    estimated_unit_cost
-                )
+                cost_value = decimal_value(estimated_unit_cost, "Estimated unit cost")
 
                 if cost_value < 0:
                     raise ValueError
 
-            except ValueError:
+            except ValueError as error:
                 flash(
-                    "Estimated unit cost must be zero or greater.",
+                    str(error) or "Estimated unit cost must be zero or greater.",
                     "danger",
                 )
 
@@ -2500,13 +2528,17 @@ def edit_purchase_request_item_route(
                     inventory_items=inventory_items,
                 )
 
-        update_purchase_request_item(
-            request_item_id,
-            item_id_value,
-            quantity_value,
-            cost_value,
-            notes or None,
-        )
+        try:
+            update_purchase_request_item(
+                request_item_id,
+                item_id_value,
+                quantity_value,
+                cost_value,
+                notes or None,
+            )
+        except ValueError as error:
+            flash(str(error), "danger")
+            return redirect(request.url)
 
         flash(
             "Purchase request item updated successfully.",
@@ -2580,9 +2612,11 @@ def delete_purchase_request_item_route(
             )
         )
 
-    delete_purchase_request_item(
-        request_item_id
-    )
+    try:
+        delete_purchase_request_item(request_item_id)
+    except ValueError as error:
+        flash(str(error), "danger")
+        return redirect(url_for("view_purchase_request", request_id=request_id))
 
     flash(
         "Purchase request item removed successfully.",
@@ -2785,10 +2819,14 @@ def reject_purchase_request_route(request_id):
                 purchase_request=purchase_request,
             )
 
-        rejected = reject_purchase_request(
-            request_id,
-            rejection_reason,
-        )
+        try:
+            rejected = reject_purchase_request(
+                request_id,
+                rejection_reason,
+            )
+        except ValueError as error:
+            flash(str(error), "danger")
+            return redirect(request.url)
 
         if rejected:
             # AUDIT LOG: The business action has committed successfully.
@@ -2862,6 +2900,15 @@ def create_purchase_order(request_id):
                 request_id=request_id,
             )
         )
+
+    existing_orders = get_purchase_orders_by_request(request_id)
+    active_order = next((order for order in existing_orders if order["status"] != "CANCELLED"), None)
+    if active_order:
+        flash("A purchase order already exists for this purchase request.", "info")
+        return redirect(url_for("view_purchase_order", purchase_order_id=active_order["purchase_order_id"]))
+    if not get_purchase_request_items(request_id):
+        flash("Purchase request has no items.", "danger")
+        return redirect(url_for("view_purchase_request", request_id=request_id))
 
     suppliers = get_active_suppliers()
 
@@ -2973,6 +3020,9 @@ def create_purchase_order(request_id):
                 )
             )
 
+        record_audit_event("PROCUREMENT", "CREATE", "PURCHASE_ORDER", purchase_order_id,
+                           f"Purchase order {po_number} (ID {purchase_order_id}) created.")
+
         flash(
             f"Purchase order {po_number} created successfully.",
             "success",
@@ -3011,16 +3061,39 @@ def view_purchase_order(purchase_order_id):
         purchase_order_id
     )
 
-    receipts = get_goods_receipts_by_purchase_order(
-    purchase_order_id
-)
+    receipts = get_goods_receipts_by_purchase_order(purchase_order_id)
+    total = _purchase_order_display_totals(items)
 
     return render_template(
         "procurement/orders/view.html",
         purchase_order=purchase_order,
         items=items,
         receipts=receipts,
+        total=total,
     )
+
+
+def _purchase_order_display_totals(items):
+    # Display line amounts rounded to cents; sum the displayed amounts exactly.
+    with localcontext() as context:
+        context.prec = 40
+        for item in items:
+            item["line_total"] = currency_amount(item["quantity"] * item["unit_cost"])
+        return sum((item["line_total"] for item in items), Decimal("0.00"))
+
+
+@app.route("/procurement/orders/<int:purchase_order_id>/print")
+@permission_required("procurement.view")
+def print_purchase_order(purchase_order_id):
+    purchase_order = get_purchase_order_by_id(purchase_order_id)
+    if not purchase_order:
+        flash("Purchase order not found.", "danger")
+        return redirect(url_for("purchase_orders"))
+    items = get_purchase_order_items(purchase_order_id)
+    supplier = get_supplier_by_id(purchase_order["supplier_id"])
+    return render_template(
+        "procurement/orders/print.html", purchase_order=purchase_order,
+        supplier=supplier or {}, items=items, total=_purchase_order_display_totals(items))
 
 
 @app.route(
@@ -3084,14 +3157,14 @@ def edit_purchase_order_item_cost_route(
         ).strip()
 
         try:
-            unit_cost_value = float(unit_cost)
+            unit_cost_value = decimal_value(unit_cost, "Unit cost")
 
             if unit_cost_value < 0:
                 raise ValueError
 
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Unit cost must be zero or greater.",
+                str(error) or "Unit cost must be zero or greater.",
                 "danger",
             )
 
@@ -3101,10 +3174,17 @@ def edit_purchase_order_item_cost_route(
                 purchase_order_item=purchase_order_item,
             )
 
-        update_purchase_order_item_cost(
-            purchase_order_item_id,
-            unit_cost_value,
-        )
+        try:
+            update_purchase_order_item_cost(
+                purchase_order_item_id,
+                unit_cost_value,
+            )
+        except ValueError as error:
+            flash(str(error), "danger")
+            return redirect(request.url)
+
+        record_audit_event("PROCUREMENT", "UPDATE_COST", "PURCHASE_ORDER", purchase_order_id,
+                           f"Purchase order {purchase_order['po_number']} (ID {purchase_order_id}) item {purchase_order_item_id} cost updated.")
 
         flash(
             "Purchase order item cost updated successfully.",
@@ -3174,8 +3254,10 @@ def send_purchase_order_route(purchase_order_id):
 
     # # Show result message
     if sent:
+        record_audit_event("PROCUREMENT", "MARK_SENT", "PURCHASE_ORDER", purchase_order_id,
+                           f"Purchase order {purchase_order['po_number']} (ID {purchase_order_id}) manually issued.")
         flash(
-            "Purchase order sent successfully.",
+            "Purchase order marked as sent (manually issued).",
             "success",
         )
     else:
@@ -3233,9 +3315,10 @@ def receive_purchase_order(purchase_order_id):
     # GET PURCHASE ORDER
     # ======================================================
 
-    purchase_order = get_receivable_purchase_order_by_id(
-        purchase_order_id
-    )
+    submission_id = request.form.get("submission_id", "") if request.method == "POST" else str(uuid.uuid4())
+    # Completed POs must still reach repository idempotency validation on POST.
+    purchase_order = (get_purchase_order_by_id(purchase_order_id) if request.method == "POST"
+                      else get_receivable_purchase_order_by_id(purchase_order_id))
 
     if not purchase_order:
 
@@ -3298,6 +3381,7 @@ def receive_purchase_order(purchase_order_id):
                 purchase_order=purchase_order,
                 items=items,
                 warehouses=warehouses,
+                submission_id=submission_id,
             )
 
 
@@ -3318,6 +3402,7 @@ def receive_purchase_order(purchase_order_id):
                 purchase_order=purchase_order,
                 items=items,
                 warehouses=warehouses,
+                submission_id=submission_id,
             )
 
 
@@ -3344,25 +3429,11 @@ def receive_purchase_order(purchase_order_id):
 
         received_items = {}
 
-        for item in items:
-
-            purchase_order_item_id = item[
-                "purchase_order_item_id"
-            ]
-
-            field_name = (
-                f"quantity_received_"
-                f"{purchase_order_item_id}"
-            )
-
-            quantity = request.form.get(
-                field_name,
-                "0",
-            ).strip()
-
-            received_items[
-                purchase_order_item_id
-            ] = quantity
+        # Read the original submitted item keys, including items since fully
+        # received, so a retry can match its original persisted delivery.
+        for field_name in request.form:
+            if field_name.startswith("quantity_received_"):
+                received_items[field_name.removeprefix("quantity_received_")] = request.form.get(field_name, "0").strip()
 
 
         # ==================================================
@@ -3376,17 +3447,16 @@ def receive_purchase_order(purchase_order_id):
 
         try:
 
-            (
-                receipt_id,
-                receipt_number,
-                new_status,
-            ) = create_goods_receipt(
+            receipt_result = create_goods_receipt(
                 purchase_order_id=purchase_order_id,
                 warehouse_id=warehouse_id_value,
                 received_by=session["user_id"],
                 received_items=received_items,
                 notes=notes or None,
+                submission_id=submission_id,
             )
+
+            receipt_id, receipt_number, new_status = receipt_result
 
         except ValueError as error:
 
@@ -3400,6 +3470,7 @@ def receive_purchase_order(purchase_order_id):
                 purchase_order=purchase_order,
                 items=items,
                 warehouses=warehouses,
+                submission_id=submission_id,
             )
 
 
@@ -3407,13 +3478,17 @@ def receive_purchase_order(purchase_order_id):
         # SUCCESS
         # ==================================================
 
+        if receipt_result.created:
+            record_audit_event("PROCUREMENT", "RECEIVE", "GOODS_RECEIPT", receipt_id,
+                               f"Goods receipt {receipt_number} (ID {receipt_id}) received for purchase order {purchase_order['po_number']} (ID {purchase_order_id}).")
+
         flash(
             f"Goods receipt {receipt_number} saved successfully.",
             "success",
         )
 
         return redirect(
-            url_for("goods_receipts")
+            url_for("view_goods_receipt", receipt_id=receipt_id)
         )
 
 
@@ -3426,6 +3501,7 @@ def receive_purchase_order(purchase_order_id):
         purchase_order=purchase_order,
         items=items,
         warehouses=warehouses,
+        submission_id=submission_id,
     )
 
 
@@ -3505,6 +3581,17 @@ def cancel_purchase_order_route(purchase_order_id):
         cancel_purchase_order(
             purchase_order_id
         )
+
+        # Identifier lookup is optional and cannot turn a committed cancellation into an error.
+        po_number = str(purchase_order_id)
+        try:
+            order = get_purchase_order_by_id(purchase_order_id)
+            if order:
+                po_number = order["po_number"]
+        except Exception:
+            app.logger.exception("Unable to resolve cancelled purchase order identifier.")
+        record_audit_event("PROCUREMENT", "CANCEL", "PURCHASE_ORDER", purchase_order_id,
+                           f"Purchase order {po_number} (ID {purchase_order_id}) cancelled.")
 
         flash(
             "Purchase order cancelled successfully.",
