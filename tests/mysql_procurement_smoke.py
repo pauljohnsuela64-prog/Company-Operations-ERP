@@ -15,6 +15,7 @@ from unittest.mock import patch
 
 import mysql.connector
 import mysql_audit_smoke as harness
+from security_helpers import csrf_client, stamp_session
 
 
 def run(port, data_dir):
@@ -215,12 +216,17 @@ def run(port, data_dir):
         # Real route validation with isolated persisted fixtures and rendered errors.
         database = importlib.import_module('database')
         stack.enter_context(patch.object(database, 'get_connection', side_effect=connect))
+        stack.enter_context(patch('dotenv.load_dotenv',return_value=False))
+        stack.enter_context(patch.dict('os.environ',SECRET_KEY='isolated-test',ERP_ENV='testing',ERP_DEBUG='false'))
         erp = importlib.import_module('app')
         stack.enter_context(patch.dict(erp.app.config, TESTING=True, SECRET_KEY='isolated-test'))
         rid, iid = draft()
-        client = erp.app.test_client()
+        client = csrf_client(erp.app)
+        for code in ['procurement.view', 'procurement.requests.create', 'procurement.requests.approve', 'procurement.orders.create', 'procurement.orders.manage', 'procurement.receipts.manage']:
+            pid=sql("INSERT INTO permissions(permission_code) VALUES (%s)",(code,))
+            sql('INSERT INTO role_permissions(role_id,permission_id) VALUES (1,%s)',(pid,))
         with client.session_transaction() as session:
-            session.update(user_id=1, username='test', permissions=['procurement.requests.create','procurement.requests.approve','procurement.orders.create','procurement.orders.manage'])
+            stamp_session(erp.app,session,erp.get_authorization_state(1))
         def post(endpoint, data, expected, **values):
             with erp.app.test_request_context():
                 from flask import url_for
@@ -245,8 +251,6 @@ def run(port, data_dir):
 
         # Step 3: real repository quantities and linked-order navigation rendered
         # through the existing permission decorators, using only this server.
-        with client.session_transaction() as session:
-            session['permissions'] = ['procurement.view', 'procurement.orders.manage', 'procurement.receipts.manage']
         rid, oid, oi = order()
         path = f'/procurement/orders/{oid}'
         request_path = f'/procurement/requests/{rid}'

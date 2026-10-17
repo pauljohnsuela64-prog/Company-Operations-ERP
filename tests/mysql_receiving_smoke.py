@@ -13,6 +13,8 @@ from unittest.mock import patch
 
 import mysql.connector
 import mysql_audit_smoke as harness
+from security_helpers import csrf_client, stamp_session
+from test_csrf_security import expired_token, form_token
 
 
 def run(port, data_dir):
@@ -298,18 +300,42 @@ def run(port, data_dir):
 
         database=importlib.import_module('database')
         stack.enter_context(patch.object(database,'get_connection',side_effect=connect))
+        stack.enter_context(patch('dotenv.load_dotenv',return_value=False))
+        stack.enter_context(patch.dict('os.environ',SECRET_KEY='isolated-test',ERP_ENV='testing',ERP_DEBUG='false'))
         erp=importlib.import_module('app')
         stack.enter_context(patch.dict(erp.app.config,TESTING=True,SECRET_KEY='isolated-test'))
-        client=erp.app.test_client()
+        client=csrf_client(erp.app)
+        for code in ['procurement.view', 'procurement.requests.create', 'procurement.requests.approve', 'procurement.orders.create', 'procurement.orders.manage', 'procurement.receipts.manage']:
+            pid=sql("INSERT INTO permissions(permission_code) VALUES (%s)",(code,))
+            sql('INSERT INTO role_permissions(role_id,permission_id) VALUES (1,%s)',(pid,))
         with client.session_transaction() as session:
-            session.update(user_id=1,username='test',permissions=['procurement.receipts.manage','procurement.view'])
+            stamp_session(erp.app,session,erp.get_authorization_state(1))
         rid,oid,oi=order()
         path=f'/procurement/receipts/{oid}/receive'
         html=client.get(path).get_data(as_text=True)
         token=re.search(r'name="submission_id" value="([^"]+)"',html).group(1)
         uuid.UUID(token)
         form={'submission_id':token,'warehouse_id':'1',f'quantity_received_{oi}':'5','notes':'route'}
-        first=client.post(path,data=form)
+        # Raw HTTP clients prove rejection before any receiving write, then
+        # explicitly recover the original UUID using the actual merged route.
+        raw=erp.app.test_client()
+        cookie=client.get_cookie(erp.app.config['SESSION_COOKIE_NAME'])
+        raw.set_cookie(erp.app.config['SESSION_COOKIE_NAME'],cookie.value)
+        before=snapshot()
+        for extra in ({}, {'csrf_token':'invalid'}):
+            assert raw.post(path,data=dict(form,**extra)).status_code==400
+            assert snapshot()==before
+        expired=dict(form,csrf_token=expired_token(erp.app,raw))
+        recovery=raw.post(path,data=expired)
+        assert recovery.status_code==400 and snapshot()==before
+        assert f'name="submission_id" value="{token}"' in recovery.get_data(as_text=True)
+        first=raw.post(path,data=dict(form,csrf_token=form_token(recovery)))
+        assert receipt_count(oid)==1 and quantity(oid)==Decimal('5')
+        refreshed=raw.get('/auth/csrf-token').json['csrf_token']
+        retry=raw.post(path,data=dict(form,csrf_token=refreshed))
+        assert retry.status_code==302 and retry.location==first.location
+        assert receipt_count(oid)==1 and quantity(oid)==Decimal('5')
+        print('PASS real receiving CSRF rejection, expiry recovery and token renewal retain UUID without duplicate stock')
         second=client.post(path,data=form)
         assert first.status_code==302 and first.location==second.location and '/view' not in first.location
         assert receipt_count(oid)==1 and quantity(oid)==Decimal('5')
@@ -325,8 +351,7 @@ def run(port, data_dir):
         changed=dict(form,notes='changed')
         assert client.post(path,data=changed).status_code==200
         assert snapshot()==before
-        with client.session_transaction() as session:
-            session['permissions']=[]
+        sql('DELETE FROM role_permissions WHERE role_id=1')
         assert client.post(path,data=form).status_code==302
         assert snapshot()==before
         print('PASS actual form tokens, POST retry after partial/full delivery, receipt redirects, conflict and permission handling')

@@ -1,3 +1,4 @@
+from security_helpers import user_state, stamp_session, csrf_client
 """Isolated audit regression tests. Run with .venv/Scripts/python -m unittest discover -s tests -v.
 
 Real Flask routes, permission decorators, and audit helper are exercised. Repository
@@ -61,7 +62,7 @@ class BusinessAuditTests(unittest.TestCase):
         cls.safety = ExitStack()
         # Patch before importing application/repositories. Never load real .env data.
         cls.safety.enter_context(patch("dotenv.load_dotenv", return_value=False))
-        cls.safety.enter_context(patch.dict(os.environ, {"SECRET_KEY": "isolated-audit-test-key"}))
+        cls.safety.enter_context(patch.dict(os.environ, {"SECRET_KEY": "isolated-audit-test-key", "ERP_ENV": "testing", "ERP_DEBUG": "false"}))
         cls.safety.enter_context(patch("mysql.connector.connect", side_effect=AssertionError("Real database access forbidden in audit tests")))
         cls.addClassCleanup(cls.safety.close)
         cls.erp = importlib.import_module("app")
@@ -72,7 +73,7 @@ class BusinessAuditTests(unittest.TestCase):
         self.stack.enter_context(patch.dict(self.erp.app.config, TESTING=True))
         self.stack.enter_context(patch.object(self.erp.app.logger, "exception"))
         self.stack.enter_context(patch.object(self.erp, "render_template", return_value="test page"))
-        self.client = self.erp.app.test_client()
+        self.client = csrf_client(self.erp.app)
 
     def mock(self, name, **kwargs):
         return self.stack.enter_context(patch.object(self.erp, name, **kwargs))
@@ -102,13 +103,17 @@ class BusinessAuditTests(unittest.TestCase):
         self.mock("generate_password_hash", return_value=SECRETS["password_hash"])
         self.super_admins = self.mock("count_active_super_admins", return_value=2)
         self.form = {**SECRETS, "confirm_password": SECRETS["password"], "username": "target.user", "role_id": "42", "permission_ids": "5"}
+        self.auth_loader = self.mock("get_authorization_state")
         self.authenticate(case)
 
     def authenticate(self, case, *, logged_in=True, allowed=True):
         with self.client.session_transaction() as sess:
             sess.clear()
             if logged_in:
-                sess.update(user_id=7, username="acting.user", permissions=[case.permission] if allowed else [], token=SECRETS["token"], session_secret=SECRETS["session_secret"])
+                state = user_state(permissions=[case.permission] if allowed else [])
+                self.auth_loader.return_value = state
+                stamp_session(self.erp.app, sess, state)
+                sess.update(token=SECRETS["token"], session_secret=SECRETS["session_secret"])
 
     def assert_event(self, case, identifier=None):
         self.insert.assert_called_once()
@@ -320,7 +325,9 @@ class BusinessAuditTests(unittest.TestCase):
         case = next(c for c in ACTIONS if c.name == "user_deactivate")
         self.prepare(case)
         with self.client.session_transaction() as sess:
-            sess["user_id"] = 42
+            state = user_state(user_id=42, permissions=[case.permission])
+            self.auth_loader.return_value = state
+            stamp_session(self.erp.app, sess, state)
         self.client.post(case.path, data=self.form)
         self.authenticate(case)
         self.user.return_value["role_name"] = "Super Admin"

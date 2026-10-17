@@ -43,6 +43,7 @@ Purchase Request
                     request_id=purchase_request.request_id
                 ) }}"
             >
+                    {% include 'partials/csrf_field.html' %}
 
                 <button
                     type="submit"
@@ -72,6 +73,7 @@ Purchase Request
                     request_id=purchase_request.request_id
                 ) }}"
             >
+                    {% include 'partials/csrf_field.html' %}
 
                 <button
                     type="submit"
@@ -483,6 +485,7 @@ Purchase Request
                                         ) }}"
                                         class="d-inline"
                                     >
+                    {% include 'partials/csrf_field.html' %}
 
                                         <button
                                             type="submit"

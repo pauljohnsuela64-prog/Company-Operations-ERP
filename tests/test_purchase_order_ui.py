@@ -6,6 +6,7 @@ import importlib
 import os
 import unittest
 from unittest.mock import patch
+from security_helpers import csrf_client, user_state, stamp_session
 
 
 class DivBalance(HTMLParser):
@@ -37,7 +38,8 @@ class PurchaseOrderUITests(unittest.TestCase):
         self.stack = ExitStack()
         self.addCleanup(self.stack.close)
         self.stack.enter_context(patch.dict(self.erp.app.config, TESTING=True))
-        self.client = self.erp.app.test_client()
+        self.client = csrf_client(self.erp.app)
+        self.mock('get_authorization_state', side_effect=lambda _: self.state)
         self.permissions('procurement.view', 'procurement.orders.manage', 'procurement.receipts.manage')
         self.order = dict(purchase_order_id=42, po_number='PO-000042', request_id=7, request_number='PR-000007', status='DRAFT', supplier_id=1, supplier_name='Supplier', supplier_code='SUP', order_date='2026-10-17', expected_delivery_date=None, notes='Delivery notes', created_by_username='test')
         self.items = [dict(purchase_order_item_id=5, item_code='ITEM', item_name='Test item', unit_of_measure='pcs', quantity=Decimal('10.25'), estimated_unit_cost=Decimal('2.50'), unit_cost=Decimal('2.50'), received_quantity=Decimal('4.25'), remaining_quantity=Decimal('6'), notes=None)]
@@ -55,7 +57,8 @@ class PurchaseOrderUITests(unittest.TestCase):
 
     def permissions(self, *permissions):
         with self.client.session_transaction() as session:
-            session.update(user_id=1, username='test', permissions=list(permissions))
+            self.state = user_state(user_id=1, username='test', permissions=permissions)
+            stamp_session(self.erp.app, session, self.state)
 
     def test_action_visibility_by_status_and_permission(self):
         for status in ('DRAFT', 'SENT', 'PARTIALLY_RECEIVED', 'RECEIVED', 'CANCELLED'):
