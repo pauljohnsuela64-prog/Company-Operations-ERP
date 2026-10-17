@@ -3,9 +3,13 @@
 # ==========================================================
 
 import uuid
-from decimal import Decimal, InvalidOperation
+from collections.abc import Mapping
+from decimal import Decimal
+
+import mysql.connector
 
 from database import get_connection
+from procurement_validation import decimal_value, validate_notes
 
 
 # ==========================================================
@@ -200,12 +204,85 @@ def get_receivable_purchase_order_items(purchase_order_id):
 # everything is rolled back.
 # ==========================================================
 
-def create_goods_receipt(
+def _normalize_received_items(received_items):
+    if not isinstance(received_items, Mapping):
+        raise ValueError("Invalid received items.")
+    normalized = {}
+    for identifier, quantity in received_items.items():
+        try:
+            if isinstance(identifier, bool) or not str(identifier).isdigit():
+                raise ValueError
+            identifier = int(identifier)
+        except (TypeError, ValueError):
+            raise ValueError("Invalid purchase order item.") from None
+        if identifier in normalized:
+            raise ValueError("Duplicate purchase order item in receipt.")
+        normalized[identifier] = decimal_value(quantity, "Received quantity")
+    return normalized
+
+
+def _existing_submission(cursor, submission_id, purchase_order_id, warehouse_id,
+                         received_by, received_items, notes):
+    cursor.execute(
+        "SELECT receipt_id, receipt_number, purchase_order_id, warehouse_id, received_by, notes "
+        "FROM goods_receipts WHERE submission_id = %s", (submission_id,))
+    receipt = cursor.fetchone()
+    if not receipt:
+        return None
+    cursor.execute(
+        "SELECT purchase_order_item_id, quantity_received FROM goods_receipt_items WHERE receipt_id = %s",
+        (receipt["receipt_id"],))
+    quantities = {row["purchase_order_item_id"]: row["quantity_received"] for row in cursor.fetchall()}
+    expected = {key: value for key, value in received_items.items() if value != 0}
+    if (receipt["purchase_order_id"] != purchase_order_id
+            or receipt["warehouse_id"] != warehouse_id
+            or receipt["received_by"] != received_by
+            or (receipt["notes"] or None) != (notes or None)
+            or quantities != expected):
+        raise ValueError("This submission identifier was already used for different delivery details. Reload the receiving form for a new delivery.")
+    cursor.execute("SELECT status FROM purchase_orders WHERE purchase_order_id = %s", (purchase_order_id,))
+    return receipt["receipt_id"], receipt["receipt_number"], cursor.fetchone()["status"]
+
+
+def create_goods_receipt(purchase_order_id, warehouse_id, received_by, received_items,
+                         notes=None, submission_id=None):
+    """A caller must retain the same UUID across retries of one delivery."""
+    try:
+        submission_id = str(uuid.UUID(str(submission_id)))
+    except (ValueError, TypeError, AttributeError):
+        raise ValueError("Missing or invalid submission identifier. Reload the receiving form and try again.") from None
+    received_items = _normalize_received_items(received_items)
+    for attempt in range(3):
+        try:
+            return _create_goods_receipt_transaction(
+                purchase_order_id, warehouse_id, received_by, received_items, notes, submission_id)
+        except mysql.connector.Error as error:
+            if error.errno == 1062:
+                # Cross-PO reuse of a token may race past the initial lookup.
+                # The UNIQUE constraint decides the winner; read after rollback.
+                with get_connection() as connection:
+                    cursor = connection.cursor(dictionary=True)
+                    try:
+                        existing = _existing_submission(cursor, submission_id, purchase_order_id,
+                                                        warehouse_id, received_by, received_items, notes)
+                        if existing:
+                            return existing
+                    finally:
+                        cursor.close()
+            if error.errno in (1205, 1213) and attempt < 2:
+                continue  # Entire failed transaction has already been rolled back.
+            if error.errno in (1054, 1146):
+                raise ValueError("Goods receiving schema is unavailable. Ask an administrator to verify the receiving migration before retrying.") from error
+            raise ValueError("Goods receipt could not be confirmed. Retry with the same submission identifier to check whether it was saved; if the problem persists, contact an administrator.") from error
+
+
+def _create_goods_receipt_transaction(
     purchase_order_id,
     warehouse_id,
     received_by,
     received_items,
-    notes=None,
+    notes,
+    submission_id,
 ):
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
@@ -243,6 +320,14 @@ def create_goods_receipt(
             raise ValueError(
                 "Purchase order not found."
             )
+
+        # First consistent read occurs after locking the PO, so a waiting retry
+        # sees the previous transaction's committed receipt under MySQL RR.
+        existing = _existing_submission(cursor, submission_id, purchase_order_id,
+                                        warehouse_id, received_by, received_items, notes)
+        if existing:
+            connection.commit()
+            return existing
 
         if purchase_order["status"] not in (
             "SENT",
@@ -357,40 +442,10 @@ def create_goods_receipt(
 
         valid_received_items = []
 
-        for purchase_order_item_id, quantity in received_items.items():
-
-            try:
-                purchase_order_item_id = int(
-                    purchase_order_item_id
-                )
-
-                quantity_received = Decimal(
-                    str(quantity)
-                )
-
-            except (
-                ValueError,
-                TypeError,
-                InvalidOperation,
-            ):
-                raise ValueError(
-                    "Invalid received quantity."
-                )
-
-
-            # Ignore zero quantities
-
+        for purchase_order_item_id, quantity_received in received_items.items():
+            # Numeric validation and normalization happen before opening a connection.
             if quantity_received == 0:
                 continue
-
-
-            # Negative quantities are never allowed
-
-            if quantity_received < 0:
-                raise ValueError(
-                    "Received quantity cannot be negative."
-                )
-
 
             # Make sure item belongs to this PO
 
@@ -454,10 +509,9 @@ def create_goods_receipt(
         # goods_receipts.notes = VARCHAR(255)
         # ==================================================
 
-        if notes and len(notes) > 255:
-            raise ValueError(
-                "Receipt notes cannot exceed 255 characters."
-            )
+        # Reserve the longest reference possible for the signed INT receipt ID.
+        prefix = f"Received from {purchase_order['po_number']} via GR-2147483647 - "
+        validate_notes(notes, "Receipt notes (space reserved for movement references)", 255 - len(prefix))
 
 
         # ==================================================
@@ -483,9 +537,10 @@ def create_goods_receipt(
                 purchase_order_id,
                 warehouse_id,
                 received_by,
-                notes
+                notes,
+                submission_id
             )
-            VALUES (%s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
             """,
             (
                 temporary_number,
@@ -493,6 +548,7 @@ def create_goods_receipt(
                 warehouse_id,
                 received_by,
                 notes,
+                submission_id,
             ),
         )
 
@@ -502,6 +558,20 @@ def create_goods_receipt(
             f"GR-{receipt_id:06d}"
         )
 
+
+        movement_notes = (
+            f"Received from "
+            f"{purchase_order['po_number']} "
+            f"via {receipt_number}"
+        )
+
+        if notes:
+            movement_notes += (
+                f" - {notes}"
+            )
+
+
+        validate_notes(movement_notes, "Stock movement notes (including receipt references)")
 
         # Replace temporary number with real number
 
@@ -522,7 +592,7 @@ def create_goods_receipt(
         # 5. PROCESS EACH RECEIVED ITEM
         # ==================================================
 
-        for received_item in valid_received_items:
+        for received_item in sorted(valid_received_items, key=lambda row: (row["item_id"], row["purchase_order_item_id"])):
 
             purchase_order_item_id = (
                 received_item[
@@ -560,72 +630,24 @@ def create_goods_receipt(
             )
 
 
-            # ==============================================
-            # 6. LOCK CURRENT INVENTORY STOCK
-            # ==============================================
-
+            # Reserve/create the row atomically before reading it. This avoids
+            # competing gap-lock/read-then-insert attempts for missing stock.
             cursor.execute(
-                """
-                SELECT quantity
-                FROM inventory_stock
-                WHERE item_id = %s
-                  AND warehouse_id = %s
-                FOR UPDATE
-                """,
-                (
-                    item_id,
-                    warehouse_id,
-                ),
+                "INSERT INTO inventory_stock (item_id, warehouse_id, quantity) VALUES (%s, %s, 0) "
+                "ON DUPLICATE KEY UPDATE quantity = quantity",
+                (item_id, warehouse_id),
             )
-
-            stock = cursor.fetchone()
-
-
-            # ==============================================
-            # STOCK ALREADY EXISTS
-            # Increase existing quantity
-            # ==============================================
-
-            if stock:
-
-                cursor.execute(
-                    """
-                    UPDATE inventory_stock
-                    SET quantity = quantity + %s
-                    WHERE item_id = %s
-                      AND warehouse_id = %s
-                    """,
-                    (
-                        quantity_received,
-                        item_id,
-                        warehouse_id,
-                    ),
-                )
-
-
-            # ==============================================
-            # STOCK DOES NOT EXIST
-            # Create new item/warehouse stock row
-            # ==============================================
-
-            else:
-
-                cursor.execute(
-                    """
-                    INSERT INTO inventory_stock (
-                        item_id,
-                        warehouse_id,
-                        quantity
-                    )
-                    VALUES (%s, %s, %s)
-                    """,
-                    (
-                        item_id,
-                        warehouse_id,
-                        quantity_received,
-                    ),
-                )
-
+            cursor.execute(
+                "SELECT quantity FROM inventory_stock WHERE item_id = %s AND warehouse_id = %s FOR UPDATE",
+                (item_id, warehouse_id),
+            )
+            # Check the aggregate too, so non-strict MySQL cannot silently clamp it.
+            stock_quantity = decimal_value(
+                cursor.fetchone()["quantity"] + quantity_received, "Warehouse stock quantity")
+            cursor.execute(
+                "UPDATE inventory_stock SET quantity = %s WHERE item_id = %s AND warehouse_id = %s",
+                (stock_quantity, item_id, warehouse_id),
+            )
 
             # ==============================================
             # 7. CREATE STOCK MOVEMENT HISTORY
@@ -635,17 +657,6 @@ def create_goods_receipt(
             #
             # This lets us know WHY inventory increased.
             # ==============================================
-
-            movement_notes = (
-                f"Received from "
-                f"{purchase_order['po_number']} "
-                f"via {receipt_number}"
-            )
-
-            if notes:
-                movement_notes += (
-                    f" - {notes}"
-                )
 
             cursor.execute(
                 """

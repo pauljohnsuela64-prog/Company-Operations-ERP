@@ -1,6 +1,7 @@
 import uuid
 
 from database import get_connection
+from procurement_validation import decimal_value, validate_notes, lock_draft, lock_item_parent
 
 
 def get_all_purchase_requests():
@@ -201,53 +202,16 @@ def add_purchase_request_item(
     estimated_unit_cost=None,
     notes=None,
 ):
+    quantity = decimal_value(quantity, "Quantity", positive=True)
+    if estimated_unit_cost is not None:
+        estimated_unit_cost = decimal_value(estimated_unit_cost, "Estimated unit cost")
+    validate_notes(notes, "Item notes")
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
-        cursor.execute(
-            """
-            INSERT INTO purchase_request_items (
-                request_id,
-                item_id,
-                quantity,
-                estimated_unit_cost,
-                notes
-            )
-            VALUES (%s, %s, %s, %s, %s)
-            """,
-            (
-                request_id,
-                item_id,
-                quantity,
-                estimated_unit_cost,
-                notes,
-            ),
-        )
-
-        connection.commit()
-
-    except Exception:
-        connection.rollback()
-        raise
-
-    finally:
-        cursor.close()
-        connection.close()
-
-
-
-def add_purchase_request_item(
-    request_id,
-    item_id,
-    quantity,
-    estimated_unit_cost=None,
-    notes=None,
-):
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
+        connection.start_transaction()
+        lock_draft(cursor, "purchase_requests", "request_id", request_id)
         cursor.execute(
             """
             INSERT INTO purchase_request_items (
@@ -314,10 +278,16 @@ def update_purchase_request_item(
     estimated_unit_cost=None,
     notes=None,
 ):
+    quantity = decimal_value(quantity, "Quantity", positive=True)
+    if estimated_unit_cost is not None:
+        estimated_unit_cost = decimal_value(estimated_unit_cost, "Estimated unit cost")
+    validate_notes(notes, "Item notes")
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_item_parent(cursor, "purchase_request_items", "request_item_id", request_item_id, "purchase_requests", "request_id")
         cursor.execute(
             """
             UPDATE purchase_request_items
@@ -353,6 +323,8 @@ def delete_purchase_request_item(request_item_id):
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_item_parent(cursor, "purchase_request_items", "request_item_id", request_item_id, "purchase_requests", "request_id")
         cursor.execute(
             """
             DELETE FROM purchase_request_items
@@ -377,6 +349,17 @@ def submit_purchase_request(request_id):
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        cursor.execute("SELECT status FROM purchase_requests WHERE request_id = %s FOR UPDATE", (request_id,))
+        parent = cursor.fetchone()
+        if not parent or parent[0] != "DRAFT":
+            connection.rollback()
+            return False
+        # Recheck after acquiring the same lock used by item deletion.
+        cursor.execute("SELECT COUNT(*) FROM purchase_request_items WHERE request_id = %s", (request_id,))
+        if cursor.fetchone()[0] == 0:
+            connection.rollback()
+            return False
         cursor.execute(
             """
             UPDATE purchase_requests
@@ -449,6 +432,7 @@ def reject_purchase_request(
     request_id,
     rejection_reason,
 ):
+    validate_notes(rejection_reason, "Rejection reason")
     connection = get_connection()
     cursor = connection.cursor()
 

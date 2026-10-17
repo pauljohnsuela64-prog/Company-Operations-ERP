@@ -150,6 +150,7 @@ Receive Items
 <!-- # ========================================== -->
 
 <form method="POST">
+    <input type="hidden" name="submission_id" value="{{ submission_id }}">
 
 
         <!-- # ====================================== -->
@@ -179,6 +180,7 @@ Receive Items
 
                         <option
                             value="{{ warehouse.warehouse_id }}"
+                            {% if request.form.get('warehouse_id') == warehouse.warehouse_id|string %}selected{% endif %}
                         >
                             {{ warehouse.warehouse_code }}
                             -
@@ -309,7 +311,7 @@ Receive Items
                                     min="0"
                                     max="{{ item.remaining_quantity }}"
                                     step="0.01"
-                                    value="0"
+                                    value="{{ request.form.get('quantity_received_' ~ item.purchase_order_item_id, '0') }}"
                                 >
 
                             </td>
@@ -365,7 +367,7 @@ Receive Items
                     name="notes"
                     rows="3"
                     placeholder="Optional notes about this delivery"
-                ></textarea>
+                >{{ request.form.get('notes', '') }}</textarea>
 
             </div>
 

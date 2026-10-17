@@ -1,5 +1,6 @@
 import uuid
 from database import get_connection
+from procurement_validation import decimal_value, validate_notes, lock_item_parent
 
 
 
@@ -56,6 +57,7 @@ def create_purchase_order_from_request(
     expected_delivery_date=None,
     notes=None,
 ):
+    validate_notes(notes, "Purchase order notes")
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -332,10 +334,13 @@ def update_purchase_order_item_cost(
     purchase_order_item_id,
     unit_cost,
 ):
+    unit_cost = decimal_value(unit_cost, "Unit cost")
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_item_parent(cursor, "purchase_order_items", "purchase_order_item_id", purchase_order_item_id, "purchase_orders", "purchase_order_id")
         cursor.execute(
             """
             UPDATE purchase_order_items

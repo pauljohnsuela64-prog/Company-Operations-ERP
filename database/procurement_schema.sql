@@ -221,6 +221,10 @@ CREATE TABLE IF NOT EXISTS goods_receipts (
 
     receipt_number VARCHAR(50) NOT NULL UNIQUE,
 
+    -- NULL permits historical rows; every new application submission supplies a UUID.
+    submission_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    CONSTRAINT uq_goods_receipts_submission UNIQUE (submission_id),
+
     purchase_order_id INT NOT NULL,
     warehouse_id INT NOT NULL,
 

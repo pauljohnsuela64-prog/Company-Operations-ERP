@@ -1,4 +1,6 @@
+from procurement_validation import decimal_value
 import os
+import uuid
 from functools import wraps
 
 from datetime import (
@@ -2315,14 +2317,14 @@ def add_purchase_request_item_route(request_id):
 
         try:
             item_id_value = int(item_id)
-            quantity_value = float(quantity)
+            quantity_value = decimal_value(quantity, "Quantity", positive=True)
 
             if quantity_value <= 0:
                 raise ValueError
 
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Quantity must be greater than zero.",
+                str(error) or "Quantity must be greater than zero.",
                 "danger",
             )
 
@@ -2336,14 +2338,14 @@ def add_purchase_request_item_route(request_id):
 
         if estimated_unit_cost:
             try:
-                cost_value = float(estimated_unit_cost)
+                cost_value = decimal_value(estimated_unit_cost, "Estimated unit cost")
 
                 if cost_value < 0:
                     raise ValueError
 
-            except ValueError:
+            except ValueError as error:
                 flash(
-                    "Estimated unit cost must be zero or greater.",
+                    str(error) or "Estimated unit cost must be zero or greater.",
                     "danger",
                 )
 
@@ -2353,13 +2355,17 @@ def add_purchase_request_item_route(request_id):
                     inventory_items=inventory_items,
                 )
 
-        add_purchase_request_item(
-            request_id,
-            item_id_value,
-            quantity_value,
-            cost_value,
-            notes or None,
-        )
+        try:
+            add_purchase_request_item(
+                request_id,
+                item_id_value,
+                quantity_value,
+                cost_value,
+                notes or None,
+            )
+        except ValueError as error:
+            flash(str(error), "danger")
+            return redirect(request.url)
 
         flash(
             "Item added to purchase request successfully.",
@@ -2470,14 +2476,14 @@ def edit_purchase_request_item_route(
 
         try:
             item_id_value = int(item_id)
-            quantity_value = float(quantity)
+            quantity_value = decimal_value(quantity, "Quantity", positive=True)
 
             if quantity_value <= 0:
                 raise ValueError
 
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Quantity must be greater than zero.",
+                str(error) or "Quantity must be greater than zero.",
                 "danger",
             )
 
@@ -2492,16 +2498,14 @@ def edit_purchase_request_item_route(
 
         if estimated_unit_cost:
             try:
-                cost_value = float(
-                    estimated_unit_cost
-                )
+                cost_value = decimal_value(estimated_unit_cost, "Estimated unit cost")
 
                 if cost_value < 0:
                     raise ValueError
 
-            except ValueError:
+            except ValueError as error:
                 flash(
-                    "Estimated unit cost must be zero or greater.",
+                    str(error) or "Estimated unit cost must be zero or greater.",
                     "danger",
                 )
 
@@ -2512,13 +2516,17 @@ def edit_purchase_request_item_route(
                     inventory_items=inventory_items,
                 )
 
-        update_purchase_request_item(
-            request_item_id,
-            item_id_value,
-            quantity_value,
-            cost_value,
-            notes or None,
-        )
+        try:
+            update_purchase_request_item(
+                request_item_id,
+                item_id_value,
+                quantity_value,
+                cost_value,
+                notes or None,
+            )
+        except ValueError as error:
+            flash(str(error), "danger")
+            return redirect(request.url)
 
         flash(
             "Purchase request item updated successfully.",
@@ -2592,9 +2600,11 @@ def delete_purchase_request_item_route(
             )
         )
 
-    delete_purchase_request_item(
-        request_item_id
-    )
+    try:
+        delete_purchase_request_item(request_item_id)
+    except ValueError as error:
+        flash(str(error), "danger")
+        return redirect(url_for("view_purchase_request", request_id=request_id))
 
     flash(
         "Purchase request item removed successfully.",
@@ -2797,10 +2807,14 @@ def reject_purchase_request_route(request_id):
                 purchase_request=purchase_request,
             )
 
-        rejected = reject_purchase_request(
-            request_id,
-            rejection_reason,
-        )
+        try:
+            rejected = reject_purchase_request(
+                request_id,
+                rejection_reason,
+            )
+        except ValueError as error:
+            flash(str(error), "danger")
+            return redirect(request.url)
 
         if rejected:
             # AUDIT LOG: The business action has committed successfully.
@@ -3096,14 +3110,14 @@ def edit_purchase_order_item_cost_route(
         ).strip()
 
         try:
-            unit_cost_value = float(unit_cost)
+            unit_cost_value = decimal_value(unit_cost, "Unit cost")
 
             if unit_cost_value < 0:
                 raise ValueError
 
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Unit cost must be zero or greater.",
+                str(error) or "Unit cost must be zero or greater.",
                 "danger",
             )
 
@@ -3113,10 +3127,14 @@ def edit_purchase_order_item_cost_route(
                 purchase_order_item=purchase_order_item,
             )
 
-        update_purchase_order_item_cost(
-            purchase_order_item_id,
-            unit_cost_value,
-        )
+        try:
+            update_purchase_order_item_cost(
+                purchase_order_item_id,
+                unit_cost_value,
+            )
+        except ValueError as error:
+            flash(str(error), "danger")
+            return redirect(request.url)
 
         flash(
             "Purchase order item cost updated successfully.",
@@ -3245,9 +3263,10 @@ def receive_purchase_order(purchase_order_id):
     # GET PURCHASE ORDER
     # ======================================================
 
-    purchase_order = get_receivable_purchase_order_by_id(
-        purchase_order_id
-    )
+    submission_id = request.form.get("submission_id", "") if request.method == "POST" else str(uuid.uuid4())
+    # Completed POs must still reach repository idempotency validation on POST.
+    purchase_order = (get_purchase_order_by_id(purchase_order_id) if request.method == "POST"
+                      else get_receivable_purchase_order_by_id(purchase_order_id))
 
     if not purchase_order:
 
@@ -3310,6 +3329,7 @@ def receive_purchase_order(purchase_order_id):
                 purchase_order=purchase_order,
                 items=items,
                 warehouses=warehouses,
+                submission_id=submission_id,
             )
 
 
@@ -3330,6 +3350,7 @@ def receive_purchase_order(purchase_order_id):
                 purchase_order=purchase_order,
                 items=items,
                 warehouses=warehouses,
+                submission_id=submission_id,
             )
 
 
@@ -3356,25 +3377,11 @@ def receive_purchase_order(purchase_order_id):
 
         received_items = {}
 
-        for item in items:
-
-            purchase_order_item_id = item[
-                "purchase_order_item_id"
-            ]
-
-            field_name = (
-                f"quantity_received_"
-                f"{purchase_order_item_id}"
-            )
-
-            quantity = request.form.get(
-                field_name,
-                "0",
-            ).strip()
-
-            received_items[
-                purchase_order_item_id
-            ] = quantity
+        # Read the original submitted item keys, including items since fully
+        # received, so a retry can match its original persisted delivery.
+        for field_name in request.form:
+            if field_name.startswith("quantity_received_"):
+                received_items[field_name.removeprefix("quantity_received_")] = request.form.get(field_name, "0").strip()
 
 
         # ==================================================
@@ -3398,6 +3405,7 @@ def receive_purchase_order(purchase_order_id):
                 received_by=session["user_id"],
                 received_items=received_items,
                 notes=notes or None,
+                submission_id=submission_id,
             )
 
         except ValueError as error:
@@ -3412,6 +3420,7 @@ def receive_purchase_order(purchase_order_id):
                 purchase_order=purchase_order,
                 items=items,
                 warehouses=warehouses,
+                submission_id=submission_id,
             )
 
 
@@ -3425,7 +3434,7 @@ def receive_purchase_order(purchase_order_id):
         )
 
         return redirect(
-            url_for("goods_receipts")
+            url_for("view_goods_receipt", receipt_id=receipt_id)
         )
 
 
@@ -3438,6 +3447,7 @@ def receive_purchase_order(purchase_order_id):
         purchase_order=purchase_order,
         items=items,
         warehouses=warehouses,
+        submission_id=submission_id,
     )
 
 
