@@ -26,6 +26,8 @@ Stock Movement History
 </div>
 
 
+<p class="small text-muted">Date filters include the whole selected day and use the database's recorded time.</p>
+{% include 'inventory/stock/report_filters.html' %}
 <div class="card shadow-sm border-0">
 
     <div class="card-body">
@@ -42,6 +44,7 @@ Stock Movement History
                         <th>Warehouse</th>
                         <th>Type</th>
                         <th>Quantity</th>
+                        <th>Reference</th>
                         <th>Notes</th>
                         <th>User</th>
                     </tr>
@@ -138,6 +141,18 @@ Stock Movement History
 
 
                             <td>
+                                {% if movement.reference_type == 'GOODS_RECEIPT' %}
+                                    {% if movement.source_receipt_id and has_permission('procurement.view') %}
+                                        <a href="{{ url_for('view_goods_receipt', receipt_id=movement.source_receipt_id) }}">{{ movement.receipt_number }}</a>
+                                    {% else %}
+                                        {{ movement.receipt_number or 'Goods Receipt' }}{% if not movement.receipt_number and movement.reference_id is not none %} #{{ movement.reference_id }} (source unavailable){% endif %}
+                                    {% endif %}
+                                {% else %}
+                                    {{ movement.reference_type.replace('_', ' ').title() if movement.reference_type else '-' }}{% if movement.reference_id is not none %} #{{ movement.reference_id }}{% endif %}
+                                {% endif %}
+                            </td>
+
+                            <td>
                                 {{ movement.notes or '-' }}
                             </td>
 
@@ -153,7 +168,7 @@ Stock Movement History
                         <tr>
 
                             <td
-                                colspan="7"
+                                colspan="8"
                                 class="text-center text-muted py-4"
                             >
                                 No stock movements found.
@@ -173,4 +188,5 @@ Stock Movement History
 
 </div>
 
+{% include 'inventory/stock/report_pagination.html' %}
 {% endblock %}

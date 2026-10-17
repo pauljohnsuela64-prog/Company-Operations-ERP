@@ -13,9 +13,10 @@ def get_all_stock():
         cursor.execute(
             """
             SELECT
-                s.item_id,
+                i.item_id,
                 s.warehouse_id,
-                s.quantity,
+                COALESCE(s.quantity, 0) AS quantity,
+                s.item_id IS NOT NULL AS has_stock_record,
 
                 i.item_code,
                 i.item_name,
@@ -25,13 +26,11 @@ def get_all_stock():
                 w.warehouse_code,
                 w.warehouse_name
 
-            FROM inventory_stock s
-
-            JOIN inventory_items i
-                ON s.item_id = i.item_id
-
-            JOIN warehouses w
-                ON s.warehouse_id = w.warehouse_id
+            FROM inventory_items i
+            LEFT JOIN inventory_stock s ON s.item_id = i.item_id
+            LEFT JOIN warehouses w ON s.warehouse_id = w.warehouse_id
+            WHERE s.item_id IS NOT NULL OR (i.is_active = TRUE
+                AND NOT EXISTS (SELECT 1 FROM stock_movements history WHERE history.item_id=i.item_id))
 
             ORDER BY
                 i.item_name,

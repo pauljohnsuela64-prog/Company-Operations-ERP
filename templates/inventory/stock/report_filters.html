@@ -1,0 +1,19 @@
+<form method="GET" class="row g-2 mb-3">
+    <div class="col-md-3"><label class="form-label" for="report-item">Item</label>
+        <select id="report-item" name="item_id" class="form-select"><option value="">All items</option>
+        {% for item in items %}<option value="{{ item.item_id }}" {% if filters.get('item_id') == item.item_id %}selected{% endif %}>{{ item.item_code }} — {{ item.item_name }}{% if not item.is_active %} (Inactive){% endif %}</option>{% endfor %}</select>
+    </div>
+    <div class="col-md-3"><label class="form-label" for="report-warehouse">Warehouse</label>
+        <select id="report-warehouse" name="warehouse_id" class="form-select"><option value="">All warehouses</option>
+        {% for warehouse in warehouses %}<option value="{{ warehouse.warehouse_id }}" {% if filters.get('warehouse_id') == warehouse.warehouse_id %}selected{% endif %}>{{ warehouse.warehouse_code }} — {{ warehouse.warehouse_name }}{% if not warehouse.is_active %} (Inactive){% endif %}</option>{% endfor %}</select>
+    </div>
+    {% if request.endpoint == 'stock_movement_history' %}
+    <div class="col-md-2"><label class="form-label" for="report-type">Movement type</label><select id="report-type" name="movement_type" class="form-select"><option value="">All types</option>
+    {% for kind in ['IN','OUT','ADJUSTMENT_IN','ADJUSTMENT_OUT'] %}<option value="{{ kind }}" {% if filters.get('movement_type') == kind %}selected{% endif %}>{{ kind.replace('_',' ').title() }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><label class="form-label" for="report-from">From date</label><input id="report-from" class="form-control" type="date" name="date_from" value="{{ filters.get('date_from', request.args.get('date_from', '')) }}"></div>
+    <div class="col-md-2"><label class="form-label" for="report-to">To date</label><input id="report-to" class="form-control" type="date" name="date_to" value="{{ filters.get('date_to', request.args.get('date_to', '')) }}"></div>
+    <div class="col-md-6"><label class="form-label" for="report-search">Search</label><input id="report-search" class="form-control" name="q" maxlength="200" value="{{ filters.get('q', request.args.get('q', '')) }}" placeholder="Item, warehouse, notes, user or reference"></div>
+    {% endif %}
+    <div class="col-md-2"><label class="form-label" for="report-size">Rows per page</label><input id="report-size" class="form-control" name="page_size" type="number" min="1" max="100" value="{{ filters.get('page_size', 50) }}"></div>
+    <div class="col-md-4 d-flex align-items-end gap-2"><button class="btn btn-primary" type="submit">Apply filters</button><a class="btn btn-outline-secondary" href="{{ url_for(request.endpoint) }}">Clear</a></div>
+</form>

@@ -1,0 +1,7 @@
+<nav aria-label="Report pages" class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+    <span>{{ report.total }} records · Page {{ report.page }} of {{ report.pages }}</span>
+    <div class="d-flex gap-2">
+        {% if page_links.get('previous') %}<a class="btn btn-outline-secondary" rel="prev" href="{{ page_links.previous }}">Previous</a>{% endif %}
+        {% if page_links.get('next') %}<a class="btn btn-outline-secondary" rel="next" href="{{ page_links.next }}">Next</a>{% endif %}
+    </div>
+</nav>

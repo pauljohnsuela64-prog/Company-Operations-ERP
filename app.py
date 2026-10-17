@@ -1,3 +1,4 @@
+from inventory_reporting import report_filters, get_movement_page, get_reconciliation_page
 from procurement_validation import decimal_value, currency_amount
 from csrf_security import init_csrf
 from security import configure_security, init_security, begin_session, authenticated, has_permission
@@ -244,7 +245,6 @@ from supplier_repository import (
 
 from stock_repository import (
     get_all_stock,
-    get_stock_movements,
     stock_in,
     stock_out,
 )
@@ -1955,12 +1955,32 @@ def inventory_stock_out():
 @app.route("/inventory/stock/movements")
 @permission_required("inventory.view")
 def stock_movement_history():
-    movements = get_stock_movements()
+    return _inventory_report("inventory/stock/movements.html", get_movement_page, movements=True)
 
-    return render_template(
-        "inventory/stock/movements.html",
-        movements=movements,
-    )
+
+@app.route("/inventory/stock/reconciliation")
+@permission_required("inventory.view")
+def inventory_reconciliation():
+    return _inventory_report("inventory/stock/reconciliation.html", get_reconciliation_page, movements=False)
+
+
+def _inventory_report(template, reader, *, movements):
+    filters = {}
+    status = 200
+    try:
+        filters = report_filters(request.args, movements=movements)
+        report = reader(**filters)
+    except ValueError as error:
+        flash(str(error), "danger")
+        status = 400
+        report = dict(rows=[], total=0, page=1, pages=1, page_size=50)
+    links = {}
+    for label, target in (("previous", report['page'] - 1), ("next", report['page'] + 1)):
+        if 1 <= target <= report['pages']:
+            links[label] = url_for(request.endpoint, **dict(filters, page=target))
+    return render_template(template, movements=report['rows'], report=report,
+                           filters=filters, page_links=links,
+                           items=get_all_inventory_items(), warehouses=get_all_warehouses()), status
 
 
 @app.route("/procurement/suppliers")
