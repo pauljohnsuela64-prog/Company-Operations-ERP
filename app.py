@@ -1090,6 +1090,10 @@ def add_inventory_category():
                 description or None,
             )
 
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/categories/add.html")
+
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
                 flash(
@@ -1162,6 +1166,10 @@ def edit_inventory_category(category_id):
                 category_name,
                 description or None,
             )
+
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/categories/edit.html", category=category)
 
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
@@ -1293,6 +1301,10 @@ def add_warehouse():
                 location or None,
             )
 
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/warehouses/add.html")
+
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
                 flash(
@@ -1364,6 +1376,10 @@ def edit_warehouse(warehouse_id):
                 warehouse_name,
                 location or None,
             )
+
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/warehouses/edit.html", warehouse=warehouse)
 
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
@@ -1486,14 +1502,11 @@ def add_inventory_item():
             )
 
         try:
-            reorder_level_value = float(reorder_level)
+            reorder_level_value = decimal_value(reorder_level, "Reorder level")
 
-            if reorder_level_value < 0:
-                raise ValueError
-
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Reorder level must be zero or greater.",
+                str(error),
                 "danger",
             )
 
@@ -1506,11 +1519,15 @@ def add_inventory_item():
             create_inventory_item(
                 item_code,
                 item_name,
-                int(category_id) if category_id else None,
+                category_id if category_id else None,
                 description or None,
                 unit_of_measure,
                 reorder_level_value,
             )
+
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/items/add.html", categories=categories)
 
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
@@ -1551,7 +1568,8 @@ def edit_inventory_item(item_id):
         flash("Inventory item not found.", "danger")
         return redirect(url_for("inventory_items"))
 
-    categories = get_all_inventory_categories()
+    categories = [category for category in get_all_inventory_categories()
+                  if category["is_active"] or category["category_id"] == item["category_id"]]
 
     if request.method == "POST":
         item_code = request.form.get(
@@ -1597,14 +1615,11 @@ def edit_inventory_item(item_id):
             )
 
         try:
-            reorder_level_value = float(reorder_level)
+            reorder_level_value = decimal_value(reorder_level, "Reorder level")
 
-            if reorder_level_value < 0:
-                raise ValueError
-
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Reorder level must be zero or greater.",
+                str(error),
                 "danger",
             )
 
@@ -1619,11 +1634,15 @@ def edit_inventory_item(item_id):
                 item_id,
                 item_code,
                 item_name,
-                int(category_id) if category_id else None,
+                category_id if category_id else None,
                 description or None,
                 unit_of_measure,
                 reorder_level_value,
             )
+
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/items/edit.html", item=item, categories=categories)
 
         except Exception as error:
             if getattr(error, "errno", None) == 1062:

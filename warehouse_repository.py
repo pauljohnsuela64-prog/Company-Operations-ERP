@@ -1,3 +1,4 @@
+from inventory_validation import warehouse_fields
 from database import get_connection
 
 
@@ -60,6 +61,7 @@ def create_warehouse(
     warehouse_name,
     location=None,
 ):
+    warehouse_code, warehouse_name, location = warehouse_fields(warehouse_code, warehouse_name, location)
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -98,10 +100,15 @@ def update_warehouse(
     warehouse_name,
     location=None,
 ):
+    warehouse_code, warehouse_name, location = warehouse_fields(warehouse_code, warehouse_name, location)
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        cursor.execute("SELECT warehouse_id FROM warehouses WHERE warehouse_id = %s FOR UPDATE", (warehouse_id,))
+        if not cursor.fetchone():
+            raise ValueError("Warehouse no longer exists.")
         cursor.execute(
             """
             UPDATE warehouses

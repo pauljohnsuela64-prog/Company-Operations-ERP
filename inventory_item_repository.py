@@ -1,3 +1,4 @@
+from inventory_validation import item_fields, lock_assignment_category
 from database import get_connection
 
 
@@ -71,10 +72,14 @@ def create_inventory_item(
     unit_of_measure,
     reorder_level,
 ):
+    item_code, item_name, category_id, description, unit_of_measure, reorder_level = item_fields(
+        item_code, item_name, category_id, description, unit_of_measure, reorder_level)
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_assignment_category(cursor, category_id)
         cursor.execute(
             """
             INSERT INTO inventory_items (
@@ -118,10 +123,18 @@ def update_inventory_item(
     unit_of_measure,
     reorder_level,
 ):
+    item_code, item_name, category_id, description, unit_of_measure, reorder_level = item_fields(
+        item_code, item_name, category_id, description, unit_of_measure, reorder_level)
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        cursor.execute("SELECT category_id FROM inventory_items WHERE item_id = %s FOR UPDATE", (item_id,))
+        existing = cursor.fetchone()
+        if not existing:
+            raise ValueError("Inventory item no longer exists.")
+        lock_assignment_category(cursor, category_id, existing[0])
         cursor.execute(
             """
             UPDATE inventory_items
