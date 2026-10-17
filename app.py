@@ -17,7 +17,7 @@ from audit_log_repository import (
     get_filtered_audit_logs,
 )
 
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, localcontext
 
 from payroll_workflow_repository import (
     approve_payroll_period,
@@ -208,6 +208,7 @@ from goods_receipt_repository import (
 from purchase_order_repository import (
     create_purchase_order_from_request,
     get_all_purchase_orders,
+    get_purchase_orders_by_request,
     get_purchase_order_by_id,
     get_purchase_order_item_by_id,
     get_purchase_order_items,
@@ -2250,10 +2251,15 @@ def view_purchase_request(request_id):
         request_id
     )
 
+    linked_orders = get_purchase_orders_by_request(request_id)
+    active_order = next((order for order in linked_orders if order["status"] != "CANCELLED"), None)
+
     return render_template(
         "procurement/requests/view.html",
         purchase_request=purchase_request,
         items=items,
+        linked_orders=linked_orders,
+        active_order=active_order,
     )
 
 
@@ -2889,6 +2895,15 @@ def create_purchase_order(request_id):
             )
         )
 
+    existing_orders = get_purchase_orders_by_request(request_id)
+    active_order = next((order for order in existing_orders if order["status"] != "CANCELLED"), None)
+    if active_order:
+        flash("A purchase order already exists for this purchase request.", "info")
+        return redirect(url_for("view_purchase_order", purchase_order_id=active_order["purchase_order_id"]))
+    if not get_purchase_request_items(request_id):
+        flash("Purchase request has no items.", "danger")
+        return redirect(url_for("view_purchase_request", request_id=request_id))
+
     suppliers = get_active_suppliers()
 
     if request.method == "POST":
@@ -3037,16 +3052,40 @@ def view_purchase_order(purchase_order_id):
         purchase_order_id
     )
 
-    receipts = get_goods_receipts_by_purchase_order(
-    purchase_order_id
-)
+    receipts = get_goods_receipts_by_purchase_order(purchase_order_id)
+    total = _purchase_order_display_totals(items)
 
     return render_template(
         "procurement/orders/view.html",
         purchase_order=purchase_order,
         items=items,
         receipts=receipts,
+        total=total,
     )
+
+
+def _purchase_order_display_totals(items):
+    # Display line amounts rounded to cents; sum the displayed amounts exactly.
+    with localcontext() as context:
+        context.prec = 40
+        for item in items:
+            item["line_total"] = (item["quantity"] * item["unit_cost"]).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return sum((item["line_total"] for item in items), Decimal("0.00"))
+
+
+@app.route("/procurement/orders/<int:purchase_order_id>/print")
+@permission_required("procurement.view")
+def print_purchase_order(purchase_order_id):
+    purchase_order = get_purchase_order_by_id(purchase_order_id)
+    if not purchase_order:
+        flash("Purchase order not found.", "danger")
+        return redirect(url_for("purchase_orders"))
+    items = get_purchase_order_items(purchase_order_id)
+    supplier = get_supplier_by_id(purchase_order["supplier_id"])
+    return render_template(
+        "procurement/orders/print.html", purchase_order=purchase_order,
+        supplier=supplier or {}, items=items, total=_purchase_order_display_totals(items))
 
 
 @app.route(
@@ -3205,7 +3244,7 @@ def send_purchase_order_route(purchase_order_id):
     # # Show result message
     if sent:
         flash(
-            "Purchase order sent successfully.",
+            "Purchase order marked as sent (manually issued).",
             "success",
         )
     else:

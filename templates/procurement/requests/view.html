@@ -102,6 +102,7 @@ Purchase Request
         <!-- CREATE PURCHASE ORDER -->
         {% if
             purchase_request.status == 'APPROVED'
+            and not active_order and items
             and has_permission('procurement.orders.manage')
         %}
 
@@ -131,6 +132,21 @@ Purchase Request
 </div>
 
 
+
+{% if linked_orders %}
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <h5>Linked Purchase Orders</h5>
+        {% for order in linked_orders %}
+        <div class="mb-2">
+            <a href="{{ url_for('view_purchase_order', purchase_order_id=order.purchase_order_id) }}">{{ order.po_number }}</a>
+            {% set badge = {'DRAFT':'secondary', 'SENT':'primary', 'PARTIALLY_RECEIVED':'warning', 'RECEIVED':'success', 'CANCELLED':'danger'} %}
+            <span class="badge text-bg-{{ badge.get(order.status, 'dark') }}">{{ order.status.replace('_', ' ').title() }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 
 <!-- PURCHASE REQUEST DETAILS -->
 <div class="card shadow-sm border-0 mb-4">

@@ -1,0 +1,84 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ purchase_order.po_number }} — Purchase Order</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; color: #17212b; background: #eef1f4; font: 14px/1.5 Arial, sans-serif; }
+        .toolbar { max-width: 1000px; margin: 20px auto; display: flex; gap: 18px; align-items: center; }
+        button { padding: 9px 18px; cursor: pointer; }
+        main { max-width: 1000px; margin: 20px auto; padding: 40px; background: white; }
+        header { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #17212b; padding-bottom: 20px; }
+        h1 { font-size: 27px; margin: 0 0 8px; }
+        h2 { font-size: 15px; margin-top: 24px; }
+        p { margin: 4px 0; }
+        .muted { color: #536171; }
+        .details { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 26px; }
+        dl { margin: 0; }
+        dt { font-weight: bold; }
+        dd { margin: 0 0 8px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 8px; border-bottom: 1px solid #c7ced6; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+        th { background: #f1f4f7; }
+        .number { text-align: right; white-space: nowrap; }
+        tfoot th, tfoot td { border-top: 2px solid #17212b; font-weight: bold; }
+        .notes { white-space: pre-wrap; overflow-wrap: anywhere; }
+        @page { size: A4; margin: 15mm; }
+        @media print {
+            body { background: white; font-size: 10pt; color: black; }
+            .toolbar { display: none; }
+            main { margin: 0; padding: 0; max-width: none; }
+            thead { display: table-header-group; }
+            tfoot { display: table-row-group; }
+            tr { break-inside: avoid; }
+            a { color: inherit; text-decoration: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button type="button" onclick="window.print()">Print Purchase Order</button>
+        <a href="{{ url_for('view_purchase_order', purchase_order_id=purchase_order.purchase_order_id) }}">Back to Purchase Order</a>
+    </div>
+    <main>
+        <header>
+            <div><h1>Purchase Order</h1><p class="muted">Prepared in Company Operations ERP</p></div>
+            <div><strong>{{ purchase_order.po_number }}</strong>
+                <p>{{ purchase_order.status.replace('_', ' ').title() }}{% if purchase_order.status == 'SENT' %} (manually issued){% endif %}</p>
+                {% if purchase_order.status == 'DRAFT' %}<p><strong>DRAFT — Not issued</strong></p>{% endif %}
+                {% if purchase_order.status == 'CANCELLED' %}<p><strong>CANCELLED — Do not fulfil</strong></p>{% endif %}
+            </div>
+        </header>
+        <div class="details">
+            <section>
+                <h2>Supplier</h2>
+                <p><strong>{{ purchase_order.supplier_name }}</strong></p>
+                <p>{{ purchase_order.supplier_code }}</p>
+                {% if supplier.address %}<p class="notes">{{ supplier.address }}</p>{% endif %}
+                {% if supplier.contact_person %}<p>Contact: {{ supplier.contact_person }}</p>{% endif %}
+                {% if supplier.email %}<p>Email: {{ supplier.email }}</p>{% endif %}
+                {% if supplier.phone %}<p>Phone: {{ supplier.phone }}</p>{% endif %}
+            </section>
+            <section>
+                <h2>Order Details</h2>
+                <dl>
+                    <dt>Order Date</dt><dd>{{ purchase_order.order_date or '-' }}</dd>
+                    <dt>Expected Delivery Date</dt><dd>{{ purchase_order.expected_delivery_date or '-' }}</dd>
+                </dl>
+            </section>
+        </div>
+        <table>
+            <thead><tr><th>Item Code</th><th>Description</th><th class="number">Ordered Quantity</th><th>Unit</th><th class="number">Unit Cost (PHP)</th><th class="number">Amount (PHP)</th></tr></thead>
+            <tbody>
+                {% for item in items %}
+                <tr><td>{{ item.item_code }}</td><td>{{ item.item_name }}{% if item.notes %}<div class="notes muted">{{ item.notes }}</div>{% endif %}</td><td class="number">{{ "{:,.2f}".format(item.quantity) }}</td><td>{{ item.unit_of_measure }}</td><td class="number">{{ "{:,.2f}".format(item.unit_cost) }}</td><td class="number">{{ "{:,.2f}".format(item.line_total) }}</td></tr>
+                {% else %}<tr><td colspan="6">No purchase order items.</td></tr>{% endfor %}
+            </tbody>
+            <tfoot><tr><th colspan="5" class="number">Order Total (PHP)</th><td class="number">{{ "{:,.2f}".format(total) }}</td></tr></tfoot>
+        </table>
+        {% if purchase_order.notes %}<section><h2>Notes</h2><p class="notes">{{ purchase_order.notes }}</p></section>{% endif %}
+    </main>
+</body>
+</html>

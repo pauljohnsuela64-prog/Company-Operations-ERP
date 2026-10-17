@@ -243,6 +243,53 @@ def run(port, data_dir):
             post('edit_purchase_order_item_cost_route', {'unit_cost':'1'}, 'DRAFT', purchase_order_id=oid, purchase_order_item_id=oi)
         print('PASS route validation errors and status-race error handling')
 
+        # Step 3: real repository quantities and linked-order navigation rendered
+        # through the existing permission decorators, using only this server.
+        with client.session_transaction() as session:
+            session['permissions'] = ['procurement.view', 'procurement.orders.manage', 'procurement.receipts.manage']
+        rid, oid, oi = order()
+        path = f'/procurement/orders/{oid}'
+        request_path = f'/procurement/requests/{rid}'
+        html = client.get(request_path).get_data(as_text=True)
+        assert po.get_purchase_orders_by_request(rid)[0]['purchase_order_id'] == oid
+        assert f'/procurement/orders/{oid}' in html
+        assert f'/procurement/requests/{rid}/create-order' not in html
+        assert client.get(request_path+'/create-order').location.endswith(path)
+        html = client.get(path).get_data(as_text=True)
+        assert 'Mark as Sent' in html and f'/procurement/orders/{oid}/cancel' in html
+        assert client.post(path+'/send').status_code == 302
+        assert po.get_purchase_order_by_id(oid)['status'] == 'SENT'
+        html = client.get(path).get_data(as_text=True)
+        assert f'/procurement/receipts/{oid}/receive' in html
+        receive(oid, 1, 1, {oi:'4.25'})
+        item = po.get_purchase_order_items(oid)[0]
+        assert item['received_quantity'] == Decimal('4.25') and item['remaining_quantity'] == Decimal('6')
+        html = client.get(path).get_data(as_text=True)
+        assert 'class="received-quantity">4.25 pcs' in html
+        assert 'class="remaining-quantity">6.00 pcs' in html
+        assert f'/procurement/orders/{oid}/cancel' not in html
+        receive(oid, 1, 1, {oi:'6'})
+        item = po.get_purchase_order_items(oid)[0]
+        assert item['received_quantity'] == Decimal('10.25') and item['remaining_quantity'] == 0
+        html = client.get(path).get_data(as_text=True)
+        assert f'/procurement/receipts/{oid}/receive' not in html
+        assert 'Received' in html
+        printable = client.get(path+'/print')
+        assert printable.status_code == 200
+        assert '25.63' in printable.get_data(as_text=True)
+        assert po.get_purchase_order_by_id(oid)['status'] == 'RECEIVED'
+        # Cancelled history remains linked but permits a replacement active PO.
+        rid, oid, oi = order()
+        assert client.post(f'/procurement/orders/{oid}/cancel').status_code == 302
+        html = client.get(f'/procurement/requests/{rid}').get_data(as_text=True)
+        assert 'Cancelled' in html and f'/procurement/requests/{rid}/create-order' in html
+        response = client.post(f'/procurement/requests/{rid}/create-order', data={'supplier_id':'1'})
+        assert response.status_code == 302
+        linked = po.get_purchase_orders_by_request(rid)
+        assert len(linked) == 2 and [row['status'] for row in linked] == ['DRAFT','CANCELLED']
+        print('PASS PO UI transitions, linked orders/replacement, receipt quantities and printable totals on real MySQL')
+
+
     print('SUCCESS: procurement checks passed on disposable MySQL; company database never accessed')
 
 
