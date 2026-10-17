@@ -1963,7 +1963,7 @@ def add_supplier():
             )
 
         try:
-            create_supplier(
+            supplier_id = create_supplier(
                 supplier_code,
                 supplier_name,
                 contact_person or None,
@@ -1988,6 +1988,9 @@ def add_supplier():
                 )
 
             raise
+
+        record_audit_event("PROCUREMENT", "CREATE", "SUPPLIER", supplier_id,
+                           f"Supplier {supplier_code} (ID {supplier_id}) created.")
 
         flash(
             "Supplier created successfully.",
@@ -2084,6 +2087,9 @@ def edit_supplier(supplier_id):
 
             raise
 
+        record_audit_event("PROCUREMENT", "UPDATE", "SUPPLIER", supplier_id,
+                           f"Supplier {supplier_code} (ID {supplier_id}) updated.")
+
         flash(
             "Supplier updated successfully.",
             "success",
@@ -2115,6 +2121,10 @@ def change_supplier_status(supplier_id):
         supplier_id,
         new_status,
     )
+
+    record_audit_event("PROCUREMENT", "ACTIVATE" if new_status else "DEACTIVATE",
+                       "SUPPLIER", supplier_id,
+                       f"Supplier {supplier['supplier_code']} (ID {supplier_id}) {'activated' if new_status else 'deactivated'}.")
 
     if new_status:
         flash(
@@ -3010,6 +3020,9 @@ def create_purchase_order(request_id):
                 )
             )
 
+        record_audit_event("PROCUREMENT", "CREATE", "PURCHASE_ORDER", purchase_order_id,
+                           f"Purchase order {po_number} (ID {purchase_order_id}) created.")
+
         flash(
             f"Purchase order {po_number} created successfully.",
             "success",
@@ -3170,6 +3183,9 @@ def edit_purchase_order_item_cost_route(
             flash(str(error), "danger")
             return redirect(request.url)
 
+        record_audit_event("PROCUREMENT", "UPDATE_COST", "PURCHASE_ORDER", purchase_order_id,
+                           f"Purchase order {purchase_order['po_number']} (ID {purchase_order_id}) item {purchase_order_item_id} cost updated.")
+
         flash(
             "Purchase order item cost updated successfully.",
             "success",
@@ -3238,6 +3254,8 @@ def send_purchase_order_route(purchase_order_id):
 
     # # Show result message
     if sent:
+        record_audit_event("PROCUREMENT", "MARK_SENT", "PURCHASE_ORDER", purchase_order_id,
+                           f"Purchase order {purchase_order['po_number']} (ID {purchase_order_id}) manually issued.")
         flash(
             "Purchase order marked as sent (manually issued).",
             "success",
@@ -3429,11 +3447,7 @@ def receive_purchase_order(purchase_order_id):
 
         try:
 
-            (
-                receipt_id,
-                receipt_number,
-                new_status,
-            ) = create_goods_receipt(
+            receipt_result = create_goods_receipt(
                 purchase_order_id=purchase_order_id,
                 warehouse_id=warehouse_id_value,
                 received_by=session["user_id"],
@@ -3441,6 +3455,8 @@ def receive_purchase_order(purchase_order_id):
                 notes=notes or None,
                 submission_id=submission_id,
             )
+
+            receipt_id, receipt_number, new_status = receipt_result
 
         except ValueError as error:
 
@@ -3461,6 +3477,10 @@ def receive_purchase_order(purchase_order_id):
         # ==================================================
         # SUCCESS
         # ==================================================
+
+        if receipt_result.created:
+            record_audit_event("PROCUREMENT", "RECEIVE", "GOODS_RECEIPT", receipt_id,
+                               f"Goods receipt {receipt_number} (ID {receipt_id}) received for purchase order {purchase_order['po_number']} (ID {purchase_order_id}).")
 
         flash(
             f"Goods receipt {receipt_number} saved successfully.",
@@ -3561,6 +3581,17 @@ def cancel_purchase_order_route(purchase_order_id):
         cancel_purchase_order(
             purchase_order_id
         )
+
+        # Identifier lookup is optional and cannot turn a committed cancellation into an error.
+        po_number = str(purchase_order_id)
+        try:
+            order = get_purchase_order_by_id(purchase_order_id)
+            if order:
+                po_number = order["po_number"]
+        except Exception:
+            app.logger.exception("Unable to resolve cancelled purchase order identifier.")
+        record_audit_event("PROCUREMENT", "CANCEL", "PURCHASE_ORDER", purchase_order_id,
+                           f"Purchase order {po_number} (ID {purchase_order_id}) cancelled.")
 
         flash(
             "Purchase order cancelled successfully.",

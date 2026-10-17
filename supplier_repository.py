@@ -98,7 +98,9 @@ def create_supplier(
             ),
         )
 
+        supplier_id = cursor.lastrowid
         connection.commit()
+        return supplier_id
 
     except Exception:
         connection.rollback()

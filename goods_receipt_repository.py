@@ -221,6 +221,14 @@ def _normalize_received_items(received_items):
     return normalized
 
 
+class ReceiptResult(tuple):
+    """Preserve the three-value API while identifying the committing request."""
+    def __new__(cls, receipt_id, receipt_number, status, *, created=False):
+        result = super().__new__(cls, (receipt_id, receipt_number, status))
+        result.created = created
+        return result
+
+
 def _existing_submission(cursor, submission_id, purchase_order_id, warehouse_id,
                          received_by, received_items, notes):
     cursor.execute(
@@ -241,7 +249,7 @@ def _existing_submission(cursor, submission_id, purchase_order_id, warehouse_id,
             or quantities != expected):
         raise ValueError("This submission identifier was already used for different delivery details. Reload the receiving form for a new delivery.")
     cursor.execute("SELECT status FROM purchase_orders WHERE purchase_order_id = %s", (purchase_order_id,))
-    return receipt["receipt_id"], receipt["receipt_number"], cursor.fetchone()["status"]
+    return ReceiptResult(receipt["receipt_id"], receipt["receipt_number"], cursor.fetchone()["status"])
 
 
 def create_goods_receipt(purchase_order_id, warehouse_id, received_by, received_items,
@@ -793,11 +801,7 @@ def _create_goods_receipt_transaction(
 
         connection.commit()
 
-        return (
-            receipt_id,
-            receipt_number,
-            new_status,
-        )
+        return ReceiptResult(receipt_id, receipt_number, new_status, created=True)
 
 
     # ======================================================

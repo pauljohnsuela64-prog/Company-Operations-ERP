@@ -26,7 +26,7 @@ def run(port, data_dir):
         assert Path(cursor.fetchone()[0]).resolve() == data_dir.resolve()
         cursor.execute('CREATE DATABASE erp_procurement_test')
         cursor.execute('USE erp_procurement_test')
-        for name in ('core', 'inventory', 'procurement'):
+        for name in ('core', 'inventory', 'procurement', 'audit_logs'):
             source = (harness.ROOT / 'database' / f'{name}_schema.sql').read_text()
             for statement in re.sub(r'--[^\n]*', '', source).split(';'):
                 statement = statement.strip()
@@ -325,6 +325,52 @@ def run(port, data_dir):
         assert po.send_purchase_order(oid)
         receipt_id,_,_=receive(oid,1,1,{oi:'10.25'})
         assert '25.63' in client.get(f'/procurement/receipts/history/{receipt_id}').get_data(as_text=True)
+        # Step 4C: real committed actions and real audit rows share identifiers.
+        def audit_count():return sql('SELECT COUNT(*) FROM audit_logs',fetch=True)[0][0]
+        def audited(path,data,action,entity,identifier,readable):
+            before=audit_count()
+            assert client.post(path,data=data).status_code==302
+            assert audit_count()==before+1
+            row=sql('SELECT user_id,username,module,action,entity_type,entity_id,description FROM audit_logs ORDER BY audit_log_id DESC LIMIT 1',fetch=True)[0]
+            assert row[:6]==(1,'test','PROCUREMENT',action,entity,str(identifier)),row
+            assert readable in row[6] and str(identifier) in row[6],row
+            assert 'private-address' not in row[6] and 'private-notes' not in row[6]
+        before=audit_count()
+        assert client.post('/procurement/suppliers/add',data={'supplier_code':'AUD','supplier_name':'Audit','address':'private-address'}).status_code==302
+        sid=sql("SELECT supplier_id FROM suppliers WHERE supplier_code='AUD'",fetch=True)[0][0]
+        assert audit_count()==before+1
+        row=sql('SELECT user_id,module,action,entity_type,entity_id,description FROM audit_logs ORDER BY audit_log_id DESC LIMIT 1',fetch=True)[0]
+        assert row[:5]==(1,'PROCUREMENT','CREATE','SUPPLIER',str(sid)) and 'AUD' in row[5] and 'private-address' not in row[5]
+        before=audit_count()
+        assert client.post('/procurement/suppliers/add',data={'supplier_code':'AUD','supplier_name':'Duplicate'}).status_code==200
+        assert audit_count()==before
+        audited(f'/procurement/suppliers/{sid}/edit',{'supplier_code':'AUD','supplier_name':'Changed'},'UPDATE','SUPPLIER',sid,'AUD')
+        audited(f'/procurement/suppliers/{sid}/status',{},'DEACTIVATE','SUPPLIER',sid,'AUD')
+        audited(f'/procurement/suppliers/{sid}/status',{},'ACTIVATE','SUPPLIER',sid,'AUD')
+        rid,iid=draft();assert pr.submit_purchase_request(rid);assert pr.approve_purchase_request(rid,1)
+        before=audit_count()
+        assert client.post(f'/procurement/requests/{rid}/create-order',data={'supplier_id':'1','notes':'private-notes'}).status_code==302
+        created=po.get_purchase_orders_by_request(rid)[0];oid=created['purchase_order_id'];number=created['po_number']
+        assert audit_count()==before+1
+        row=sql('SELECT action,entity_type,entity_id,description FROM audit_logs ORDER BY audit_log_id DESC LIMIT 1',fetch=True)[0]
+        assert row[:3]==('CREATE','PURCHASE_ORDER',str(oid)) and number in row[3] and 'private-notes' not in row[3]
+        oi=po.get_purchase_order_items(oid)[0]['purchase_order_item_id']
+        audited(f'/procurement/orders/{oid}/items/{oi}/edit-cost',{'unit_cost':'3.75'},'UPDATE_COST','PURCHASE_ORDER',oid,number)
+        audited(f'/procurement/orders/{oid}/send',{},'MARK_SENT','PURCHASE_ORDER',oid,number)
+        before=audit_count();client.post(f'/procurement/orders/{oid}/send');assert audit_count()==before
+        rid,oid,oi=order();number=po.get_purchase_order_by_id(oid)['po_number']
+        audited(f'/procurement/orders/{oid}/cancel',{},'CANCEL','PURCHASE_ORDER',oid,number)
+        before=audit_count();client.post(f'/procurement/orders/{oid}/cancel');assert audit_count()==before
+        # Real SQL audit failure cannot undo a successful supplier transaction.
+        sql("CREATE TRIGGER audit_failure BEFORE INSERT ON audit_logs FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='test audit failure'")
+        before=audit_count()
+        try:
+            with patch.object(erp.app.logger,'exception'):
+                assert client.post('/procurement/suppliers/add',data={'supplier_code':'AUD-FAIL','supplier_name':'Audit isolation'}).status_code==302
+            assert sql("SELECT COUNT(*) FROM suppliers WHERE supplier_code='AUD-FAIL'",fetch=True)==[(1,)]
+            assert audit_count()==before
+        finally:sql('DROP TRIGGER audit_failure')
+        print('PASS real supplier and PO audit actions, actors/identifiers, repeated-transition rejection and audit insert failure isolation')
         print('PASS PO UI transitions, linked orders/replacement, receipt quantities and printable totals on real MySQL')
 
 

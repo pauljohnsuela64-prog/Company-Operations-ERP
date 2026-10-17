@@ -25,7 +25,7 @@ def run(port, data_dir):
         assert Path(cur.fetchone()[0]).resolve() == data_dir.resolve()
         cur.execute('CREATE DATABASE erp_receiving_test')
         cur.execute('USE erp_receiving_test')
-        for name in ('core','inventory','procurement'):
+        for name in ('core','inventory','procurement','audit_logs'):
             source=(harness.ROOT/'database'/f'{name}_schema.sql').read_text()
             # Build the pre-upgrade schema to test a real additive migration.
             source=re.sub(r'    submission_id CHAR\(36\)[^\n]*\n', '', source)
@@ -134,7 +134,7 @@ def run(port, data_dir):
         def receipt(oid,oi,qty,token=None,warehouse=1,notes=None):
             return gr.create_goods_receipt(oid,warehouse,1,{oi:qty},notes=notes,submission_id=token or str(uuid.uuid4()))
         def snapshot():
-            return [sql('SELECT * FROM '+table+' ORDER BY 1,2',fetch=True) for table in ('goods_receipts','goods_receipt_items','inventory_stock','stock_movements','purchase_orders','purchase_requests')]
+            return [sql('SELECT * FROM '+table+' ORDER BY 1,2',fetch=True) for table in ('goods_receipts','goods_receipt_items','inventory_stock','stock_movements','purchase_orders','purchase_requests','audit_logs')]
         def receipt_count(oid):
             return sql('SELECT COUNT(*) FROM goods_receipts WHERE purchase_order_id=%s',(oid,),True)[0][0]
         def quantity(oid):
@@ -339,6 +339,10 @@ def run(port, data_dir):
         second=client.post(path,data=form)
         assert first.status_code==302 and first.location==second.location and '/view' not in first.location
         assert receipt_count(oid)==1 and quantity(oid)==Decimal('5')
+        audit_rows=sql("SELECT user_id,username,module,action,entity_type,entity_id,description FROM audit_logs",fetch=True)
+        assert len(audit_rows)==1 and audit_rows[0][:5]==(1,'test','PROCUREMENT','RECEIVE','GOODS_RECEIPT')
+        assert 'GR-' in audit_rows[0][6] and po.get_purchase_order_by_id(oid)['po_number'] in audit_rows[0][6]
+        assert sql('SELECT receipt_id FROM goods_receipts WHERE purchase_order_id=%s',(oid,),True)==[(int(audit_rows[0][5]),)]
         # Fresh form, same quantities: a legitimate delivery that completes the PO.
         token2=re.search(r'name="submission_id" value="([^"]+)"',client.get(path).get_data(as_text=True)).group(1)
         assert token2!=token
@@ -347,6 +351,43 @@ def run(port, data_dir):
         fourth=client.post(path,data=form)
         assert third.status_code==302 and third.location==fourth.location
         assert receipt_count(oid)==2 and quantity(oid)==Decimal('10')
+        assert sql("SELECT COUNT(*) FROM audit_logs WHERE action='RECEIVE'",fetch=True)==[(2,)]
+        # Independent clients concurrently replay one UUID through the actual route.
+        _,concurrent_oid,concurrent_oi=order()
+        concurrent_path=f'/procurement/receipts/{concurrent_oid}/receive'
+        concurrent_form={'submission_id':str(uuid.uuid4()),'warehouse_id':'1',f'quantity_received_{concurrent_oi}':'10'}
+        clients=[csrf_client(erp.app) for _ in range(2)]
+        for other in clients:
+            with other.session_transaction() as mapping:stamp_session(erp.app,mapping,erp.get_authorization_state(1))
+        before_events=sql('SELECT COUNT(*) FROM audit_logs',fetch=True)[0][0]
+        results=parallel(*(lambda c=c:c.post(concurrent_path,data=concurrent_form) for c in clients))
+        assert all(response.status_code==302 for response in results)
+        assert receipt_count(concurrent_oid)==1 and quantity(concurrent_oid)==Decimal('10')
+        assert sql('SELECT COUNT(*) FROM audit_logs',fetch=True)==[(before_events+1,)]
+        # SQL audit failure leaves receiving committed; replay must not add an event.
+        _,failure_oid,failure_oi=order()
+        failure_path=f'/procurement/receipts/{failure_oid}/receive'
+        failure_form={'submission_id':str(uuid.uuid4()),'warehouse_id':'1',f'quantity_received_{failure_oi}':'1'}
+        sql("CREATE TRIGGER receiving_audit_failure BEFORE INSERT ON audit_logs FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='test audit failure'")
+        before_events=sql('SELECT COUNT(*) FROM audit_logs',fetch=True)[0][0]
+        try:
+            with patch.object(erp.app.logger,'exception'):
+                assert client.post(failure_path,data=failure_form).status_code==302
+            assert quantity(failure_oid)==Decimal('1') and receipt_count(failure_oid)==1
+            assert sql('SELECT COUNT(*) FROM audit_logs',fetch=True)==[(before_events,)]
+        finally:sql('DROP TRIGGER receiving_audit_failure')
+        assert client.post(failure_path,data=failure_form).status_code==302
+        assert sql('SELECT COUNT(*) FROM audit_logs',fetch=True)==[(before_events,)]
+        # Failed stock movement rolls back the receipt and never emits RECEIVE.
+        _,rollback_oid,rollback_oi=order()
+        rollback_form={'submission_id':str(uuid.uuid4()),'warehouse_id':'1',f'quantity_received_{rollback_oi}':'1'}
+        before_rollback=snapshot()
+        sql("CREATE TRIGGER receiving_write_failure BEFORE INSERT ON stock_movements FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='test rollback'")
+        try:
+            assert client.post(f'/procurement/receipts/{rollback_oid}/receive',data=rollback_form).status_code==200
+            assert snapshot()==before_rollback
+        finally:sql('DROP TRIGGER receiving_write_failure')
+        print('PASS real RECEIVE audit identity, sequential/concurrent UUID deduplication, distinct deliveries, rollback and audit failure isolation')
         before=snapshot()
         changed=dict(form,notes='changed')
         assert client.post(path,data=changed).status_code==200
