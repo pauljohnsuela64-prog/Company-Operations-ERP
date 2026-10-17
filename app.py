@@ -1,3 +1,4 @@
+from csrf_security import init_csrf
 from security import configure_security, init_security, begin_session, authenticated, has_permission
 import os
 from functools import wraps
@@ -326,6 +327,7 @@ app = Flask(__name__)
 
 configure_security(app)
 init_security(app, lambda user_id: get_authorization_state(user_id))
+init_csrf(app)
 
 
 def login_required(view_function):
@@ -13622,9 +13624,13 @@ def audit_logs():
 # LOGOUT
 # ==========================================================
 
-@app.route("/logout")
-@login_required
+@app.route("/logout", methods=["GET", "POST"])
 def logout():
+    if request.method == "GET":
+        return render_template("security/logout.html")
+    if not authenticated():
+        flash("Please log in first.", "warning")
+        return redirect(url_for("login"))
 
     # ======================================================
     # AUDIT BEFORE CLEARING SESSION

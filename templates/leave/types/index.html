@@ -162,6 +162,7 @@ Leave Types
                                                 leave_type_id=leave_type.leave_type_id
                                             ) }}"
                                         >
+                    {% include 'partials/csrf_field.html' %}
 
                                             {% if leave_type.is_active %}
 

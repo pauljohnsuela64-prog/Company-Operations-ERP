@@ -10,6 +10,8 @@ from werkzeug.security import generate_password_hash
 import mysql_audit_smoke as harness
 
 
+from security_helpers import csrf_client
+
 def run(port,data_dir):
     options=dict(host='127.0.0.1',port=port,user='root',password='',connection_timeout=3)
     with mysql.connector.connect(**options) as connection:
@@ -49,7 +51,7 @@ def run(port,data_dir):
         stack.enter_context(patch.dict(erp.app.config,TESTING=True))
         stack.enter_context(patch.object(erp.app.logger,'exception'))
         def login(name='operator',password='original-test-password'):
-            client=erp.app.test_client()
+            client=csrf_client(erp.app)
             response=client.post('/login',data={'username':name,'password':password})
             assert response.status_code==302 and response.location.endswith('/dashboard')
             return client
@@ -98,13 +100,52 @@ def run(port,data_dir):
             assert client.get('/procurement/suppliers').location.endswith('/login')
         with patch.object(erp,'get_authorization_state',side_effect=mysql.connector.InterfaceError('isolated outage')):
             assert clients[0].post(f'/procurement/suppliers/{supplier}/status').status_code==503
-            assert clients[0].get('/logout').status_code==302
+            assert clients[0].post('/logout').status_code==302
         assert clients[1].get('/procurement/suppliers').status_code==200
         assert sql('SELECT is_active FROM suppliers WHERE supplier_id=%s',(supplier,),True)==[(1,)]
         assert sql("SELECT COUNT(*) FROM audit_logs WHERE action='LOGOUT'",fetch=True)==[(1,)]
-        assert clients[1].get('/logout').status_code==302
+        assert clients[1].post('/logout').status_code==302
         assert sql("SELECT COUNT(*) FROM audit_logs WHERE action='LOGOUT'",fetch=True)==[(2,)]
         print('PASS idle/absolute expiry, fail-closed outage, logout isolation, and logout audit preservation')
+
+        # Raw browser-style client: no automatic fixture token injection.
+        import time
+        from itsdangerous import URLSafeTimedSerializer
+        def token(response):
+            return re.findall(r'name="csrf_token" value="([^"]+)"', response.get_data(as_text=True))[-1]
+        raw=erp.app.test_client()
+        audit_before=sql('SELECT COUNT(*) FROM audit_logs',fetch=True)
+        login_before=sql('SELECT last_login_at FROM users WHERE user_id=1',fetch=True)
+        assert raw.post('/login',data={'username':'operator','password':'new-test-password'}).status_code==400
+        assert sql('SELECT last_login_at FROM users WHERE user_id=1',fetch=True)==login_before
+        login_token=token(raw.get('/login'))
+        assert raw.post('/login',data={'username':'operator','password':'new-test-password','csrf_token':login_token}).status_code==302
+        current=token(raw.get('/logout'))
+        path=f'/procurement/suppliers/{supplier}/status'
+        assert raw.post(path).status_code==400
+        assert raw.post(path,data={'csrf_token':'invalid'}).status_code==400
+        other=erp.app.test_client()
+        foreign=token(other.get('/login'))
+        assert raw.post(path,data={'csrf_token':foreign}).status_code==400
+        with raw.session_transaction() as mapping:seed=mapping['csrf_token']
+        with patch('itsdangerous.timed.TimestampSigner.get_timestamp',return_value=int(time.time())-3601):
+            expired=URLSafeTimedSerializer(erp.app.secret_key,salt='wtf-csrf-token').dumps(seed)
+        error=raw.post(path,data={'csrf_token':expired})
+        assert error.status_code==400 and 'Resubmit reviewed values' in error.get_data(as_text=True)
+        assert sql('SELECT is_active FROM suppliers WHERE supplier_id=%s',(supplier,),True)==[(1,)]
+        assert sql('SELECT COUNT(*) FROM audit_logs',fetch=True)==audit_before
+        assert raw.post(path,data={'csrf_token':token(error)}).status_code==302
+        assert sql('SELECT is_active FROM suppliers WHERE supplier_id=%s',(supplier,),True)==[(0,)]
+        sql('UPDATE suppliers SET is_active=1 WHERE supplier_id=%s',(supplier,))
+        with raw.session_transaction() as mapping:auth_before={k:v for k,v in mapping.items() if k not in ('csrf_token','_flashes')}
+        fresh=token(raw.get('/logout'))
+        with raw.session_transaction() as mapping:assert {k:v for k,v in mapping.items() if k not in ('csrf_token','_flashes')}==auth_before
+        assert sql('SELECT COUNT(*) FROM audit_logs',fetch=True)==audit_before
+        assert raw.post('/logout').status_code==400
+        assert raw.post('/logout',data={'csrf_token':fresh}).status_code==302
+        assert sql('SELECT COUNT(*) FROM audit_logs',fetch=True)[0][0]==audit_before[0][0]+1
+        print('PASS real CSRF login/logout, missing/invalid/foreign/expired rejection, unchanged business/audit data, and explicit renewal')
+
     print('SUCCESS: security integration passed; no company database accessed')
 
 

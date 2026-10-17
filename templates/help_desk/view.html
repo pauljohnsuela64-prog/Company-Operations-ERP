@@ -256,6 +256,7 @@ Help Desk Ticket
                 ticket_id=ticket.ticket_id
             ) }}"
         >
+                    {% include 'partials/csrf_field.html' %}
 
             <div class="row g-3 align-items-end">
 
@@ -348,6 +349,7 @@ Help Desk Ticket
                         ticket_id=ticket.ticket_id
                     ) }}"
                 >
+                    {% include 'partials/csrf_field.html' %}
 
                     <button
                         type="submit"
@@ -380,6 +382,7 @@ Help Desk Ticket
                     ticket_id=ticket.ticket_id
                 ) }}"
             >
+                    {% include 'partials/csrf_field.html' %}
 
                 <div class="mb-3">
 
@@ -433,6 +436,7 @@ Help Desk Ticket
                     ticket_id=ticket.ticket_id
                 ) }}"
             >
+                    {% include 'partials/csrf_field.html' %}
 
                 <button
                     type="submit"

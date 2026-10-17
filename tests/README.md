@@ -106,3 +106,30 @@ On a test instance:
 3. With over 500 matches, confirm the latest-500 notice and absence of pagination.
 4. Complete a representative action and confirm its row appears after refresh;
    verify an account without `audit_logs.view` cannot open the page.
+
+
+## CSRF regression coverage
+
+Run all Python and JavaScript tests and both available disposable MySQL suites:
+
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -q
+node --test tests/horizontal_navigation.test.cjs
+.venv\Scripts\python.exe tests/mysql_audit_smoke.py
+.venv\Scripts\python.exe tests/mysql_security_smoke.py
+.venv\Scripts\python.exe -m pip check
+```
+
+`security_helpers.CSRFClient` generates a genuine Flask-WTF token for the actual
+client session and submits it as a header. This fixture does not disable CSRF or
+bypass the extension. Rejection tests use unmodified Flask test clients instead.
+The audit integration's real approval, payment and administration routes now all
+submit valid tokens. Security integration also exercises rendered login/logout
+fields and expired-token recovery against synthetic MySQL records, confirming
+rejected requests do not change supplier state, last-login state, or audit counts.
+
+Static coverage checks verify each of the original 86 POST forms plus all three
+new POST form sources includes exactly one shared token partial. Dynamic tests
+reject missing/invalid tokens on all 87 POST-capable routes. A minimal test app
+also covers PUT/PATCH/DELETE and stable receipt-UUID recovery without importing or
+changing the separate procurement branch. No CSRF exemptions are permitted.

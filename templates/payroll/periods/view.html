@@ -44,6 +44,7 @@ Payroll Period
                     ) }}" onsubmit="return confirm(
                         'Generate payroll entries for eligible employees?'
                     );">
+                    {% include 'partials/csrf_field.html' %}
 
             <button type="submit" class="btn btn-outline-primary">
                 Generate Entries
@@ -65,6 +66,7 @@ Payroll Period
                     ) }}" onsubmit="return confirm(
                         'Recalculate payroll using current attendance, leave, earnings, and deductions?'
                     );">
+                    {% include 'partials/csrf_field.html' %}
 
             <button type="submit" class="btn btn-primary">
                 Calculate Monthly Payroll
@@ -79,6 +81,7 @@ Payroll Period
                     ) }}" onsubmit="return confirm(
                         'Submit this payroll for approval? Payroll changes will be locked.'
                     );">
+                    {% include 'partials/csrf_field.html' %}
 
             <button type="submit" class="btn btn-success">
                 Submit for Approval
@@ -105,6 +108,7 @@ Payroll Period
             ) }}" onsubmit="return confirm(
                 'Mark this approved payroll as PAID? This action will finalize payment for all employees.'
             );">
+                    {% include 'partials/csrf_field.html' %}
 
             <button type="submit" class="btn btn-success">
                 Mark as Paid
@@ -132,6 +136,7 @@ Payroll Period
                     ) }}" onsubmit="return confirm(
                         'Approve this payroll? This will finalize all payroll entries.'
                     );">
+                    {% include 'partials/csrf_field.html' %}
 
             <button type="submit" class="btn btn-success">
                 Approve Payroll
@@ -150,6 +155,7 @@ Payroll Period
                     ) }}" onsubmit="return confirm(
                         'Return this payroll to Draft for correction?'
                     );">
+                    {% include 'partials/csrf_field.html' %}
 
             <button type="submit" class="btn btn-outline-warning">
                 Return to Draft

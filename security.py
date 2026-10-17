@@ -85,7 +85,8 @@ def init_security(app, loader):
     @app.before_request
     def refresh_authorization():
         g.authorization = None
-        if request.endpoint in (None, 'static') or 'user_id' not in session:
+        if (request.endpoint in (None, 'static') or 'user_id' not in session
+                or (request.endpoint == 'logout' and request.method in ('GET', 'HEAD'))):
             return None
         now = _now()
         started, seen = session.get('auth_started'), session.get('auth_seen')

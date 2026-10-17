@@ -1,4 +1,4 @@
-from security_helpers import user_state, stamp_session
+from security_helpers import user_state, stamp_session, csrf_client
 """Render navigation without invoking business routes or connecting to a database."""
 
 from contextlib import ExitStack
@@ -155,7 +155,7 @@ class HorizontalNavigationTests(unittest.TestCase):
 
     def test_every_get_route_has_one_active_navigation_destination(self):
         for rule in self.erp.app.url_map.iter_rules():
-            if "GET" not in rule.methods or rule.endpoint in {"static", "index", "login", "logout"}:
+            if "GET" not in rule.methods or rule.endpoint in {"static", "index", "login", "logout", "csrf_token_refresh"}:
                 continue
             path = rule.rule
             for argument in rule.arguments:
@@ -175,7 +175,8 @@ class HorizontalNavigationTests(unittest.TestCase):
         self.assertEqual(nav.breadcrumbs, ['Home', '/', 'Administration', '/', 'Roles & Permissions', '/', 'Current page title'])
         self.assertIn('navigation.tester', html)
         self.assertIn('Test role', html)
-        self.assertIn('href="/logout"', html)
+        self.assertIn('action="/logout"', html)
+        self.assertIn('class="logout-link"', html)
         self.assertIn('Administration', html)
         self.assertIn('Roles &amp; Permissions', html)
         self.assertIn('aria-controls="erp-navigation"', html)

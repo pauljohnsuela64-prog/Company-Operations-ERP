@@ -7,7 +7,7 @@ from unittest.mock import patch, Mock
 
 from flask import Flask, g
 from security import configure_security, credential_marker
-from security_helpers import user_state, stamp_session
+from security_helpers import user_state, stamp_session, csrf_client
 
 
 class SessionSecurityTests(unittest.TestCase):
@@ -28,7 +28,7 @@ class SessionSecurityTests(unittest.TestCase):
         self.loader=self.stack.enter_context(patch.object(self.erp,'get_authorization_state',side_effect=lambda _:self.state))
         self.stack.enter_context(patch.object(self.erp.app.logger,'exception'))
         self.suppliers=self.stack.enter_context(patch.object(self.erp,'get_all_suppliers',return_value=[]))
-        self.client=self.erp.app.test_client()
+        self.client=csrf_client(self.erp.app)
         self.signin(self.client)
 
     def signin(self,client):
@@ -69,7 +69,7 @@ class SessionSecurityTests(unittest.TestCase):
                 with self.client.session_transaction() as session:self.assertNotIn('user_id',session)
 
     def test_permission_revocation_and_role_changes_affect_all_clients(self):
-        second=self.erp.app.test_client()
+        second=csrf_client(self.erp.app)
         self.signin(second)
         self.assertEqual(self.request().status_code,200)
         self.assertEqual(self.request(second).status_code,200)
@@ -81,7 +81,7 @@ class SessionSecurityTests(unittest.TestCase):
         self.assertEqual(self.request().status_code,200)
 
     def test_password_change_invalidates_all_clients_without_exposing_hash(self):
-        second=self.erp.app.test_client()
+        second=csrf_client(self.erp.app)
         self.signin(second)
         with self.client.session_transaction() as session:
             self.assertNotIn('password_hash',session)
@@ -142,12 +142,12 @@ class SessionSecurityTests(unittest.TestCase):
                 self.signin(self.client)
                 self.loader.side_effect=RuntimeError('outage') if outage else lambda _:self.state
                 with patch.object(self.erp,'create_audit_log') as audit:
-                    self.assertTrue(self.client.get('/logout').location.endswith('/login'))
+                    self.assertTrue(self.client.post('/logout').location.endswith('/login'))
                     self.assertEqual(audit.call_args.kwargs['action'],'LOGOUT')
                 with self.client.session_transaction() as session:self.assertNotIn('user_id',session)
 
     def test_static_and_anonymous_requests_do_not_query_authorization(self):
-        anonymous=self.erp.app.test_client()
+        anonymous=csrf_client(self.erp.app)
         self.assertEqual(anonymous.get('/login').status_code,200)
         response=self.client.get('/static/js/navigation.js')
         self.assertEqual(response.status_code,200)
@@ -159,7 +159,7 @@ class SessionSecurityTests(unittest.TestCase):
         import re
         count=0
         for rule in self.erp.app.url_map.iter_rules():
-            if 'POST' not in rule.methods or rule.endpoint=='login':
+            if 'POST' not in rule.methods or rule.endpoint in ('login', 'logout'):
                 continue
             with self.subTest(endpoint=rule.endpoint):
                 path=re.sub(r'<int:[^>]+>', '1', rule.rule)
@@ -175,7 +175,7 @@ class SessionSecurityTests(unittest.TestCase):
         self.assertEqual(response.status_code,401)
 
     def test_real_login_rotates_session_and_stamps_security_metadata(self):
-        anonymous=self.erp.app.test_client()
+        anonymous=csrf_client(self.erp.app)
         with anonymous.session_transaction() as session:session['old']='discard'
         with patch.object(self.erp,'get_user_by_username',return_value=self.state), patch.object(self.erp,'check_password_hash',return_value=True), patch.object(self.erp,'update_last_login') as last:
             response=anonymous.post('/login',data={'username':'test','password':'test'})

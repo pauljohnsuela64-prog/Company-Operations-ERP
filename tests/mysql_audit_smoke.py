@@ -27,6 +27,8 @@ sys.path.insert(0, str(ROOT))
 from test_business_audit import ACTIONS, SECRETS
 
 
+from security_helpers import csrf_client
+
 def run(port, data_dir):
     options = dict(host="127.0.0.1", port=port, user="root", password="", connection_timeout=3)
     server = mysql.connector.connect(**options)
@@ -89,7 +91,7 @@ def run(port, data_dir):
             sql("INSERT INTO role_permissions(role_id,permission_id) VALUES (41,%s)", (pid,))
 
         def client(allowed=True):
-            c = erp.app.test_client()
+            c = csrf_client(erp.app)
             with c.session_transaction() as sess:
                 from security_helpers import user_state, stamp_session
                 state = user_state(user_id=7 if allowed else 8, username="acting.user" if allowed else "denied.user", role_id=41 if allowed else 43)

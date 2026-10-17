@@ -1,4 +1,4 @@
-from security_helpers import user_state, stamp_session
+from security_helpers import user_state, stamp_session, csrf_client
 """Isolated audit regression tests. Run with .venv/Scripts/python -m unittest discover -s tests -v.
 
 Real Flask routes, permission decorators, and audit helper are exercised. Repository
@@ -73,7 +73,7 @@ class BusinessAuditTests(unittest.TestCase):
         self.stack.enter_context(patch.dict(self.erp.app.config, TESTING=True))
         self.stack.enter_context(patch.object(self.erp.app.logger, "exception"))
         self.stack.enter_context(patch.object(self.erp, "render_template", return_value="test page"))
-        self.client = self.erp.app.test_client()
+        self.client = csrf_client(self.erp.app)
 
     def mock(self, name, **kwargs):
         return self.stack.enter_context(patch.object(self.erp, name, **kwargs))
