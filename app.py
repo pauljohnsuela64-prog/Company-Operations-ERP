@@ -1702,6 +1702,7 @@ def inventory_stock():
 )
 @permission_required("inventory.stock.manage")
 def inventory_stock_in():
+    submission_id = request.form.get("submission_id", "") if request.method == "POST" else str(uuid.uuid4())
     items = get_all_inventory_items()
     warehouses = get_all_warehouses()
 
@@ -1748,6 +1749,7 @@ def inventory_stock_in():
                 "inventory/stock/in.html",
                 items=active_items,
                 warehouses=active_warehouses,
+                submission_id=submission_id,
             )
 
         try:
@@ -1767,15 +1769,16 @@ def inventory_stock_in():
                 "inventory/stock/in.html",
                 items=active_items,
                 warehouses=active_warehouses,
+                submission_id=submission_id,
             )
 
         try:
             stock_in(item_id_value, warehouse_id_value, quantity_value,
-                     notes or None, session["user_id"])
+                     notes or None, session["user_id"], submission_id=submission_id)
         except ValueError as error:
             flash(str(error), "danger")
             return render_template("inventory/stock/in.html", items=active_items,
-                                   warehouses=active_warehouses)
+                                   warehouses=active_warehouses, submission_id=submission_id)
 
         flash(
             "Stock added successfully.",
@@ -1788,6 +1791,7 @@ def inventory_stock_in():
         "inventory/stock/in.html",
         items=active_items,
         warehouses=active_warehouses,
+        submission_id=submission_id,
     )
 
 
@@ -1797,6 +1801,7 @@ def inventory_stock_in():
 )
 @permission_required("inventory.stock.manage")
 def inventory_stock_out():
+    submission_id = request.form.get("submission_id", "") if request.method == "POST" else str(uuid.uuid4())
     items = get_all_inventory_items()
     warehouses = get_all_warehouses()
 
@@ -1835,6 +1840,7 @@ def inventory_stock_out():
                 "inventory/stock/out.html",
                 items=active_items,
                 warehouses=active_warehouses,
+                submission_id=submission_id,
             )
 
         try:
@@ -1844,6 +1850,7 @@ def inventory_stock_out():
                 quantity_value,
                 notes or None,
                 session["user_id"],
+                submission_id=submission_id,
             )
 
         except ValueError as error:
@@ -1853,6 +1860,7 @@ def inventory_stock_out():
                 "inventory/stock/out.html",
                 items=active_items,
                 warehouses=active_warehouses,
+                submission_id=submission_id,
             )
 
         flash(
@@ -1866,6 +1874,7 @@ def inventory_stock_out():
         "inventory/stock/out.html",
         items=active_items,
         warehouses=active_warehouses,
+        submission_id=submission_id,
     )
 
 

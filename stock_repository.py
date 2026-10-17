@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+import uuid
 import mysql.connector
 from procurement_validation import decimal_value, validate_notes
 from database import get_connection
@@ -48,15 +50,40 @@ class _RetryableStockError(Exception):
     """Only a pre-commit lock failure with a confirmed rollback may retry."""
 
 
-def stock_in(item_id, warehouse_id, quantity, notes, created_by):
-    _write_stock(item_id, warehouse_id, quantity, notes, created_by, incoming=True)
+@dataclass(frozen=True)
+class StockResult:
+    movement_id: int
+    created: bool
 
 
-def stock_out(item_id, warehouse_id, quantity, notes, created_by):
-    _write_stock(item_id, warehouse_id, quantity, notes, created_by, incoming=False)
+def _existing_submission(cursor, submission_id, item_id, warehouse_id, quantity, notes, created_by, incoming, *, current=False):
+    cursor.execute("SELECT movement_id,item_id,warehouse_id,movement_type,quantity,notes,created_by,reference_type "
+                   "FROM stock_movements WHERE submission_id = %s" + (" FOR UPDATE" if current else ""), (submission_id,))
+    row = cursor.fetchone()
+    if not row:
+        return None
+    expected = (item_id, warehouse_id, 'IN' if incoming else 'OUT', quantity, notes or None,
+                created_by, 'MANUAL_STOCK_IN' if incoming else 'MANUAL_STOCK_OUT')
+    actual = (row['item_id'], row['warehouse_id'], row['movement_type'], row['quantity'],
+              row['notes'] or None, row['created_by'], row['reference_type'])
+    if actual != expected:
+        raise ValueError("This submission identifier was already used for different stock transaction details. Use a new form only for a separate transaction.")
+    return StockResult(row['movement_id'], created=False)
 
 
-def _write_stock(item_id, warehouse_id, quantity, notes, created_by, *, incoming):
+def stock_in(item_id, warehouse_id, quantity, notes, created_by, submission_id=None):
+    return _write_stock(item_id, warehouse_id, quantity, notes, created_by, incoming=True, submission_id=submission_id)
+
+
+def stock_out(item_id, warehouse_id, quantity, notes, created_by, submission_id=None):
+    return _write_stock(item_id, warehouse_id, quantity, notes, created_by, incoming=False, submission_id=submission_id)
+
+
+def _write_stock(item_id, warehouse_id, quantity, notes, created_by, *, incoming, submission_id):
+    try:
+        submission_id = str(uuid.UUID(str(submission_id)))
+    except (ValueError, TypeError, AttributeError):
+        raise ValueError("Missing or invalid submission identifier. Retain the original identifier when retrying a transaction.") from None
     quantity = decimal_value(quantity, "Quantity", positive=True)
     validate_notes(notes, "Stock movement notes")
     identifiers = []
@@ -66,22 +93,42 @@ def _write_stock(item_id, warehouse_id, quantity, notes, created_by, *, incoming
         identifiers.append(int(value))
     for attempt in range(3):
         try:
-            return _stock_transaction(*identifiers, quantity, notes, created_by, incoming=incoming)
+            return _stock_transaction(*identifiers, quantity, notes, created_by, incoming=incoming, submission_id=submission_id)
         except _RetryableStockError:
             if attempt == 2:
                 raise ValueError("Stock is busy. No changes were saved. Please try again later.") from None
         except mysql.connector.Error as error:
-            # Never retry an uncertain commit: manual submissions have no UUID yet.
-            raise ValueError("Stock transaction could not be confirmed. Check movement history before submitting again; contact an administrator if needed.") from error
+            if error.errno == 1062:
+                # A global UUID collision may involve different stock rows.
+                try:
+                    with get_connection() as connection:
+                        cursor = connection.cursor(dictionary=True)
+                        try:
+                            existing = _existing_submission(cursor, submission_id, *identifiers, quantity,
+                                                            notes, created_by, incoming)
+                            if existing:
+                                return existing
+                        finally:
+                            cursor.close()
+                except mysql.connector.Error as lookup_error:
+                    error = lookup_error
+            if error.errno in (1054, 1146):
+                raise ValueError("Manual stock submission schema is unavailable. Ask an administrator to verify the stock UUID migration before retrying.") from error
+            # Do not replay uncertain commits automatically; resolve with the same UUID.
+            raise ValueError("Stock transaction could not be confirmed. Check movement history or retry with the same submission identifier; do not open a new form for this transaction.") from error
 
 
-def _stock_transaction(item_id, warehouse_id, quantity, notes, created_by, *, incoming):
+def _stock_transaction(item_id, warehouse_id, quantity, notes, created_by, *, incoming, submission_id):
     connection = get_connection()
     cursor = None
     committing = False
     try:
         cursor = connection.cursor(dictionary=True)
         connection.start_transaction()
+        existing = _existing_submission(cursor, submission_id, item_id, warehouse_id, quantity,
+                                        notes, created_by, incoming)
+        if existing:
+            return existing
         for table, key, identifier, label in (
                 ("inventory_items", "item_id", item_id, "Inventory item"),
                 ("warehouses", "warehouse_id", warehouse_id, "Warehouse")):
@@ -99,6 +146,11 @@ def _stock_transaction(item_id, warehouse_id, quantity, notes, created_by, *, in
         stock = cursor.fetchone()
         if not stock:
             raise ValueError("No stock exists for this item in the selected warehouse.")
+        # Current read sees a movement committed while this request waited for stock.
+        existing = _existing_submission(cursor, submission_id, item_id, warehouse_id, quantity,
+                                        notes, created_by, incoming, current=True)
+        if existing:
+            return existing
         balance = decimal_value(stock['quantity'], "Warehouse stock balance")
         if not incoming and quantity > balance:
             raise ValueError("Insufficient stock. Stock cannot go below zero.")
@@ -107,11 +159,13 @@ def _stock_transaction(item_id, warehouse_id, quantity, notes, created_by, *, in
         cursor.execute("UPDATE inventory_stock SET quantity = %s WHERE item_id = %s AND warehouse_id = %s",
                        (balance, item_id, warehouse_id))
         cursor.execute("INSERT INTO stock_movements (item_id, warehouse_id, movement_type, quantity, "
-                       "reference_type, reference_id, notes, created_by) VALUES (%s,%s,%s,%s,%s,NULL,%s,%s)",
+                       "reference_type, reference_id, notes, created_by, submission_id) VALUES (%s,%s,%s,%s,%s,NULL,%s,%s,%s)",
                        (item_id, warehouse_id, 'IN' if incoming else 'OUT', quantity,
-                        'MANUAL_STOCK_IN' if incoming else 'MANUAL_STOCK_OUT', notes, created_by))
+                        'MANUAL_STOCK_IN' if incoming else 'MANUAL_STOCK_OUT', notes, created_by, submission_id))
+        movement_id = cursor.lastrowid
         committing = True
         connection.commit()
+        return StockResult(movement_id, created=True)
     except Exception as error:
         # A failed rollback propagates, rather than allowing an automatic replay.
         connection.rollback()

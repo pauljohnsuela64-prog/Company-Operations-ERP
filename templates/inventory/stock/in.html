@@ -28,6 +28,7 @@ Stock In
 
                 <form method="POST">
                     {% include 'partials/csrf_field.html' %}
+                    <input type="hidden" name="submission_id" value="{{ submission_id }}">
 
                     <div class="mb-3">
 

@@ -71,3 +71,58 @@ in a non-company sandbox: double-click/repost a partial and a full delivery,
 retry after a simulated lost response, and then open a new form for a separate
 identical partial delivery. Recheck receipt history, warehouse balances and stock
 movement references. Do not use real company records for verification.
+
+
+# Manual Stock In/Out duplicate protection (Inventory Step 2)
+
+Fresh installations use the nullable ASCII `CHAR(36)` `stock_movements.submission_id`
+and full UNIQUE index `uq_stock_movements_submission` in `inventory_schema.sql`.
+Existing tables are not upgraded by `CREATE TABLE IF NOT EXISTS`.
+
+An authorized operator must perform the following before enabling the new manual
+Stock In/Out code. This is never run by application startup:
+
+1. Back up the target database and verify the backup can be restored. Confirm the
+   exact target host/database and appropriate MySQL 8.0/InnoDB compatibility.
+2. Pause manual Stock In/Out across every worker. Coordinate a maintenance window
+   for stock movements, including receiving, because DDL can wait for metadata locks.
+3. Record historical movement IDs/counts and stock balances. Rehearse the upgrade
+   on a disposable schema, then execute explicitly:
+
+   ```powershell
+   .venv\Scripts\python.exe database/migrations/002_manual_stock_submission.py --host HOST --port 3306 --user MIGRATION_USER --database DATABASE
+   ```
+
+   The password is prompted, not passed on the command line. The script does not
+   read `.env` or choose a database implicitly.
+4. Verify the nullable ASCII `CHAR(36)`/`ascii_bin` column and full single-column
+   UNIQUE index. Re-run the migration to verify repeatability. Historical rows
+   retain NULL and original data; no balances, movement IDs, or reference fields
+   are changed. An interrupted column-only upgrade adds the missing index on rerun.
+   Incompatible existing columns/indexes fail explicitly; investigate rather than
+   replacing constraints or assigning invented UUIDs to historical records.
+5. Deploy the matching code to every worker before resuming manual writes. Verify
+   retry, concurrency, changed-payload rejection, and Procurement compatibility on
+   synthetic data in an isolated test environment. Do not test with company records.
+
+MySQL DDL implicitly commits. Keep the additive column/index during application
+rollback; do not drop them while new code is active. Old code can still insert NULL,
+but such operations have no duplicate protection. Mixed old/new workers are unsafe
+for the new guarantee. A backup/restore rollback must account for all later business
+writes; this script does not perform automatic rollback or data cleanup.
+
+Each manual form now requires a UUID. The same UUID must accompany retries,
+including expired-CSRF recovery. Identical retries match direction, item, warehouse,
+Decimal quantity, normalized blank notes, and actor, then return the original movement
+ID. Changed details with the same key are rejected. A new UUID intentionally permits
+a separate transaction with identical quantities. UUIDs are not authorization tokens.
+The unique index arbitrates cross-item/warehouse collisions; the movement, UUID and
+balance change commit atomically. Goods Receipts continue using their separate UUID
+column; their stock movements leave this new column NULL.
+
+The returned `StockResult` has `movement_id` and `created`. Future central audit
+integration must emit success events only for `created=True`, never for a replay.
+No new central audit events are introduced in Step 2.
+
+Run `tests/mysql_stock_smoke.py` for disposable migration/idempotency and mixed
+receiving tests. No development or production migration is applied by those tests.

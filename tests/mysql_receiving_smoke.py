@@ -28,8 +28,9 @@ def run(port, data_dir):
         for name in ('core','inventory','procurement','audit_logs'):
             source=(harness.ROOT/'database'/f'{name}_schema.sql').read_text()
             # Build the pre-upgrade schema to test a real additive migration.
-            source=re.sub(r'    submission_id CHAR\(36\)[^\n]*\n', '', source)
-            source=re.sub(r'    CONSTRAINT uq_goods_receipts_submission UNIQUE \(submission_id\),\n', '', source)
+            if name == 'procurement':
+                source=re.sub(r'    submission_id CHAR\(36\)[^\n]*\n', '', source)
+                source=re.sub(r'    CONSTRAINT uq_goods_receipts_submission UNIQUE \(submission_id\),\n', '', source)
             for statement in re.sub(r'--[^\n]*','',source).split(';'):
                 statement=statement.strip()
                 if statement and not re.match(r'(CREATE DATABASE|USE)\b',statement,re.I):
