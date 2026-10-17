@@ -1,3 +1,5 @@
+import mysql.connector
+from procurement_validation import decimal_value, validate_notes
 from database import get_connection
 
 
@@ -42,206 +44,86 @@ def get_all_stock():
         connection.close()
 
 
-def stock_in(
-    item_id,
-    warehouse_id,
-    quantity,
-    notes,
-    created_by,
-):
+class _RetryableStockError(Exception):
+    """Only a pre-commit lock failure with a confirmed rollback may retry."""
+
+
+def stock_in(item_id, warehouse_id, quantity, notes, created_by):
+    _write_stock(item_id, warehouse_id, quantity, notes, created_by, incoming=True)
+
+
+def stock_out(item_id, warehouse_id, quantity, notes, created_by):
+    _write_stock(item_id, warehouse_id, quantity, notes, created_by, incoming=False)
+
+
+def _write_stock(item_id, warehouse_id, quantity, notes, created_by, *, incoming):
+    quantity = decimal_value(quantity, "Quantity", positive=True)
+    validate_notes(notes, "Stock movement notes")
+    identifiers = []
+    for value, label in ((item_id, "Item"), (warehouse_id, "Warehouse")):
+        if isinstance(value, bool) or not str(value).isdigit() or not 0 < int(value) <= 2147483647:
+            raise ValueError(f"{label} must be a valid identifier.")
+        identifiers.append(int(value))
+    for attempt in range(3):
+        try:
+            return _stock_transaction(*identifiers, quantity, notes, created_by, incoming=incoming)
+        except _RetryableStockError:
+            if attempt == 2:
+                raise ValueError("Stock is busy. No changes were saved. Please try again later.") from None
+        except mysql.connector.Error as error:
+            # Never retry an uncertain commit: manual submissions have no UUID yet.
+            raise ValueError("Stock transaction could not be confirmed. Check movement history before submitting again; contact an administrator if needed.") from error
+
+
+def _stock_transaction(item_id, warehouse_id, quantity, notes, created_by, *, incoming):
     connection = get_connection()
-    cursor = connection.cursor(dictionary=True)
-
+    cursor = None
+    committing = False
     try:
+        cursor = connection.cursor(dictionary=True)
         connection.start_transaction()
-
-        cursor.execute(
-            """
-            SELECT quantity
-            FROM inventory_stock
-            WHERE item_id = %s
-              AND warehouse_id = %s
-            FOR UPDATE
-            """,
-            (
-                item_id,
-                warehouse_id,
-            ),
-        )
-
+        for table, key, identifier, label in (
+                ("inventory_items", "item_id", item_id, "Inventory item"),
+                ("warehouses", "warehouse_id", warehouse_id, "Warehouse")):
+            cursor.execute(f"SELECT is_active FROM {table} WHERE {key} = %s FOR SHARE", (identifier,))
+            row = cursor.fetchone()
+            if not row or not row['is_active']:
+                raise ValueError(f"{label} does not exist or is inactive.")
+        if incoming:
+            # Reserve missing rows using the same atomic strategy as Goods Receiving.
+            # This zero-balance reservation is rolled back if validation fails.
+            cursor.execute("INSERT INTO inventory_stock (item_id, warehouse_id, quantity) VALUES (%s, %s, 0) "
+                           "ON DUPLICATE KEY UPDATE quantity = quantity", (item_id, warehouse_id))
+        cursor.execute("SELECT quantity FROM inventory_stock WHERE item_id = %s AND warehouse_id = %s FOR UPDATE",
+                       (item_id, warehouse_id))
         stock = cursor.fetchone()
-
-        if stock:
-            cursor.execute(
-                """
-                UPDATE inventory_stock
-                SET quantity = quantity + %s
-                WHERE item_id = %s
-                  AND warehouse_id = %s
-                """,
-                (
-                    quantity,
-                    item_id,
-                    warehouse_id,
-                ),
-            )
-
-        else:
-            cursor.execute(
-                """
-                INSERT INTO inventory_stock (
-                    item_id,
-                    warehouse_id,
-                    quantity
-                )
-                VALUES (%s, %s, %s)
-                """,
-                (
-                    item_id,
-                    warehouse_id,
-                    quantity,
-                ),
-            )
-
-        cursor.execute(
-            """
-            INSERT INTO stock_movements (
-                item_id,
-                warehouse_id,
-                movement_type,
-                quantity,
-                reference_type,
-                reference_id,
-                notes,
-                created_by
-            )
-            VALUES (
-                %s,
-                %s,
-                'IN',
-                %s,
-                'MANUAL_STOCK_IN',
-                NULL,
-                %s,
-                %s
-            )
-            """,
-            (
-                item_id,
-                warehouse_id,
-                quantity,
-                notes,
-                created_by,
-            ),
-        )
-
-        connection.commit()
-
-    except Exception:
-        connection.rollback()
-        raise
-
-    finally:
-        cursor.close()
-        connection.close()
-
-
-
-def stock_out(
-    item_id,
-    warehouse_id,
-    quantity,
-    notes,
-    created_by,
-):
-    connection = get_connection()
-    cursor = connection.cursor(dictionary=True)
-
-    try:
-        connection.start_transaction()
-
-        cursor.execute(
-            """
-            SELECT quantity
-            FROM inventory_stock
-            WHERE item_id = %s
-              AND warehouse_id = %s
-            FOR UPDATE
-            """,
-            (
-                item_id,
-                warehouse_id,
-            ),
-        )
-
-        stock = cursor.fetchone()
-
         if not stock:
-            raise ValueError(
-                "No stock exists for this item in the selected warehouse."
-            )
-
-        if quantity > stock["quantity"]:
-            raise ValueError(
-                "Insufficient stock. Stock cannot go below zero."
-            )
-
-        cursor.execute(
-            """
-            UPDATE inventory_stock
-            SET quantity = quantity - %s
-            WHERE item_id = %s
-              AND warehouse_id = %s
-            """,
-            (
-                quantity,
-                item_id,
-                warehouse_id,
-            ),
-        )
-
-        cursor.execute(
-            """
-            INSERT INTO stock_movements (
-                item_id,
-                warehouse_id,
-                movement_type,
-                quantity,
-                reference_type,
-                reference_id,
-                notes,
-                created_by
-            )
-            VALUES (
-                %s,
-                %s,
-                'OUT',
-                %s,
-                'MANUAL_STOCK_OUT',
-                NULL,
-                %s,
-                %s
-            )
-            """,
-            (
-                item_id,
-                warehouse_id,
-                quantity,
-                notes,
-                created_by,
-            ),
-        )
-
+            raise ValueError("No stock exists for this item in the selected warehouse.")
+        balance = decimal_value(stock['quantity'], "Warehouse stock balance")
+        if not incoming and quantity > balance:
+            raise ValueError("Insufficient stock. Stock cannot go below zero.")
+        balance = decimal_value(balance + quantity if incoming else balance - quantity,
+                                "Resulting warehouse stock balance")
+        cursor.execute("UPDATE inventory_stock SET quantity = %s WHERE item_id = %s AND warehouse_id = %s",
+                       (balance, item_id, warehouse_id))
+        cursor.execute("INSERT INTO stock_movements (item_id, warehouse_id, movement_type, quantity, "
+                       "reference_type, reference_id, notes, created_by) VALUES (%s,%s,%s,%s,%s,NULL,%s,%s)",
+                       (item_id, warehouse_id, 'IN' if incoming else 'OUT', quantity,
+                        'MANUAL_STOCK_IN' if incoming else 'MANUAL_STOCK_OUT', notes, created_by))
+        committing = True
         connection.commit()
-
-    except Exception:
+    except Exception as error:
+        # A failed rollback propagates, rather than allowing an automatic replay.
         connection.rollback()
+        if not committing and isinstance(error, mysql.connector.Error) and error.errno in (1205, 1213):
+            raise _RetryableStockError() from error
         raise
-
     finally:
-        cursor.close()
-        connection.close()
-
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()
 
 
 def get_stock_movements():

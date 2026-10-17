@@ -1751,16 +1751,15 @@ def inventory_stock_in():
             )
 
         try:
+            if not item_id.isdecimal() or not warehouse_id.isdecimal():
+                raise ValueError("Select a valid item and warehouse.")
             item_id_value = int(item_id)
             warehouse_id_value = int(warehouse_id)
-            quantity_value = float(quantity)
+            quantity_value = decimal_value(quantity, "Quantity", positive=True)
 
-            if quantity_value <= 0:
-                raise ValueError
-
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Quantity must be greater than zero.",
+                str(error) or "Quantity must be greater than zero.",
                 "danger",
             )
 
@@ -1770,35 +1769,13 @@ def inventory_stock_in():
                 warehouses=active_warehouses,
             )
 
-        item = get_inventory_item_by_id(
-            item_id_value
-        )
-
-        warehouse = get_warehouse_by_id(
-            warehouse_id_value
-        )
-
-        if not item or not item["is_active"]:
-            flash(
-                "Selected inventory item is invalid or inactive.",
-                "danger",
-            )
-            return redirect(url_for("inventory_stock_in"))
-
-        if not warehouse or not warehouse["is_active"]:
-            flash(
-                "Selected warehouse is invalid or inactive.",
-                "danger",
-            )
-            return redirect(url_for("inventory_stock_in"))
-
-        stock_in(
-            item_id_value,
-            warehouse_id_value,
-            quantity_value,
-            notes or None,
-            session["user_id"],
-        )
+        try:
+            stock_in(item_id_value, warehouse_id_value, quantity_value,
+                     notes or None, session["user_id"])
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/stock/in.html", items=active_items,
+                                   warehouses=active_warehouses)
 
         flash(
             "Stock added successfully.",
@@ -1842,16 +1819,15 @@ def inventory_stock_out():
         notes = request.form.get("notes", "").strip()
 
         try:
+            if not item_id.isdecimal() or not warehouse_id.isdecimal():
+                raise ValueError("Select a valid item and warehouse.")
             item_id_value = int(item_id)
             warehouse_id_value = int(warehouse_id)
-            quantity_value = float(quantity)
+            quantity_value = decimal_value(quantity, "Quantity", positive=True)
 
-            if quantity_value <= 0:
-                raise ValueError
-
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Item, warehouse, and a quantity greater than zero are required.",
+                str(error) or "Item, warehouse, and a quantity greater than zero are required.",
                 "danger",
             )
 
