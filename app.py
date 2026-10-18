@@ -1,3 +1,4 @@
+from inventory_reporting import report_filters, get_movement_page, get_reconciliation_page
 from procurement_validation import decimal_value, currency_amount
 from csrf_security import init_csrf
 from security import configure_security, init_security, begin_session, authenticated, has_permission
@@ -244,7 +245,6 @@ from supplier_repository import (
 
 from stock_repository import (
     get_all_stock,
-    get_stock_movements,
     stock_in,
     stock_out,
 )
@@ -1084,11 +1084,15 @@ def add_inventory_category():
             )
 
         try:
-            create_inventory_category(
+            category_id = create_inventory_category(
                 category_code,
                 category_name,
                 description or None,
             )
+
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/categories/add.html")
 
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
@@ -1102,6 +1106,9 @@ def add_inventory_category():
                 )
 
             raise
+
+        record_audit_event("INVENTORY", "CREATE", "INVENTORY_CATEGORY", category_id,
+                           f"Inventory category {category_code} (ID {category_id}) created.")
 
         flash(
             "Inventory category created successfully.",
@@ -1163,6 +1170,10 @@ def edit_inventory_category(category_id):
                 description or None,
             )
 
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/categories/edit.html", category=category)
+
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
                 flash(
@@ -1176,6 +1187,9 @@ def edit_inventory_category(category_id):
                 )
 
             raise
+
+        record_audit_event("INVENTORY", "UPDATE", "INVENTORY_CATEGORY", category_id,
+                           f"Inventory category {category_code} (ID {category_id}) updated.")
 
         flash(
             "Inventory category updated successfully.",
@@ -1204,10 +1218,17 @@ def change_inventory_category_status(category_id):
 
     new_status = not bool(category["is_active"])
 
-    set_inventory_category_active_status(
+    changed = set_inventory_category_active_status(
         category_id,
         new_status,
     )
+
+    if not changed:
+        flash("Inventory category status was not changed. Refresh the page before trying again.", "info")
+        return redirect(url_for("inventory_categories"))
+    record_audit_event("INVENTORY", "ACTIVATE" if new_status else "DEACTIVATE",
+                       "INVENTORY_CATEGORY", category_id,
+                       f"Inventory category {category['category_code']} (ID {category_id}) {'activated' if new_status else 'deactivated'}.")
 
     if new_status:
         flash(
@@ -1287,11 +1308,15 @@ def add_warehouse():
             )
 
         try:
-            create_warehouse(
+            warehouse_id = create_warehouse(
                 warehouse_code,
                 warehouse_name,
                 location or None,
             )
+
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/warehouses/add.html")
 
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
@@ -1305,6 +1330,9 @@ def add_warehouse():
                 )
 
             raise
+
+        record_audit_event("INVENTORY", "CREATE", "WAREHOUSE", warehouse_id,
+                           f"Warehouse {warehouse_code} (ID {warehouse_id}) created.")
 
         flash(
             "Warehouse created successfully.",
@@ -1365,6 +1393,10 @@ def edit_warehouse(warehouse_id):
                 location or None,
             )
 
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/warehouses/edit.html", warehouse=warehouse)
+
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
                 flash(
@@ -1378,6 +1410,9 @@ def edit_warehouse(warehouse_id):
                 )
 
             raise
+
+        record_audit_event("INVENTORY", "UPDATE", "WAREHOUSE", warehouse_id,
+                           f"Warehouse {warehouse_code} (ID {warehouse_id}) updated.")
 
         flash(
             "Warehouse updated successfully.",
@@ -1406,10 +1441,17 @@ def change_warehouse_status(warehouse_id):
 
     new_status = not bool(warehouse["is_active"])
 
-    set_warehouse_active_status(
+    changed = set_warehouse_active_status(
         warehouse_id,
         new_status,
     )
+
+    if not changed:
+        flash("Warehouse status was not changed. Refresh the page before trying again.", "info")
+        return redirect(url_for("warehouses"))
+    record_audit_event("INVENTORY", "ACTIVATE" if new_status else "DEACTIVATE",
+                       "WAREHOUSE", warehouse_id,
+                       f"Warehouse {warehouse['warehouse_code']} (ID {warehouse_id}) {'activated' if new_status else 'deactivated'}.")
 
     if new_status:
         flash(
@@ -1486,14 +1528,11 @@ def add_inventory_item():
             )
 
         try:
-            reorder_level_value = float(reorder_level)
+            reorder_level_value = decimal_value(reorder_level, "Reorder level")
 
-            if reorder_level_value < 0:
-                raise ValueError
-
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Reorder level must be zero or greater.",
+                str(error),
                 "danger",
             )
 
@@ -1503,14 +1542,18 @@ def add_inventory_item():
             )
 
         try:
-            create_inventory_item(
+            item_id = create_inventory_item(
                 item_code,
                 item_name,
-                int(category_id) if category_id else None,
+                category_id if category_id else None,
                 description or None,
                 unit_of_measure,
                 reorder_level_value,
             )
+
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/items/add.html", categories=categories)
 
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
@@ -1525,6 +1568,9 @@ def add_inventory_item():
                 )
 
             raise
+
+        record_audit_event("INVENTORY", "CREATE", "INVENTORY_ITEM", item_id,
+                           f"Inventory item {item_code} (ID {item_id}) created.")
 
         flash(
             "Inventory item created successfully.",
@@ -1551,7 +1597,8 @@ def edit_inventory_item(item_id):
         flash("Inventory item not found.", "danger")
         return redirect(url_for("inventory_items"))
 
-    categories = get_all_inventory_categories()
+    categories = [category for category in get_all_inventory_categories()
+                  if category["is_active"] or category["category_id"] == item["category_id"]]
 
     if request.method == "POST":
         item_code = request.form.get(
@@ -1597,14 +1644,11 @@ def edit_inventory_item(item_id):
             )
 
         try:
-            reorder_level_value = float(reorder_level)
+            reorder_level_value = decimal_value(reorder_level, "Reorder level")
 
-            if reorder_level_value < 0:
-                raise ValueError
-
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Reorder level must be zero or greater.",
+                str(error),
                 "danger",
             )
 
@@ -1619,11 +1663,15 @@ def edit_inventory_item(item_id):
                 item_id,
                 item_code,
                 item_name,
-                int(category_id) if category_id else None,
+                category_id if category_id else None,
                 description or None,
                 unit_of_measure,
                 reorder_level_value,
             )
+
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/items/edit.html", item=item, categories=categories)
 
         except Exception as error:
             if getattr(error, "errno", None) == 1062:
@@ -1639,6 +1687,9 @@ def edit_inventory_item(item_id):
                 )
 
             raise
+
+        record_audit_event("INVENTORY", "UPDATE", "INVENTORY_ITEM", item_id,
+                           f"Inventory item {item_code} (ID {item_id}) updated.")
 
         flash(
             "Inventory item updated successfully.",
@@ -1667,10 +1718,17 @@ def change_inventory_item_status(item_id):
 
     new_status = not bool(item["is_active"])
 
-    set_inventory_item_active_status(
+    changed = set_inventory_item_active_status(
         item_id,
         new_status,
     )
+
+    if not changed:
+        flash("Inventory item status was not changed. Refresh the page before trying again.", "info")
+        return redirect(url_for("inventory_items"))
+    record_audit_event("INVENTORY", "ACTIVATE" if new_status else "DEACTIVATE",
+                       "INVENTORY_ITEM", item_id,
+                       f"Inventory item {item['item_code']} (ID {item_id}) {'activated' if new_status else 'deactivated'}.")
 
     if new_status:
         flash(
@@ -1696,12 +1754,23 @@ def inventory_stock():
         stock_records=stock_records,
     )
 
+def _record_manual_stock_audit(result, action, item_id, warehouse_id, items, warehouses):
+    if not result.created:
+        return
+    item_code = next((item.get("item_code") for item in items if item["item_id"] == item_id), None) or str(item_id)
+    warehouse_code = next((warehouse.get("warehouse_code") for warehouse in warehouses
+                           if warehouse["warehouse_id"] == warehouse_id), None) or str(warehouse_id)
+    record_audit_event("INVENTORY", action, "STOCK_MOVEMENT", result.movement_id,
+                       f"Manual stock movement {result.movement_id}: {action.replace('_', ' ').lower()} for item {item_code} (ID {item_id}) at warehouse {warehouse_code} (ID {warehouse_id}).")
+
+
 @app.route(
     "/inventory/stock/in",
     methods=["GET", "POST"],
 )
 @permission_required("inventory.stock.manage")
 def inventory_stock_in():
+    submission_id = request.form.get("submission_id", "") if request.method == "POST" else str(uuid.uuid4())
     items = get_all_inventory_items()
     warehouses = get_all_warehouses()
 
@@ -1748,19 +1817,19 @@ def inventory_stock_in():
                 "inventory/stock/in.html",
                 items=active_items,
                 warehouses=active_warehouses,
+                submission_id=submission_id,
             )
 
         try:
+            if not item_id.isdecimal() or not warehouse_id.isdecimal():
+                raise ValueError("Select a valid item and warehouse.")
             item_id_value = int(item_id)
             warehouse_id_value = int(warehouse_id)
-            quantity_value = float(quantity)
+            quantity_value = decimal_value(quantity, "Quantity", positive=True)
 
-            if quantity_value <= 0:
-                raise ValueError
-
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Quantity must be greater than zero.",
+                str(error) or "Quantity must be greater than zero.",
                 "danger",
             )
 
@@ -1768,37 +1837,19 @@ def inventory_stock_in():
                 "inventory/stock/in.html",
                 items=active_items,
                 warehouses=active_warehouses,
+                submission_id=submission_id,
             )
 
-        item = get_inventory_item_by_id(
-            item_id_value
-        )
+        try:
+            result = stock_in(item_id_value, warehouse_id_value, quantity_value,
+                              notes or None, session["user_id"], submission_id=submission_id)
+        except ValueError as error:
+            flash(str(error), "danger")
+            return render_template("inventory/stock/in.html", items=active_items,
+                                   warehouses=active_warehouses, submission_id=submission_id)
 
-        warehouse = get_warehouse_by_id(
-            warehouse_id_value
-        )
-
-        if not item or not item["is_active"]:
-            flash(
-                "Selected inventory item is invalid or inactive.",
-                "danger",
-            )
-            return redirect(url_for("inventory_stock_in"))
-
-        if not warehouse or not warehouse["is_active"]:
-            flash(
-                "Selected warehouse is invalid or inactive.",
-                "danger",
-            )
-            return redirect(url_for("inventory_stock_in"))
-
-        stock_in(
-            item_id_value,
-            warehouse_id_value,
-            quantity_value,
-            notes or None,
-            session["user_id"],
-        )
+        _record_manual_stock_audit(result, "STOCK_IN", item_id_value, warehouse_id_value,
+                                   items, warehouses)
 
         flash(
             "Stock added successfully.",
@@ -1811,6 +1862,7 @@ def inventory_stock_in():
         "inventory/stock/in.html",
         items=active_items,
         warehouses=active_warehouses,
+        submission_id=submission_id,
     )
 
 
@@ -1820,6 +1872,7 @@ def inventory_stock_in():
 )
 @permission_required("inventory.stock.manage")
 def inventory_stock_out():
+    submission_id = request.form.get("submission_id", "") if request.method == "POST" else str(uuid.uuid4())
     items = get_all_inventory_items()
     warehouses = get_all_warehouses()
 
@@ -1842,16 +1895,15 @@ def inventory_stock_out():
         notes = request.form.get("notes", "").strip()
 
         try:
+            if not item_id.isdecimal() or not warehouse_id.isdecimal():
+                raise ValueError("Select a valid item and warehouse.")
             item_id_value = int(item_id)
             warehouse_id_value = int(warehouse_id)
-            quantity_value = float(quantity)
+            quantity_value = decimal_value(quantity, "Quantity", positive=True)
 
-            if quantity_value <= 0:
-                raise ValueError
-
-        except ValueError:
+        except ValueError as error:
             flash(
-                "Item, warehouse, and a quantity greater than zero are required.",
+                str(error) or "Item, warehouse, and a quantity greater than zero are required.",
                 "danger",
             )
 
@@ -1859,15 +1911,17 @@ def inventory_stock_out():
                 "inventory/stock/out.html",
                 items=active_items,
                 warehouses=active_warehouses,
+                submission_id=submission_id,
             )
 
         try:
-            stock_out(
+            result = stock_out(
                 item_id_value,
                 warehouse_id_value,
                 quantity_value,
                 notes or None,
                 session["user_id"],
+                submission_id=submission_id,
             )
 
         except ValueError as error:
@@ -1877,7 +1931,11 @@ def inventory_stock_out():
                 "inventory/stock/out.html",
                 items=active_items,
                 warehouses=active_warehouses,
+                submission_id=submission_id,
             )
+
+        _record_manual_stock_audit(result, "STOCK_OUT", item_id_value, warehouse_id_value,
+                                   items, warehouses)
 
         flash(
             "Stock removed successfully.",
@@ -1890,18 +1948,39 @@ def inventory_stock_out():
         "inventory/stock/out.html",
         items=active_items,
         warehouses=active_warehouses,
+        submission_id=submission_id,
     )
 
 
 @app.route("/inventory/stock/movements")
 @permission_required("inventory.view")
 def stock_movement_history():
-    movements = get_stock_movements()
+    return _inventory_report("inventory/stock/movements.html", get_movement_page, movements=True)
 
-    return render_template(
-        "inventory/stock/movements.html",
-        movements=movements,
-    )
+
+@app.route("/inventory/stock/reconciliation")
+@permission_required("inventory.view")
+def inventory_reconciliation():
+    return _inventory_report("inventory/stock/reconciliation.html", get_reconciliation_page, movements=False)
+
+
+def _inventory_report(template, reader, *, movements):
+    filters = {}
+    status = 200
+    try:
+        filters = report_filters(request.args, movements=movements)
+        report = reader(**filters)
+    except ValueError as error:
+        flash(str(error), "danger")
+        status = 400
+        report = dict(rows=[], total=0, page=1, pages=1, page_size=50)
+    links = {}
+    for label, target in (("previous", report['page'] - 1), ("next", report['page'] + 1)):
+        if 1 <= target <= report['pages']:
+            links[label] = url_for(request.endpoint, **dict(filters, page=target))
+    return render_template(template, movements=report['rows'], report=report,
+                           filters=filters, page_links=links,
+                           items=get_all_inventory_items(), warehouses=get_all_warehouses()), status
 
 
 @app.route("/procurement/suppliers")

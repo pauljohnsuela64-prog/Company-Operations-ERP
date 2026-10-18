@@ -1,3 +1,4 @@
+from inventory_validation import category_fields
 from database import get_connection
 
 
@@ -60,6 +61,7 @@ def create_inventory_category(
     category_name,
     description=None,
 ):
+    category_code, category_name, description = category_fields(category_code, category_name, description)
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -81,7 +83,9 @@ def create_inventory_category(
             ),
         )
 
+        category_id = cursor.lastrowid
         connection.commit()
+        return category_id
 
     except Exception:
         connection.rollback()
@@ -98,10 +102,15 @@ def update_inventory_category(
     category_name,
     description=None,
 ):
+    category_code, category_name, description = category_fields(category_code, category_name, description)
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        cursor.execute("SELECT category_id FROM inventory_categories WHERE category_id = %s FOR UPDATE", (category_id,))
+        if not cursor.fetchone():
+            raise ValueError("Inventory category no longer exists.")
         cursor.execute(
             """
             UPDATE inventory_categories
@@ -142,15 +151,18 @@ def set_inventory_category_active_status(
             """
             UPDATE inventory_categories
             SET is_active = %s
-            WHERE category_id = %s
+            WHERE category_id = %s AND is_active <> %s
             """,
             (
                 is_active,
                 category_id,
+                is_active,
             ),
         )
 
+        changed = cursor.rowcount == 1
         connection.commit()
+        return changed
 
     except Exception:
         connection.rollback()

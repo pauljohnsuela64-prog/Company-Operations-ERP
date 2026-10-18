@@ -109,6 +109,9 @@ CREATE TABLE IF NOT EXISTS inventory_stock (
 CREATE TABLE IF NOT EXISTS stock_movements (
     movement_id INT AUTO_INCREMENT PRIMARY KEY,
 
+    submission_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    CONSTRAINT uq_stock_movements_submission UNIQUE (submission_id),
+
     item_id INT NOT NULL,
     warehouse_id INT NOT NULL,
 
