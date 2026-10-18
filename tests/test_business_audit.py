@@ -217,7 +217,10 @@ class BusinessAuditTests(unittest.TestCase):
                 cursor.fetchone.return_value = row
 
         self.stack.enter_context(patch.object(repository, "get_connection", return_value=business))
+        if case.module in {'PAYROLL', 'LEAVE'}:
+            self.stack.enter_context(patch.object(repository, 'lock_payroll_inputs'))
         if case.module == "PAYROLL":
+            self.stack.enter_context(patch.object(repository, 'verify_calculations'))
             self.stack.enter_context(patch.object(repository, "_validate_payroll_ready", return_value={"total_entries": 1}))
         self.operation.side_effect = getattr(repository, case.operation)
         audit_repository = importlib.import_module("audit_log_repository")

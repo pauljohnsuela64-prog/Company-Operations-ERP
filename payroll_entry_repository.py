@@ -1,3 +1,4 @@
+from payroll_freshness import raise_payroll_lock_error, lock_payroll_inputs
 # ==========================================================
 # PAYROLL ENTRY REPOSITORY
 # ==========================================================
@@ -246,6 +247,7 @@ def generate_payroll_entries(
     try:
 
         connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
 
         # ==================================================
@@ -459,9 +461,10 @@ def generate_payroll_entries(
         }
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 

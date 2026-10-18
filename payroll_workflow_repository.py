@@ -1,3 +1,4 @@
+from payroll_freshness import raise_payroll_lock_error, lock_payroll_inputs, verify_calculations
 # ==========================================================
 # PAYROLL WORKFLOW REPOSITORY
 # ==========================================================
@@ -137,65 +138,13 @@ def _validate_payroll_ready(
 
 
     # ======================================================
-    # CHECK FOR ATTENDANCE CHANGED AFTER CALCULATION
+    # VERIFY ALL CALCULATION INPUTS AND RESULTS
     #
-    # If HR edits Attendance after Payroll was calculated,
-    # the payroll must be recalculated before approval.
+    # Compare versioned evidence while holding writer coordination.
+    # Timestamps alone are not authoritative freshness evidence.
     # ==========================================================
 
-    cursor.execute(
-        """
-        SELECT
-            COUNT(*) AS stale_count
-
-        FROM payroll_entries pe
-
-        INNER JOIN attendance_records ar
-            ON pe.employee_id
-            = ar.employee_id
-
-        WHERE
-            pe.payroll_period_id = %s
-
-            AND ar.attendance_date
-                BETWEEN %s AND %s
-
-            AND WEEKDAY(
-                ar.attendance_date
-            ) BETWEEN 0 AND 4
-
-            AND ar.updated_at
-                > pe.calculated_at
-        """,
-        (
-            payroll_period_id,
-            start_date,
-            end_date,
-        ),
-    )
-
-
-    stale_result = (
-        cursor.fetchone()
-    )
-
-
-    stale_count = (
-        stale_result["stale_count"]
-        or 0
-    )
-
-
-    if stale_count > 0:
-
-        raise ValueError(
-            (
-                "Attendance was changed after payroll "
-                "was calculated. Return the payroll to "
-                "Draft and calculate it again before approval."
-            )
-        )
-
+    verify_calculations(cursor, payroll_period_id)
 
     return {
         "total_entries":
@@ -230,6 +179,7 @@ def submit_payroll_for_approval(
     try:
 
         connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
 
         # ==================================================
@@ -319,9 +269,10 @@ def submit_payroll_for_approval(
         return summary
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 
@@ -352,6 +303,7 @@ def return_payroll_to_draft(
     try:
 
         connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
 
         cursor.execute(
@@ -414,9 +366,10 @@ def return_payroll_to_draft(
         connection.commit()
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 
@@ -447,6 +400,7 @@ def approve_payroll_period(
     try:
 
         connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
 
         # ==================================================
@@ -556,9 +510,10 @@ def approve_payroll_period(
         return summary
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 
@@ -588,6 +543,7 @@ def mark_payroll_period_as_paid(
     try:
 
         connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
 
         # ==================================================
@@ -637,6 +593,8 @@ def mark_payroll_period_as_paid(
         # ==================================================
         # VERIFY PAYROLL ENTRIES
         # ==========================================================
+
+        verify_calculations(cursor, payroll_period_id)
 
         cursor.execute(
             """
@@ -751,9 +709,10 @@ def mark_payroll_period_as_paid(
         }
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 

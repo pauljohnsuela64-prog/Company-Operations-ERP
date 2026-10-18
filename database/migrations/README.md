@@ -126,3 +126,28 @@ No new central audit events are introduced in Step 2.
 
 Run `tests/mysql_stock_smoke.py` for disposable migration/idempotency and mixed
 receiving tests. No development or production migration is applied by those tests.
+
+
+# Payroll calculation freshness (004)
+
+Migration `004_payroll_freshness.py` is additive and repeatable. It validates InnoDB
+and existing definitions, adds nullable version/hash evidence without backfilling
+legacy calculations, and provisions a shared HR/Payroll transaction-lock row.
+No migration runs automatically. See `PAYROLL_FRESHNESS_PROPOSAL.md` for the approved
+design, legacy payment restrictions and unresolved salary-calendar policy.
+
+An authorized operator must back up and verify restore, pause Payroll/Attendance/
+Leave writes across every worker, and run the explicit upgrade before deploying
+all coordinated writers. DDL can implicitly commit/wait for metadata locks; rerun
+an interrupted upgrade. Do not remove the additive schema for an application rollback.
+Old/mixed workers do not honor coordination and cannot guarantee freshness.
+
+```powershell
+.venv\Scripts\python.exe database/migrations/004_payroll_freshness.py --host HOST --port 3306 --user MIGRATION_USER --database DATABASE
+```
+
+The script prompts for a password and never reads `.env` or chooses a database
+implicitly. Verify the actual target before invoking it. The current development
+task authorizes disposable testing only, not an actual company database upgrade.
+Legacy APPROVED payment without evidence is blocked; company-approved correction/
+verification is required. Historical PAID records remain unchanged.

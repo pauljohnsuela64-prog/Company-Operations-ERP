@@ -1,3 +1,4 @@
+from payroll_freshness import raise_payroll_lock_error, lock_payroll_inputs
 # ==========================================================
 # PAYROLL PERIOD REPOSITORY
 # ==========================================================
@@ -225,6 +226,7 @@ def create_payroll_period(
     try:
 
         connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
 
         # ==================================================
@@ -305,9 +307,10 @@ def create_payroll_period(
         return payroll_period_id
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 
@@ -332,61 +335,53 @@ def update_payroll_period(
     notes,
     updated_by,
 ):
-
     connection = get_connection()
-
-    cursor = connection.cursor()
-
+    cursor = connection.cursor(dictionary=True)
     try:
-
-        cursor.execute(
-            """
-            UPDATE payroll_periods
-
-            SET
-                period_name = %s,
-                start_date = %s,
-                end_date = %s,
-                pay_date = %s,
-                notes = %s,
-                updated_by = %s
-
-            WHERE
-                payroll_period_id = %s
-                AND status = 'DRAFT'
-            """,
-            (
-                period_name,
-                start_date,
-                end_date,
-                pay_date,
-                notes,
-                updated_by,
-                payroll_period_id,
-            ),
-        )
-
-
-        updated = (
-            cursor.rowcount == 1
-        )
-
-
+        connection.start_transaction()
+        lock_payroll_inputs(cursor)
+        # Match calculation/workflow ordering: period first, then its entries.
+        cursor.execute("""SELECT start_date, end_date, status FROM payroll_periods
+                          WHERE payroll_period_id = %s FOR UPDATE""", (payroll_period_id,))
+        previous = cursor.fetchone()
+        if not previous or previous['status'] != 'DRAFT':
+            connection.rollback()
+            return False
+        dates_changed = (str(previous['start_date']) != str(start_date)
+                         or str(previous['end_date']) != str(end_date))
+        if dates_changed:
+            cursor.execute("""SELECT payroll_entry_id, status FROM payroll_entries
+                              WHERE payroll_period_id = %s ORDER BY payroll_entry_id FOR UPDATE""",
+                           (payroll_period_id,))
+            if any(row['status'] not in ('DRAFT', 'CALCULATED') for row in cursor.fetchall()):
+                raise ValueError('Payroll history requires review. Approved or paid entries cannot be invalidated.')
+        cursor.execute("""UPDATE payroll_periods
+                          SET period_name = %s, start_date = %s, end_date = %s,
+                              pay_date = %s, notes = %s, updated_by = %s
+                          WHERE payroll_period_id = %s AND status = 'DRAFT'""",
+                       (period_name, start_date, end_date, pay_date, notes, updated_by, payroll_period_id))
+        updated = cursor.rowcount == 1
+        if updated and dates_changed:
+            # Clear cached calculations, not compensation snapshots or adjustment history.
+            cursor.execute("""UPDATE payroll_entries SET
+                              status = 'DRAFT', calculated_by = NULL, calculated_at = NULL,
+                              calculation_input_version = NULL, calculation_input_hash = NULL,
+                              scheduled_work_days = 0, present_days = 0, late_days = 0,
+                              absent_days = 0, paid_leave_days = 0, unpaid_leave_days = 0,
+                              half_day_count = 0, unrecorded_days = 0, daily_rate = 0,
+                              regular_pay = 0, additional_earnings = 0, gross_pay = 0,
+                              attendance_deduction = 0, total_deductions = 0, net_pay = 0
+                              WHERE payroll_period_id = %s""", (payroll_period_id,))
         connection.commit()
-
         return updated
-
-
-    except Exception:
-
+    except Exception as error:
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
-
-
     finally:
-
         cursor.close()
         connection.close()
+
 
 
 # ==========================================================
@@ -405,6 +400,8 @@ def cancel_payroll_period(
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
         cursor.execute(
             """
@@ -435,9 +432,10 @@ def cancel_payroll_period(
         return cancelled
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 

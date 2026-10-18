@@ -1,3 +1,4 @@
+from payroll_freshness import raise_payroll_lock_error, lock_payroll_inputs, seal_calculation
 # ==========================================================
 # PAYROLL CALCULATION REPOSITORY
 # ==========================================================
@@ -97,6 +98,7 @@ def calculate_monthly_payroll_period(
     try:
 
         connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
 
         # ==================================================
@@ -230,6 +232,9 @@ def calculate_monthly_payroll_period(
                 )
             )
 
+
+        if any(entry['status'] not in ('DRAFT', 'CALCULATED') for entry in payroll_entries):
+            raise ValueError('Approved or paid payroll entries cannot be recalculated. Review the historical status inconsistency.')
 
         calculated_count = 0
 
@@ -754,6 +759,7 @@ def calculate_monthly_payroll_period(
                 ),
             )
 
+            seal_calculation(cursor, payroll_period_id, entry['payroll_entry_id'])
             calculated_count += 1
 
             total_unrecorded_days += (
@@ -780,9 +786,10 @@ def calculate_monthly_payroll_period(
         }
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 

@@ -37,6 +37,10 @@ ALTER TABLE payroll_entries
     ADD COLUMN attendance_deduction DECIMAL(12,2)
         NOT NULL DEFAULT 0.00,
 
+    ADD COLUMN calculation_input_version SMALLINT UNSIGNED NULL,
+
+    ADD COLUMN calculation_input_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+
     ADD COLUMN calculated_by INT
         NULL,
 

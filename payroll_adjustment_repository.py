@@ -1,3 +1,4 @@
+from payroll_freshness import raise_payroll_lock_error, lock_payroll_inputs
 # ==========================================================
 # PAYROLL ADJUSTMENT REPOSITORY
 # ==========================================================
@@ -172,7 +173,9 @@ def _refresh_payroll_entry_totals(
             additional_earnings = %s,
             gross_pay = %s,
             total_deductions = %s,
-            net_pay = %s
+            net_pay = %s,
+            status = 'DRAFT', calculated_at = NULL, calculated_by = NULL,
+            calculation_input_version = NULL, calculation_input_hash = NULL
 
         WHERE payroll_entry_id = %s
         """,
@@ -325,6 +328,7 @@ def add_payroll_adjustment(
     try:
 
         connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
 
         # ==================================================
@@ -335,6 +339,7 @@ def add_payroll_adjustment(
             """
             SELECT
                 pe.payroll_entry_id,
+                pe.status AS entry_status,
                 pp.status AS period_status
 
             FROM payroll_entries pe
@@ -362,6 +367,9 @@ def add_payroll_adjustment(
                 "Payroll entry not found."
             )
 
+
+        if entry['entry_status'] not in ('DRAFT', 'CALCULATED'):
+            raise ValueError('Approved or paid payroll entries cannot be adjusted. Review the historical status inconsistency.')
 
         if entry["period_status"] != "DRAFT":
 
@@ -421,9 +429,10 @@ def add_payroll_adjustment(
         connection.commit()
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 
@@ -451,6 +460,7 @@ def delete_payroll_adjustment(
     try:
 
         connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
 
         # ==================================================
@@ -461,6 +471,7 @@ def delete_payroll_adjustment(
             """
             SELECT
                 pe.payroll_entry_id,
+                pe.status AS entry_status,
                 pp.status AS period_status
 
             FROM payroll_entries pe
@@ -488,6 +499,9 @@ def delete_payroll_adjustment(
                 "Payroll entry not found."
             )
 
+
+        if entry['entry_status'] not in ('DRAFT', 'CALCULATED'):
+            raise ValueError('Approved or paid payroll entries cannot be adjusted. Review the historical status inconsistency.')
 
         if entry["period_status"] != "DRAFT":
 
@@ -539,9 +553,10 @@ def delete_payroll_adjustment(
         connection.commit()
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 

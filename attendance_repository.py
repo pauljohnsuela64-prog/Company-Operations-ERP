@@ -1,3 +1,4 @@
+from payroll_freshness import raise_payroll_lock_error, lock_payroll_inputs
 # ==========================================================
 # ATTENDANCE REPOSITORY
 # ==========================================================
@@ -152,6 +153,8 @@ def create_attendance_record(
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
         cursor.execute(
             """
@@ -189,9 +192,10 @@ def create_attendance_record(
 
         return cursor.lastrowid
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
     finally:
@@ -220,6 +224,8 @@ def update_attendance_record(
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
         cursor.execute(
             """
@@ -250,9 +256,10 @@ def update_attendance_record(
 
         connection.commit()
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
     finally:

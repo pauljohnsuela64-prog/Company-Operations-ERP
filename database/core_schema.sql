@@ -129,3 +129,9 @@ CREATE TABLE IF NOT EXISTS users (
         REFERENCES roles(role_id)
         ON DELETE RESTRICT
 );
+
+-- Shared HR/Payroll writer coordination; acquire before business row locks.
+CREATE TABLE IF NOT EXISTS payroll_input_guard (
+    guard_id TINYINT NOT NULL PRIMARY KEY
+) ENGINE=InnoDB;
+INSERT IGNORE INTO payroll_input_guard (guard_id) VALUES (1);

@@ -1,3 +1,4 @@
+from payroll_freshness import raise_payroll_lock_error, lock_payroll_inputs
 # ==========================================================
 # LEAVE MANAGEMENT REPOSITORY
 # ==========================================================
@@ -156,6 +157,8 @@ def create_leave_type(
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
         cursor.execute(
             """
@@ -187,9 +190,10 @@ def create_leave_type(
 
         return cursor.lastrowid
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
     finally:
@@ -216,6 +220,8 @@ def update_leave_type(
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
         cursor.execute(
             """
@@ -242,9 +248,10 @@ def update_leave_type(
 
         connection.commit()
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
     finally:
@@ -267,6 +274,8 @@ def set_leave_type_active_status(
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
         cursor.execute(
             """
@@ -282,9 +291,10 @@ def set_leave_type_active_status(
 
         connection.commit()
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
     finally:
@@ -531,6 +541,8 @@ def create_leave_request(
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
         # ==================================================
         # TEMPORARY UNIQUE NUMBER
@@ -617,9 +629,10 @@ def create_leave_request(
         )
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
     finally:
@@ -648,6 +661,7 @@ def approve_leave_request(
     try:
 
         connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
 
         # ==================================================
@@ -886,9 +900,10 @@ def approve_leave_request(
         connection.commit()
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 
@@ -917,6 +932,7 @@ def reject_leave_request(
     try:
 
         connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
 
         # ==================================================
@@ -993,9 +1009,10 @@ def reject_leave_request(
         connection.commit()
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 
@@ -1022,6 +1039,7 @@ def cancel_leave_request(
     try:
 
         connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
 
         # ==================================================
@@ -1092,9 +1110,10 @@ def cancel_leave_request(
         connection.commit()
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 
@@ -1293,6 +1312,7 @@ def approve_leave_request(
     try:
 
         connection.start_transaction()
+        lock_payroll_inputs(cursor)
 
 
         # ==================================================
@@ -1720,9 +1740,10 @@ def approve_leave_request(
         connection.commit()
 
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
 

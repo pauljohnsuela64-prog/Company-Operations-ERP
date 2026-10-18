@@ -6161,14 +6161,18 @@ def add_payroll_period():
 
         try:
 
-            create_payroll_period(
-                period_name=period_name,
-                start_date=start_date_value,
-                end_date=end_date_value,
-                pay_date=pay_date_value,
-                notes=notes or None,
-                created_by=session["user_id"],
-            )
+            try:
+                create_payroll_period(
+                    period_name=period_name,
+                    start_date=start_date_value,
+                    end_date=end_date_value,
+                    pay_date=pay_date_value,
+                    notes=notes or None,
+                    created_by=session["user_id"],
+                )
+            except ValueError as error:
+                flash(str(error), 'danger')
+                return redirect(url_for('add_payroll_period'))
 
 
         except Exception as error:
@@ -6491,6 +6495,9 @@ def edit_payroll_period(
             )
 
 
+        except ValueError as error:
+            flash(str(error), 'danger')
+            return redirect(url_for('edit_payroll_period', payroll_period_id=payroll_period_id))
         except Exception as error:
 
             if getattr(
@@ -6530,7 +6537,7 @@ def edit_payroll_period(
         else:
 
             flash(
-                "Payroll period updated successfully.",
+                "Payroll period updated successfully. If its start or end date changed, previous calculations were cleared; recalculate before submission. Manual adjustment records are retained.",
                 "success",
             )
 
@@ -6597,10 +6604,14 @@ def cancel_payroll_period_route(
         )
 
 
-    cancelled = cancel_payroll_period(
-        payroll_period_id=payroll_period_id,
-        updated_by=session["user_id"],
-    )
+    try:
+        cancelled = cancel_payroll_period(
+            payroll_period_id=payroll_period_id,
+            updated_by=session["user_id"],
+        )
+    except ValueError as error:
+        flash(str(error), 'danger')
+        return redirect(url_for('view_payroll_period', payroll_period_id=payroll_period_id))
 
 
     if cancelled:
@@ -8698,15 +8709,19 @@ def add_attendance():
 
         try:
 
-            create_attendance_record(
-                employee_id=employee_id_value,
-                attendance_date=attendance_date_value,
-                time_in=time_in_value,
-                time_out=time_out_value,
-                status=status,
-                notes=notes or None,
-                created_by=session["user_id"],
-            )
+            try:
+                create_attendance_record(
+                    employee_id=employee_id_value,
+                    attendance_date=attendance_date_value,
+                    time_in=time_in_value,
+                    time_out=time_out_value,
+                    status=status,
+                    notes=notes or None,
+                    created_by=session["user_id"],
+                )
+            except ValueError as error:
+                flash(str(error), 'danger')
+                return redirect(url_for('add_attendance'))
 
         except Exception as error:
 
@@ -9003,16 +9018,20 @@ def edit_attendance(attendance_id):
 
         try:
 
-            update_attendance_record(
-                attendance_id=attendance_id,
-                employee_id=employee_id_value,
-                attendance_date=attendance_date_value,
-                time_in=time_in_value,
-                time_out=time_out_value,
-                status=status,
-                notes=notes or None,
-                updated_by=session["user_id"],
-            )
+            try:
+                update_attendance_record(
+                    attendance_id=attendance_id,
+                    employee_id=employee_id_value,
+                    attendance_date=attendance_date_value,
+                    time_in=time_in_value,
+                    time_out=time_out_value,
+                    status=status,
+                    notes=notes or None,
+                    updated_by=session["user_id"],
+                )
+            except ValueError as error:
+                flash(str(error), 'danger')
+                return redirect(url_for('edit_attendance', attendance_id=attendance_id))
 
         except Exception as error:
 
@@ -9306,13 +9325,17 @@ def add_leave_type():
 
         try:
 
-            create_leave_type(
-                leave_code=leave_code,
-                leave_name=leave_name,
-                description=description or None,
-                annual_entitlement=entitlement_value,
-                is_paid=is_paid,
-            )
+            try:
+                create_leave_type(
+                    leave_code=leave_code,
+                    leave_name=leave_name,
+                    description=description or None,
+                    annual_entitlement=entitlement_value,
+                    is_paid=is_paid,
+                )
+            except ValueError as error:
+                flash(str(error), 'danger')
+                return redirect(url_for('add_leave_type'))
 
         except Exception as error:
 
@@ -9463,14 +9486,18 @@ def edit_leave_type(
 
         try:
 
-            update_leave_type(
-                leave_type_id=leave_type_id,
-                leave_code=leave_code,
-                leave_name=leave_name,
-                description=description or None,
-                annual_entitlement=entitlement_value,
-                is_paid=is_paid,
-            )
+            try:
+                update_leave_type(
+                    leave_type_id=leave_type_id,
+                    leave_code=leave_code,
+                    leave_name=leave_name,
+                    description=description or None,
+                    annual_entitlement=entitlement_value,
+                    is_paid=is_paid,
+                )
+            except ValueError as error:
+                flash(str(error), 'danger')
+                return redirect(url_for('edit_leave_type', leave_type_id=leave_type_id))
 
         except Exception as error:
 
@@ -9550,10 +9577,14 @@ def change_leave_type_status(
     )
 
 
-    set_leave_type_active_status(
-        leave_type_id,
-        new_status,
-    )
+    try:
+        set_leave_type_active_status(
+            leave_type_id,
+            new_status,
+        )
+    except ValueError as error:
+        flash(str(error), 'danger')
+        return redirect(url_for('leave_types'))
 
 
     if new_status:
@@ -9844,18 +9875,22 @@ def add_leave_request():
         # CREATE REQUEST
         # ==========================================================
 
-        (
-            leave_request_id,
-            request_number,
-        ) = create_leave_request(
-            employee_id=employee_id_value,
-            leave_type_id=leave_type_id_value,
-            start_date=start_date_value,
-            end_date=end_date_value,
-            total_days=total_days,
-            reason=reason,
-            requested_by=session["user_id"],
-        )
+        try:
+            (
+                leave_request_id,
+                request_number,
+            ) = create_leave_request(
+                employee_id=employee_id_value,
+                leave_type_id=leave_type_id_value,
+                start_date=start_date_value,
+                end_date=end_date_value,
+                total_days=total_days,
+                reason=reason,
+                requested_by=session["user_id"],
+            )
+        except ValueError as error:
+            flash(str(error), 'danger')
+            return redirect(url_for('add_leave_request'))
 
 
         flash(
