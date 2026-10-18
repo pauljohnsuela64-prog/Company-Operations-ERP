@@ -402,6 +402,7 @@ def update_it_asset(
         )
 
         connection.commit()
+        return cursor.rowcount == 1
 
     except Exception as error:
         connection.rollback()
@@ -557,6 +558,7 @@ def assign_it_asset(
 
 
         connection.commit()
+        return True
 
     except Exception as error:
         connection.rollback()
@@ -1297,6 +1299,7 @@ def retire_it_asset(asset_id):
         )
 
         connection.commit()
+        return True
 
     except Exception:
 
@@ -1368,6 +1371,7 @@ def mark_it_asset_lost(asset_id):
         )
 
         connection.commit()
+        return True
 
     except Exception:
 
@@ -1442,6 +1446,7 @@ def restore_it_asset(asset_id):
         )
 
         connection.commit()
+        return asset['status']
 
     except Exception:
 
@@ -1649,6 +1654,7 @@ def update_it_asset_category(
         )
 
         connection.commit()
+        return cursor.rowcount == 1
 
     except Exception:
 
@@ -1689,6 +1695,7 @@ def set_it_asset_category_active_status(
         )
 
         connection.commit()
+        return cursor.rowcount == 1
 
     except Exception:
 

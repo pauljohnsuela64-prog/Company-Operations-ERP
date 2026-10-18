@@ -149,8 +149,8 @@ Legacy contradictory states/history still fail closed and require reviewed repai
 Metadata edits still use last-writer-wins semantics; no new optimistic edit/version
 policy is added. Direct SQL can bypass application checks, unrelated writers can
 still cause deadlocks, and unknown commit outcomes require operational review.
-Existing central IT business-action audit coverage remains absent as explicitly
-deferred to a later step. This change adds no audit integration.
+Central IT auditing was deferred at Step 2. Step 3 now integrates postcommit
+business-action events; see [IT_ASSET_AUDIT.md](IT_ASSET_AUDIT.md).
 
 Manual acceptance should cover styled desktop/mobile forms and long validation
 feedback, inactive historical choices, native date/number control behavior, inline

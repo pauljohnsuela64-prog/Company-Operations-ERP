@@ -242,7 +242,9 @@ def run(port, data_dir):
         assert c.post('/it/assets/add',data=form).status_code==400
         sql("DELETE rp FROM role_permissions rp JOIN permissions p USING(permission_id) WHERE role_id=1 AND permission_code='it_assets.manage'")
         assert post(edit_path,form).location.endswith('/dashboard') and snapshot()==before
-        assert sql('SELECT COUNT(*) FROM audit_logs',fetch=True)==[(0,)]
+        assert sql('SELECT action,entity_type FROM audit_logs ORDER BY audit_log_id',fetch=True)==[
+            ('CREATE','IT_ASSET'),('UPDATE','IT_ASSET'),('CREATE','IT_ASSET'),
+            ('CREATE','IT_ASSET_MAINTENANCE'),('COMPLETE','IT_ASSET_MAINTENANCE')]
         print('PASS late creation/maintenance rollback, CSRF, viewer denial, real permission revocation and zero unexpected audit writes')
     print('SUCCESS: IT validation tested with synthetic records in disposable MySQL only')
 

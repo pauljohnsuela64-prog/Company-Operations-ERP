@@ -495,6 +495,19 @@ def record_audit_event(
         )
 
 
+def _record_it_asset_audit(action, asset_id, maintenance_id=None, asset_tag=None):
+    entity_type = 'IT_ASSET_MAINTENANCE' if maintenance_id is not None else 'IT_ASSET'
+    entity_id = maintenance_id if maintenance_id is not None else asset_id
+    label = (f'Maintenance {maintenance_id} for IT asset {asset_id}'
+             if maintenance_id is not None else f'IT asset {asset_id}')
+    description = f"{label}: {action.replace('_', ' ').lower()}."
+    if asset_tag is not None:
+        description += f' Identifier: {asset_tag}.'
+    record_audit_event('IT_ASSETS', action, entity_type, entity_id, description,
+                       entity_lookup=None if asset_tag is not None else lambda _: get_it_asset_by_id(asset_id),
+                       identifier_key='asset_tag', preserve_entity_id=True)
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
@@ -6768,12 +6781,15 @@ def assign_it_asset_route(asset_id):
 
     try:
 
-        assign_it_asset(
+        changed = assign_it_asset(
     asset_id=asset_id,
     employee_id=employee_id_value,
     department_id=employee["department_id"],
     assigned_by=session["user_id"],
 )
+        if not changed:
+            raise ValueError('IT asset was not changed. Reload and try again.')
+        _record_it_asset_audit('ASSIGN', asset_id)
 
         flash(
             "IT asset assigned successfully.",
@@ -6808,11 +6824,14 @@ def unassign_it_asset_route(asset_id):
 
     try:
 
-        unassign_it_asset(
+        changed = unassign_it_asset(
     asset_id=asset_id,
     returned_by=session["user_id"],
     assignment_id=request.form.get("assignment_id", ""),
 )
+        if not changed:
+            raise ValueError('IT asset was not changed. Reload and try again.')
+        _record_it_asset_audit('RETURN', asset_id)
 
         flash(
             "IT asset unassigned successfully.",
@@ -6852,10 +6871,13 @@ def add_it_asset_maintenance(asset_id):
     values = {name: request.form.get(name, '').strip() for name in fields}
     if request.method == 'POST':
         try:
-            create_it_asset_maintenance(asset_id=asset_id, created_by=session['user_id'], **values)
+            maintenance_id = create_it_asset_maintenance(asset_id=asset_id, created_by=session['user_id'], **values)
+            if not maintenance_id:
+                raise ValueError('Maintenance record was not created.')
         except ValueError as error:
             flash(str(error), 'danger')
         else:
+            _record_it_asset_audit('CREATE', asset_id, maintenance_id=maintenance_id)
             flash('Maintenance record created successfully.', 'success')
             return redirect(url_for('view_it_asset', asset_id=asset_id))
     return render_template('it_assets/add_maintenance.html', asset=asset, form_values=values)
@@ -6897,6 +6919,10 @@ def complete_it_asset_maintenance_route(
             completed_date,
         )
 
+        if not asset_id:
+            raise ValueError('Maintenance was not completed.')
+        _record_it_asset_audit('COMPLETE', asset_id, maintenance_id=maintenance_id)
+
         flash(
             "Maintenance completed successfully.",
             "success",
@@ -6934,9 +6960,12 @@ def retire_it_asset_route(asset_id):
 
     try:
 
-        retire_it_asset(
+        changed = retire_it_asset(
             asset_id
         )
+        if not changed:
+            raise ValueError('IT asset was not changed. Reload and try again.')
+        _record_it_asset_audit('RETIRE', asset_id)
 
         flash(
             "IT asset retired successfully.",
@@ -6971,9 +7000,12 @@ def mark_it_asset_lost_route(asset_id):
 
     try:
 
-        mark_it_asset_lost(
+        changed = mark_it_asset_lost(
             asset_id
         )
+        if not changed:
+            raise ValueError('IT asset was not changed. Reload and try again.')
+        _record_it_asset_audit('MARK_LOST', asset_id)
 
         flash(
             "IT asset marked as lost.",
@@ -7008,9 +7040,13 @@ def restore_it_asset_route(asset_id):
 
     try:
 
-        restore_it_asset(
+        previous_status = restore_it_asset(
             asset_id
         )
+
+        if previous_status not in ('LOST', 'RETIRED'):
+            raise ValueError('IT asset was not restored. Reload and try again.')
+        _record_it_asset_audit('RECOVER' if previous_status == 'LOST' else 'RESTORE', asset_id)
 
         flash(
             "IT asset restored successfully.",
@@ -7100,7 +7136,7 @@ def add_it_asset_category():
 
         try:
 
-            create_it_asset_category(
+            category_id = create_it_asset_category(
                 category_code,
                 category_name,
                 description or None,
@@ -7121,6 +7157,13 @@ def add_it_asset_category():
 
             raise
 
+
+        if not category_id:
+            flash('Asset category was not created.', 'warning')
+            return redirect(url_for('it_asset_categories'))
+        record_audit_event('IT_ASSETS', 'CREATE', 'IT_ASSET_CATEGORY', category_id,
+                           f'IT asset category {category_id} created.',
+                           entity_lookup=get_it_asset_category_by_id, identifier_key='category_code', preserve_entity_id=True)
 
         flash(
             "Asset category created successfully.",
@@ -7199,7 +7242,7 @@ def edit_it_asset_category(category_id):
 
         try:
 
-            update_it_asset_category(
+            changed = update_it_asset_category(
                 category_id,
                 category_code,
                 category_name,
@@ -7224,6 +7267,13 @@ def edit_it_asset_category(category_id):
 
             raise
 
+
+        if not changed:
+            flash('Asset category was not changed. Reload and try again.', 'warning')
+            return redirect(url_for('it_asset_categories'))
+        record_audit_event('IT_ASSETS', 'UPDATE', 'IT_ASSET_CATEGORY', category_id,
+                           f'IT asset category {category_id} updated.',
+                           entity_lookup=get_it_asset_category_by_id, identifier_key='category_code', preserve_entity_id=True)
 
         flash(
             "Asset category updated successfully.",
@@ -7273,10 +7323,18 @@ def change_it_asset_category_status(category_id):
         category["is_active"]
     )
 
-    set_it_asset_category_active_status(
+    changed = set_it_asset_category_active_status(
         category_id,
         new_status,
     )
+
+    if not changed:
+        flash('Asset category status was not changed. Reload and try again.', 'warning')
+        return redirect(url_for('it_asset_categories'))
+    record_audit_event('IT_ASSETS', 'ACTIVATE' if new_status else 'DEACTIVATE',
+                       'IT_ASSET_CATEGORY', category_id,
+                       f"IT asset category {category_id} " + ('activated.' if new_status else 'deactivated.'),
+                       entity_lookup=get_it_asset_category_by_id, identifier_key='category_code', preserve_entity_id=True)
 
     flash(
         (
@@ -11860,14 +11918,19 @@ def _it_asset_form(asset=None):
         fields = {name: request.form.get(name, 'GOOD' if name == 'condition_status' else '').strip() for name in IT_ASSET_FIELDS}
         try:
             if asset:
-                update_it_asset(asset_id=asset['asset_id'], **fields)
+                if not update_it_asset(asset_id=asset['asset_id'], **fields):
+                    raise ValueError('IT asset was not changed. Reload and try again.')
             else:
                 employee = request.form.get('assigned_employee_id', '').strip()
-                create_it_asset(assigned_employee_id=employee, status='ASSIGNED' if employee else 'AVAILABLE',
+                asset_id = create_it_asset(assigned_employee_id=employee, status='ASSIGNED' if employee else 'AVAILABLE',
                                 created_by=session['user_id'], **fields)
+            if not asset and not asset_id:
+                raise ValueError('IT asset was not created.')
         except ValueError as error:
             flash(str(error), 'danger')
         else:
+            _record_it_asset_audit('UPDATE' if asset else 'CREATE', asset['asset_id'] if asset else asset_id,
+                                   asset_tag=fields['asset_tag'].upper())
             flash('IT asset updated successfully.' if asset else 'IT asset created successfully.', 'success')
             return redirect(url_for('view_it_asset', asset_id=asset['asset_id']) if asset else url_for('it_assets'))
     return render_template('it_assets/edit.html' if asset else 'it_assets/add.html', asset=asset,

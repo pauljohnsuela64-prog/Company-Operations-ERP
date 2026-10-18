@@ -136,6 +136,14 @@ module.exports = async function verify({base, controlKey, send, tab, evaluate, n
 
   await require('./browser_it_asset_validation.cjs')({manager, navigate, evaluate, until, request, snapshot});
 
+  const auditor = await login('review-user');
+  await navigate(auditor, '/admin/audit-logs?module=IT_ASSETS');
+  const auditText = await evaluate(auditor, `document.querySelector('main table').textContent`);
+  for (const value of ['IT_ASSETS', 'IT_ASSET', 'BROWSER-ASSET', 'ASSIGN', 'RETURN', 'MARK_LOST', 'RECOVER', 'COMPLETE']) {
+    assert(auditText.includes(value), `Central IT audit page missing ${value}`);
+  }
+  console.log('PASS Chrome central Audit Logs: IT module filter, asset identity and committed lifecycle/maintenance actions visible');
+
   assert.equal((await request(manager, ticket + '/start')).path, ticket);
   await hasForm(manager, ticket, ticket + '/resolve');
   assert.equal((await request(manager, ticket + '/resolve', {resolution:'Browser fixed'})).path, ticket);

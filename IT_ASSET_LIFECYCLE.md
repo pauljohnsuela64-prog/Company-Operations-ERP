@@ -68,11 +68,9 @@ cannot see management return controls or forge authorized returns. Missing or
 inconsistent history hides the return form and displays a review warning to managers.
 Rejected transitions cannot reach the success flash.
 
-Current IT asset lifecycle routes do **not** emit central business-action audit
-events. Assignment/maintenance history exists, but it is not a complete central
-audit trail. This step preserves that behavior and does not invent success audits
-or introduce unrelated audit integration. Central lifecycle auditing remains a
-separate gap; user/login/security and other modules' audit behavior is unchanged.
+At Step 1 central lifecycle auditing was deferred. Step 3 now integrates
+postcommit business-action events; see [IT_ASSET_AUDIT.md](IT_ASSET_AUDIT.md).
+Assignment/maintenance history and user/login/security auditing remain intact.
 
 ## Database compatibility and legacy records
 
