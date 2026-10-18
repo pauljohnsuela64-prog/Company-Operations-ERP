@@ -235,6 +235,7 @@ def create_it_asset(
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
 
         cursor.execute(
             """
@@ -280,9 +281,16 @@ def create_it_asset(
             ),
         )
 
+        asset_id = cursor.lastrowid
+        if assigned_employee_id is not None:
+            cursor.execute(
+                """INSERT INTO it_asset_assignments
+                   (asset_id, employee_id, department_id, assigned_by)
+                   VALUES (%s, %s, %s, %s)""",
+                (asset_id, assigned_employee_id, department_id, created_by),
+            )
         connection.commit()
-
-        return cursor.lastrowid
+        return asset_id
 
     except Exception:
 
@@ -454,6 +462,16 @@ def assign_it_asset(
             )
 
 
+        if asset['status'] != 'AVAILABLE':
+            raise ValueError('Only available assets can be assigned.')
+        cursor.execute(
+            """SELECT assignment_id FROM it_asset_assignments
+               WHERE asset_id = %s AND returned_at IS NULL FOR UPDATE""",
+            (asset_id,),
+        )
+        if cursor.fetchall():
+            raise ValueError('Assignment history is inconsistent. Review it before assigning this asset.')
+
         # ==================================================
         # UPDATE CURRENT ASSET
         # ==========================================================
@@ -522,106 +540,67 @@ def assign_it_asset(
 # UNASSIGN IT ASSET
 # ==========================================================
 
-def unassign_it_asset(
-    asset_id,
-    returned_by,
-):
+def unassign_it_asset(asset_id, returned_by, assignment_id=None):
+    """Close the displayed custody record without erasing lifecycle state.
+
+    All lifecycle writers lock asset first, then their child history records.
+    A required expected assignment ID rejects stale forms, including reassignments
+    to the same employee. Never invent missing historical custody records.
+    """
+    expected = str(assignment_id).strip()
+    if (len(expected) > 10 or not expected.isascii() or not expected.isdecimal()
+            or not 1 <= int(expected) <= 2147483647):
+        raise ValueError('Current assignment is required. Reload the asset and try again.')
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
-
     try:
-
         connection.start_transaction()
-
-
-        # ==================================================
-        # LOCK ASSET
-        # ==========================================================
-
         cursor.execute(
-            """
-            SELECT
-                asset_id,
-                assigned_employee_id,
-                status
-
-            FROM it_assets
-
-            WHERE asset_id = %s
-
-            FOR UPDATE
-            """,
+            'SELECT asset_id, assigned_employee_id, status FROM it_assets WHERE asset_id = %s FOR UPDATE',
             (asset_id,),
         )
-
         asset = cursor.fetchone()
-
         if not asset:
-
-            raise ValueError(
-                "IT asset was not found."
-            )
-
-        if asset["assigned_employee_id"] is None:
-
-            raise ValueError(
-                "This asset is not currently assigned."
-            )
-
-
-        # ==================================================
-        # CLOSE ACTIVE ASSIGNMENT HISTORY
-        # ==========================================================
-
+            raise ValueError('IT asset was not found.')
+        if asset['assigned_employee_id'] is None:
+            raise ValueError('This asset is not currently assigned.')
+        if asset['status'] not in ('ASSIGNED', 'LOST', 'MAINTENANCE', 'RETIRED'):
+            raise ValueError('Asset state is inconsistent with its assignment. Review it before returning.')
         cursor.execute(
-            """
-            UPDATE it_asset_assignments
-
-            SET
-                returned_at = CURRENT_TIMESTAMP,
-                returned_by = %s
-
-            WHERE
-                asset_id = %s
-                AND returned_at IS NULL
-
-            ORDER BY assignment_id DESC
-
-            LIMIT 1
-            """,
-            (
-                returned_by,
-                asset_id,
-            ),
-        )
-
-
-        # ==================================================
-        # UPDATE ASSET
-        # ==========================================================
-
-        cursor.execute(
-            """
-            UPDATE it_assets
-
-            SET
-                assigned_employee_id = NULL,
-                status = 'AVAILABLE'
-
-            WHERE asset_id = %s
-            """,
+            """SELECT assignment_id, employee_id FROM it_asset_assignments
+               WHERE asset_id = %s AND returned_at IS NULL
+               ORDER BY assignment_id FOR UPDATE""",
             (asset_id,),
         )
-
+        active = cursor.fetchall()
+        if len(active) != 1 or active[0]['employee_id'] != asset['assigned_employee_id']:
+            raise ValueError('Assignment history is missing or inconsistent. Review it before returning this asset.')
+        if active[0]['assignment_id'] != int(expected):
+            raise ValueError('Assignment changed. Reload the asset before returning it.')
+        cursor.execute(
+            "SELECT maintenance_id FROM it_asset_maintenance WHERE asset_id = %s AND status = 'OPEN' FOR UPDATE",
+            (asset_id,),
+        )
+        open_maintenance = cursor.fetchall()
+        if asset['status'] == 'ASSIGNED' and open_maintenance:
+            raise ValueError('Asset state does not match open maintenance. Review it before returning.')
+        cursor.execute(
+            """UPDATE it_asset_assignments SET returned_at = CURRENT_TIMESTAMP, returned_by = %s
+               WHERE assignment_id = %s AND returned_at IS NULL""",
+            (returned_by, int(expected)),
+        )
+        if cursor.rowcount != 1:
+            raise ValueError('Assignment changed. Reload the asset before returning it.')
+        # Returning custody is not recovery, maintenance completion or restoration.
+        status = 'AVAILABLE' if asset['status'] == 'ASSIGNED' else asset['status']
+        cursor.execute('UPDATE it_assets SET assigned_employee_id = NULL, status = %s WHERE asset_id = %s',
+                       (status, asset_id))
         connection.commit()
-
+        return True
     except Exception:
-
         connection.rollback()
         raise
-
     finally:
-
         cursor.close()
         connection.close()
 
@@ -629,6 +608,7 @@ def unassign_it_asset(
 # ==========================================================
 # GET ASSET MAINTENANCE HISTORY
 # ==========================================================
+
 
 def get_it_asset_maintenance_history(asset_id):
     connection = get_connection()
@@ -861,6 +841,18 @@ def complete_it_asset_maintenance(
         connection.start_transaction()
 
 
+        # Resolve the parent without locking the child, then lock parent first.
+        cursor.execute('SELECT asset_id FROM it_asset_maintenance WHERE maintenance_id = %s',
+                       (maintenance_id,))
+        parent = cursor.fetchone()
+        if not parent:
+            raise ValueError('Maintenance record was not found.')
+        cursor.execute('SELECT asset_id, status FROM it_assets WHERE asset_id = %s FOR UPDATE',
+                       (parent['asset_id'],))
+        asset = cursor.fetchone()
+        if not asset:
+            raise ValueError('IT asset was not found.')
+
         # ==================================================
         # LOCK MAINTENANCE RECORD
         # ==========================================================
@@ -889,6 +881,8 @@ def complete_it_asset_maintenance(
                 "Maintenance record was not found."
             )
 
+        if maintenance['asset_id'] != asset['asset_id']:
+            raise ValueError('Maintenance changed concurrently. Reload and try again.')
         if maintenance["status"] != "OPEN":
 
             raise ValueError(
@@ -896,6 +890,17 @@ def complete_it_asset_maintenance(
                 "can be completed."
             )
 
+
+        if asset['status'] != 'MAINTENANCE':
+            raise ValueError('Asset state does not match open maintenance. Review it before completion.')
+
+        cursor.execute(
+            "SELECT maintenance_id FROM it_asset_maintenance WHERE asset_id = %s AND status = 'OPEN' FOR UPDATE",
+            (asset['asset_id'],),
+        )
+        active = cursor.fetchall()
+        if len(active) != 1 or str(active[0]['maintenance_id']) != str(maintenance_id):
+            raise ValueError('Maintenance history is inconsistent. Review it before completion.')
 
         # ==================================================
         # COMPLETE MAINTENANCE

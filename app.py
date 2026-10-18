@@ -6933,6 +6933,11 @@ def view_it_asset(asset_id):
             url_for("it_assets")
         )
 
+    active_assignments = [row for row in assignment_history if row['returned_at'] is None]
+    active_assignment_id = (active_assignments[0]['assignment_id']
+                            if len(active_assignments) == 1
+                            and active_assignments[0]['employee_id'] == asset['assigned_employee_id']
+                            else None)
     employees = get_all_employees()
 
     return render_template(
@@ -6941,6 +6946,7 @@ def view_it_asset(asset_id):
     employees=employees,
     maintenance_history=maintenance_history,
     assignment_history=assignment_history,
+    active_assignment_id=active_assignment_id,
 )
 
 
@@ -7326,6 +7332,7 @@ def unassign_it_asset_route(asset_id):
         unassign_it_asset(
     asset_id=asset_id,
     returned_by=session["user_id"],
+    assignment_id=request.form.get("assignment_id", ""),
 )
 
         flash(

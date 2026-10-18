@@ -312,7 +312,10 @@ IT Asset Details
             
 
 
-            {% if has_permission('it_assets.manage') %}
+            {% if has_permission('it_assets.manage') and not active_assignment_id %}
+            <p class="text-warning">Assignment history requires review before this asset can be returned.</p>
+            {% endif %}
+            {% if has_permission('it_assets.manage') and active_assignment_id %}
             <form
                 method="POST"
                 action="{{ url_for(
@@ -321,6 +324,7 @@ IT Asset Details
                 ) }}"
             >
                     {% include 'partials/csrf_field.html' %}
+                <input type="hidden" name="assignment_id" value="{{ active_assignment_id }}">
 
                 <button
                     type="submit"

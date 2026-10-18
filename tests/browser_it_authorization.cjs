@@ -9,6 +9,8 @@ module.exports = async function verify({base, controlKey, send, tab, evaluate, n
   async function request(t, path, fields = {}, tokenMode = 'valid', extraHeaders = {}) {
     return evaluate(t, `(async () => {
       const fields = ${JSON.stringify(fields)};
+      if (${JSON.stringify(path)}.endsWith('/unassign') && fields.assignment_id === undefined)
+        fields.assignment_id = document.querySelector('main input[name="assignment_id"]')?.value || '';
       if (${JSON.stringify(tokenMode)} === 'valid') fields.csrf_token = document.querySelector('meta[name="csrf-token"]').content;
       if (${JSON.stringify(tokenMode)} === 'invalid') fields.csrf_token = 'forged';
       const response = await fetch(${JSON.stringify(path)}, {method:'POST', body:new URLSearchParams(fields), headers:${JSON.stringify(extraHeaders)}});

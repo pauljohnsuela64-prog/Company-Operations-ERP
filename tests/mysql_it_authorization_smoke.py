@@ -84,7 +84,11 @@ def run(port, data_dir):
         mt, vt, dt = [csrf_token_for(c) for c in (manager, viewer, denied)]
 
         def post(path, body=None):
-            response = manager.post(path, data=dict(body or {}, csrf_token=mt))
+            body = dict(body or {})
+            if path.endswith('/unassign') and 'assignment_id' not in body:
+                aid = int(path.split('/')[-2])
+                body['assignment_id'] = sql('SELECT assignment_id FROM it_asset_assignments WHERE asset_id=%s AND returned_at IS NULL', (aid,), True)[0][0]
+            response = manager.post(path, data=dict(body, csrf_token=mt))
             assert response.status_code == 302, (path, response.status_code)
             return response
 
