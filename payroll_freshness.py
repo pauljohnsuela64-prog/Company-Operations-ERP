@@ -4,6 +4,7 @@ import hmac
 import json
 from datetime import date,datetime
 from decimal import Decimal
+from payroll_validation import validate_evidence_money
 
 VERSION = 1
 
@@ -57,7 +58,14 @@ def fingerprint(cursor, period_id, entry_id):
     leaves=cursor.fetchall()
     cursor.execute("""SELECT adjustment_id,adjustment_type,amount FROM payroll_adjustments
         WHERE payroll_entry_id=%s ORDER BY adjustment_id FOR UPDATE""",(entry_id,))
-    payload=dict(version=VERSION,period=period,entry=entry,attendance=attendance,leaves=leaves,adjustments=cursor.fetchall())
+    adjustments=cursor.fetchall()
+    try:
+        validate_evidence_money(entry,adjustments)
+    except ValueError as error:
+        raise ValueError(f'Payroll monetary validation failed: {error} '
+                         'Draft payroll requires correction and recalculation; approved payroll '
+                         'requires an authorized correction process before payment.') from error
+    payload=dict(version=VERSION,period=period,entry=entry,attendance=attendance,leaves=leaves,adjustments=adjustments)
     return hashlib.sha256(json.dumps(payload,default=_json_value,sort_keys=True,separators=(',',':')).encode('utf-8')).hexdigest()
 
 

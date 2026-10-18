@@ -115,6 +115,7 @@ const keepAlive = setInterval(() => {}, 1000);
     await submit(second, {supplier_code:'BROWSER-D',supplier_name:'Old tab must not write'});
     await until(second, `document.body.textContent.includes('Submission not processed')`);
     console.log('PASS real Chrome validation error, harmless GET logout, protected POST logout, and old-tab rejection');
+    await require('./browser_payroll_monetary.cjs')({base, send, tab, evaluate, navigate, until});
     await require('./browser_it_authorization.cjs')({base, controlKey, send, tab, evaluate, navigate, until});
     console.log('SUCCESS: browser execution used isolated HTTP/MySQL only; production TLS and visual layout not certified');
   } finally {

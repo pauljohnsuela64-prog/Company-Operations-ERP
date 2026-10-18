@@ -229,6 +229,8 @@ def create_payroll_period(
         lock_payroll_inputs(cursor)
 
 
+        _reject_overlap(cursor, start_date, end_date)
+
         # ==================================================
         # TEMPORARY UNIQUE PERIOD NUMBER
         # ==========================================================
@@ -347,6 +349,7 @@ def update_payroll_period(
         if not previous or previous['status'] != 'DRAFT':
             connection.rollback()
             return False
+        _reject_overlap(cursor, start_date, end_date, payroll_period_id)
         dates_changed = (str(previous['start_date']) != str(start_date)
                          or str(previous['end_date']) != str(end_date))
         if dates_changed:
@@ -443,3 +446,14 @@ def cancel_payroll_period(
 
         cursor.close()
         connection.close()
+
+
+def _reject_overlap(cursor, start_date, end_date, exclude_id=None):
+    # Authoritative current read under the shared guard; cancelled periods do not overlap.
+    cursor.execute("""SELECT payroll_period_id FROM payroll_periods
+                      WHERE status <> 'CANCELLED' AND start_date <= %s AND end_date >= %s
+                        AND (%s IS NULL OR payroll_period_id <> %s)
+                      ORDER BY payroll_period_id LIMIT 1 FOR UPDATE""",
+                   (end_date, start_date, exclude_id, exclude_id))
+    if cursor.fetchone():
+        raise ValueError("Payroll period dates overlap an existing non-cancelled period.")

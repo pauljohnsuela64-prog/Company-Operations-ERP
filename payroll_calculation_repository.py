@@ -1,3 +1,4 @@
+from payroll_validation import payroll_money, validate_payroll_totals
 from payroll_freshness import raise_payroll_lock_error, lock_payroll_inputs, seal_calculation
 # ==========================================================
 # PAYROLL CALCULATION REPOSITORY
@@ -498,6 +499,8 @@ def calculate_monthly_payroll_period(
             )
 
 
+            payroll_money(basic_rate, "Saved basic rate")
+
             regular_pay = (
                 basic_rate
                 * MONTHLY_PERIOD_FACTOR
@@ -631,6 +634,11 @@ def calculate_monthly_payroll_period(
             )
 
 
+            # SUM has wider capacity than the destination DECIMAL(12,2).
+            # Validate before quantizing as well as validating final outputs.
+            validate_payroll_totals(additional_earnings=additional_earnings,
+                                    other_deductions=other_deductions)
+
             additional_earnings = _money(
                 additional_earnings
             )
@@ -691,6 +699,13 @@ def calculate_monthly_payroll_period(
                         # ==============================================
             # DATABASE UPDATE
             # ==============================================
+
+            validate_payroll_totals(daily_rate=daily_rate, regular_pay=regular_pay,
+                                    additional_earnings=additional_earnings,
+                                    other_deductions=other_deductions,
+                                    attendance_deduction=attendance_deduction,
+                                    gross_pay=gross_pay, total_deductions=total_deductions,
+                                    net_pay=net_pay)
 
             cursor.execute(
                 """

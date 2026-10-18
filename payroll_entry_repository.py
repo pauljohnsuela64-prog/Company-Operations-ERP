@@ -1,3 +1,4 @@
+from payroll_validation import payroll_money
 from payroll_freshness import raise_payroll_lock_error, lock_payroll_inputs
 # ==========================================================
 # PAYROLL ENTRY REPOSITORY
@@ -400,6 +401,8 @@ def generate_payroll_entries(
             # ==============================================
             # SNAPSHOT COMPENSATION
             # ==============================================
+
+            payroll_money(employee["basic_rate"], "Saved basic rate")
 
             cursor.execute(
                 """

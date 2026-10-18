@@ -37,7 +37,7 @@ def run(port,data_dir):
         cur.execute('CREATE DATABASE erp_security_review')
         cur.execute('USE erp_security_review')
         files=('core','inventory','procurement','finance','budget','attendance','leave','payroll',
-               'payroll_period','payroll_entries','payroll_calculation','payroll_approval',
+               'payroll_period','payroll_entries','payroll_calculation','payroll_approval','payroll_adjustments',
                'it_assets','it_asset_assignment','it_asset_maintenance','help_desk','help_desk_history','audit_logs')
         for name in files:
             text=(harness.ROOT/'database'/f'{name}_schema.sql').read_text()
@@ -117,6 +117,25 @@ def run(port,data_dir):
         erp.app.add_url_rule('/__review/it-fixture','review_it_fixture',it_fixture)
         erp.app.add_url_rule('/__review/it-snapshot','review_it_snapshot',it_snapshot)
         erp.app.add_url_rule('/__review/it-control','review_it_control',it_control,methods=['POST'])
+        # Payroll smoke uses only this fresh schema and synthetic records.
+        from importlib.util import spec_from_file_location,module_from_spec
+        spec=spec_from_file_location('browser_payroll_upgrade',harness.ROOT/'database/migrations/004_payroll_freshness.py')
+        migration=module_from_spec(spec);spec.loader.exec_module(migration)
+        with connect() as connection:migration.upgrade(connection)
+        cid=erp.create_employee_compensation(1,'MONTHLY','1000.00','2026-01-01',None,1)
+        pid=erp.create_payroll_period('Browser Payroll','2028-01-03','2028-01-07','2028-01-08',None,1)
+        erp.generate_payroll_entries(pid,1)
+        for day in range(3,8):
+            sql("INSERT INTO attendance_records(employee_id,attendance_date,status,created_by) VALUES(1,%s,'PRESENT',1)",(f'2028-01-{day:02}',))
+        eid=sql('SELECT payroll_entry_id FROM payroll_entries WHERE payroll_period_id=%s',(pid,),True)[0][0]
+        browser_fixture.update(payroll_period_id=pid,payroll_entry_id=eid,compensation_id=cid)
+        def payroll_snapshot():
+            return jsonify(entry=sql('SELECT status,basic_rate,gross_pay,total_deductions,net_pay,calculation_input_hash FROM payroll_entries WHERE payroll_entry_id=%s',(eid,),True),
+                           adjustments=sql('SELECT adjustment_name,amount FROM payroll_adjustments WHERE payroll_entry_id=%s ORDER BY adjustment_id',(eid,),True),
+                           compensation=sql('SELECT basic_rate FROM employee_compensation WHERE compensation_id=%s',(cid,),True),
+                           audits=sql("SELECT action,entity_id FROM audit_logs WHERE module='PAYROLL' ORDER BY audit_log_id",fetch=True))
+        erp.app.add_url_rule('/__review/payroll-snapshot','review_payroll_snapshot',payroll_snapshot)
+
         cases=[
             ('HR','/departments/add',dict(department_code='REVIEW',department_name='Review Department'),'departments'),
             ('Leave','/leave/types/add',dict(leave_code='REVIEW',leave_name='Review Leave',annual_entitlement='10',is_paid='1'),'leave_types'),
@@ -167,6 +186,7 @@ def run(port,data_dir):
         tid=sql("INSERT INTO helpdesk_tickets(ticket_number,employee_id,category_id,subject,description,priority,status,created_by) VALUES ('BROWSER-TICKET',1,1,'Browser Ticket','Synthetic','MEDIUM','OPEN',1)")
         from test_it_authorization import route_contract
         browser_fixture.update(asset_id=aid,ticket_id=tid,routes=route_contract())
+
 
         chrome=Path(r'C:\Program Files\Google\Chrome\Application\chrome.exe')
         if not chrome.exists():

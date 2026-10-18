@@ -1,3 +1,4 @@
+from payroll_validation import payroll_money
 from it_asset_validation import ASSET_FIELDS as IT_ASSET_FIELDS, identifier as asset_identifier, category_values
 from budget_repository import get_department_budget_report
 from finance_reporting import filters as finance_filters, report as finance_report
@@ -4792,34 +4793,16 @@ def add_payroll_compensation():
 
         try:
 
-            basic_rate_value = Decimal(
-                basic_rate
-            )
-
-
-            if basic_rate_value <= 0:
-
-                raise ValueError
-
-
-            if (
-                basic_rate_value
-                > Decimal("9999999999.99")
-            ):
-
-                raise ValueError
+            basic_rate_value = payroll_money(basic_rate, "Basic rate")
 
 
         except (
             InvalidOperation,
             ValueError,
-        ):
+        ) as error:
 
             flash(
-                (
-                    "Basic rate must be a valid "
-                    "positive amount."
-                ),
+                str(error),
                 "danger",
             )
 
@@ -5034,34 +5017,16 @@ def edit_payroll_compensation(
 
         try:
 
-            basic_rate_value = Decimal(
-                basic_rate
-            )
-
-
-            if basic_rate_value <= 0:
-
-                raise ValueError
-
-
-            if (
-                basic_rate_value
-                > Decimal("9999999999.99")
-            ):
-
-                raise ValueError
+            basic_rate_value = payroll_money(basic_rate, "Basic rate")
 
 
         except (
             InvalidOperation,
             ValueError,
-        ):
+        ) as error:
 
             flash(
-                (
-                    "Basic rate must be a valid "
-                    "positive amount."
-                ),
+                str(error),
                 "danger",
             )
 
@@ -5791,34 +5756,16 @@ def add_payroll_adjustment_route(
 
     try:
 
-        amount_value = Decimal(
-            amount
-        )
-
-
-        if amount_value <= 0:
-
-            raise ValueError
-
-
-        if (
-            amount_value
-            > Decimal("9999999999.99")
-        ):
-
-            raise ValueError
+        amount_value = payroll_money(amount, "Adjustment amount")
 
 
     except (
         InvalidOperation,
         ValueError,
-    ):
+    ) as error:
 
         flash(
-            (
-                "Amount must be a valid "
-                "positive value."
-            ),
+            str(error),
             "danger",
         )
 

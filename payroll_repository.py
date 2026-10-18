@@ -1,3 +1,4 @@
+from payroll_validation import payroll_money
 # ==========================================================
 # PAYROLL REPOSITORY
 # ==========================================================
@@ -248,6 +249,8 @@ def create_employee_compensation(
     created_by,
 ):
 
+    basic_rate = payroll_money(basic_rate, "Basic rate")
+
     connection = get_connection()
 
     cursor = connection.cursor()
@@ -312,6 +315,8 @@ def update_employee_compensation(
     notes,
     updated_by,
 ):
+
+    basic_rate = payroll_money(basic_rate, "Basic rate")
 
     connection = get_connection()
 

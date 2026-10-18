@@ -13,6 +13,7 @@ class PayrollPeriodInvalidationTests(unittest.TestCase):
         self.cursor.rowcount=1
         self.patch=patch.object(repository,'get_connection',return_value=self.connection)
         self.patch.start();self.addCleanup(self.patch.stop)
+        self.overlap=patch.object(repository,'_reject_overlap');self.overlap.start();self.addCleanup(self.overlap.stop)
         self.guard=patch.object(repository,'lock_payroll_inputs');self.guard.start();self.addCleanup(self.guard.stop)
 
     def update(self,end=date(2026,2,2)):

@@ -1,3 +1,4 @@
+from payroll_validation import payroll_money, validate_payroll_totals
 from payroll_freshness import raise_payroll_lock_error, lock_payroll_inputs
 # ==========================================================
 # PAYROLL ADJUSTMENT REPOSITORY
@@ -24,6 +25,7 @@ from database import get_connection
 def _refresh_payroll_entry_totals(
     cursor,
     payroll_entry_id,
+    *, earning_delta=Decimal("0"), deduction_delta=Decimal("0"), persist=True,
 ):
 
     # ======================================================
@@ -132,6 +134,9 @@ def _refresh_payroll_entry_totals(
     )
 
 
+    additional_earnings += earning_delta
+    other_deductions += deduction_delta
+
     # ======================================================
     # CALCULATIONS
     # ==========================================================
@@ -161,9 +166,16 @@ def _refresh_payroll_entry_totals(
         )
 
 
+    validate_payroll_totals(regular_pay=regular_pay, attendance_deduction=attendance_deduction,
+                            additional_earnings=additional_earnings, other_deductions=other_deductions,
+                            gross_pay=gross_pay, total_deductions=total_deductions, net_pay=net_pay)
+
     # ======================================================
     # DATABASE UPDATE
     # ==========================================================
+
+    if not persist:
+        return
 
     cursor.execute(
         """
@@ -319,6 +331,16 @@ def add_payroll_adjustment(
     created_by,
 ):
 
+    amount = payroll_money(amount, "Adjustment amount")
+    if adjustment_type not in ("EARNING", "DEDUCTION"):
+        raise ValueError("Select a valid adjustment type.")
+    adjustment_name = (adjustment_name or "").strip()
+    notes = (notes or "").strip() or None
+    if not adjustment_name or len(adjustment_name) > 100:
+        raise ValueError("Adjustment name is required and must not exceed 100 characters.")
+    if notes and len(notes) > 255:
+        raise ValueError("Notes must not exceed 255 characters.")
+
     connection = get_connection()
 
     cursor = connection.cursor(
@@ -335,30 +357,7 @@ def add_payroll_adjustment(
         # LOCK ENTRY + PERIOD
         # ==========================================================
 
-        cursor.execute(
-            """
-            SELECT
-                pe.payroll_entry_id,
-                pe.status AS entry_status,
-                pp.status AS period_status
-
-            FROM payroll_entries pe
-
-            INNER JOIN payroll_periods pp
-                ON pe.payroll_period_id
-                = pp.payroll_period_id
-
-            WHERE pe.payroll_entry_id = %s
-
-            FOR UPDATE
-            """,
-            (
-                payroll_entry_id,
-            ),
-        )
-
-
-        entry = cursor.fetchone()
+        entry = _lock_adjustment_entry(cursor, payroll_entry_id)
 
 
         if not entry:
@@ -381,6 +380,13 @@ def add_payroll_adjustment(
                 )
             )
 
+
+        # Validate projected totals before inserting, independently of SQL mode.
+        _refresh_payroll_entry_totals(
+            cursor, payroll_entry_id,
+            earning_delta=amount if adjustment_type == "EARNING" else Decimal("0"),
+            deduction_delta=amount if adjustment_type == "DEDUCTION" else Decimal("0"),
+            persist=False)
 
         # ==================================================
         # INSERT ADJUSTMENT
@@ -467,30 +473,7 @@ def delete_payroll_adjustment(
         # LOCK ENTRY + PERIOD
         # ==========================================================
 
-        cursor.execute(
-            """
-            SELECT
-                pe.payroll_entry_id,
-                pe.status AS entry_status,
-                pp.status AS period_status
-
-            FROM payroll_entries pe
-
-            INNER JOIN payroll_periods pp
-                ON pe.payroll_period_id
-                = pp.payroll_period_id
-
-            WHERE pe.payroll_entry_id = %s
-
-            FOR UPDATE
-            """,
-            (
-                payroll_entry_id,
-            ),
-        )
-
-
-        entry = cursor.fetchone()
+        entry = _lock_adjustment_entry(cursor, payroll_entry_id)
 
 
         if not entry:
@@ -564,3 +547,24 @@ def delete_payroll_adjustment(
 
         cursor.close()
         connection.close()
+
+
+def _lock_adjustment_entry(cursor, payroll_entry_id):
+    # Guard is already held. Discover the parent without locking the child first.
+    cursor.execute("SELECT payroll_period_id FROM payroll_entries WHERE payroll_entry_id = %s",
+                   (payroll_entry_id,))
+    identity = cursor.fetchone()
+    if not identity:
+        return None
+    period_id = identity["payroll_period_id"]
+    cursor.execute("SELECT status FROM payroll_periods WHERE payroll_period_id = %s FOR UPDATE",
+                   (period_id,))
+    period = cursor.fetchone()
+    cursor.execute("SELECT payroll_entry_id, status AS entry_status FROM payroll_entries "
+                   "WHERE payroll_entry_id = %s AND payroll_period_id = %s FOR UPDATE",
+                   (payroll_entry_id, period_id))
+    entry = cursor.fetchone()
+    if not period or not entry:
+        return None
+    entry["period_status"] = period["status"]
+    return entry
