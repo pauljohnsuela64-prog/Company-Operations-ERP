@@ -32,6 +32,7 @@ Create Help Desk Ticket
 
     <div class="card-body">
 
+        {% if has_permission('helpdesk.manage') %}
         <form method="POST">
                     {% include 'partials/csrf_field.html' %}
 
@@ -193,16 +194,19 @@ Create Help Desk Ticket
                     Create Ticket
                 </button>
 
+                {% if has_permission('helpdesk.view') %}
                 <a
                     href="{{ url_for('help_desk') }}"
                     class="btn btn-outline-secondary ms-2"
                 >
                     Cancel
                 </a>
+                {% endif %}
 
             </div>
 
         </form>
+        {% endif %}
 
     </div>
 

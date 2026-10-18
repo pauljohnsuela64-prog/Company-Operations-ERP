@@ -582,6 +582,7 @@ Dashboard
 
 {% if (
     has_permission("it_assets.view")
+    or has_permission("helpdesk.view")
     or has_permission("payroll.view")
 ) %}
 
@@ -680,6 +681,10 @@ Dashboard
 
                 </div>
 
+
+            {% endif %}
+
+            {% if has_permission("helpdesk.view") %}
 
                 <!-- # HELP DESK -->
 
@@ -920,6 +925,7 @@ Dashboard
     or has_permission("procurement.view")
     or has_permission("finance.view")
     or has_permission("it_assets.view")
+    or has_permission("helpdesk.view")
     or has_permission("payroll.view")
 ) %}
 

@@ -26,6 +26,7 @@ Add Asset Maintenance
 
     <div class="card-body">
 
+        {% if has_permission('it_assets.manage') %}
         <form method="POST">
                     {% include 'partials/csrf_field.html' %}
 
@@ -178,6 +179,7 @@ Add Asset Maintenance
                     Start Maintenance
                 </button>
 
+                {% if has_permission('it_assets.view') %}
                 <a
                     href="{{ url_for(
                         'view_it_asset',
@@ -187,10 +189,12 @@ Add Asset Maintenance
                 >
                     Cancel
                 </a>
+                {% endif %}
 
             </div>
 
         </form>
+        {% endif %}
 
     </div>
 

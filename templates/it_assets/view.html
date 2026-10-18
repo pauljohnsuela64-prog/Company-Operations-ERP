@@ -28,6 +28,7 @@ IT Asset Details
 
     <div>
 
+        {% if has_permission('it_assets.manage') %}
         <a
             href="{{ url_for(
                 'edit_it_asset',
@@ -37,6 +38,7 @@ IT Asset Details
         >
             Edit
         </a>
+        {% endif %}
 
         <a
             href="{{ url_for('it_assets') }}"
@@ -102,6 +104,7 @@ IT Asset Details
         "LOST"
     ] %}
 
+        {% if has_permission('it_assets.manage') %}
         <form
             method="POST"
             action="{{ url_for(
@@ -119,8 +122,10 @@ IT Asset Details
             </button>
 
         </form>
+        {% endif %}
 
 
+        {% if has_permission('it_assets.manage') %}
         <form
             method="POST"
             action="{{ url_for(
@@ -138,6 +143,7 @@ IT Asset Details
             </button>
 
         </form>
+        {% endif %}
 
     {% endif %}
 
@@ -147,6 +153,7 @@ IT Asset Details
         "LOST"
     ] %}
 
+        {% if has_permission('it_assets.manage') %}
         <form
             method="POST"
             action="{{ url_for(
@@ -164,6 +171,7 @@ IT Asset Details
             </button>
 
         </form>
+        {% endif %}
 
     {% endif %}
 
@@ -304,6 +312,7 @@ IT Asset Details
             
 
 
+            {% if has_permission('it_assets.manage') %}
             <form
                 method="POST"
                 action="{{ url_for(
@@ -321,9 +330,11 @@ IT Asset Details
                 </button>
 
             </form>
+            {% endif %}
 
         {% else %}
 
+            {% if has_permission('it_assets.manage') %}
             <form
                 method="POST"
                 action="{{ url_for(
@@ -385,6 +396,7 @@ IT Asset Details
                 
 
             </form>
+            {% endif %}
 
             
 
@@ -410,6 +422,7 @@ IT Asset Details
 
             {% if asset.status not in ["RETIRED", "LOST", "MAINTENANCE"] %}
 
+                {% if has_permission('it_assets.manage') %}
                 <a
                     href="{{ url_for(
                         'add_it_asset_maintenance',
@@ -419,6 +432,7 @@ IT Asset Details
                 >
                     Add Maintenance
                 </a>
+                {% endif %}
 
             {% endif %}
 
@@ -516,6 +530,7 @@ IT Asset Details
 
                                 {% if maintenance.status == "OPEN" %}
 
+                                    {% if has_permission('it_assets.manage') %}
                                     <form
                                         method="POST"
                                         action="{{ url_for(
@@ -541,6 +556,7 @@ IT Asset Details
                                         </button>
 
                                     </form>
+                                    {% endif %}
 
                                 {% else %}
 

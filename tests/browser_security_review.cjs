@@ -1,5 +1,5 @@
 // Dependency-free Chrome DevTools Protocol checks against an isolated test server.
-const [base, debugPort] = process.argv.slice(2);
+const [base, debugPort, controlKey] = process.argv.slice(2);
 const assert = require('node:assert/strict');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const keepAlive = setInterval(() => {}, 1000);
@@ -27,8 +27,8 @@ const keepAlive = setInterval(() => {}, 1000);
       socket.send(JSON.stringify({id, method, params, ...(sessionId ? {sessionId} : {})}));
     });
   }
-  async function tab() {
-    const {targetId} = await send('Target.createTarget', {url:'about:blank'});
+  async function tab(browserContextId) {
+    const {targetId} = await send('Target.createTarget', {url:'about:blank', ...(browserContextId ? {browserContextId} : {})});
     const {sessionId} = await send('Target.attachToTarget', {targetId, flatten:true});
     await send('Page.enable', {}, sessionId);
     await send('Network.enable', {}, sessionId);
@@ -115,6 +115,7 @@ const keepAlive = setInterval(() => {}, 1000);
     await submit(second, {supplier_code:'BROWSER-D',supplier_name:'Old tab must not write'});
     await until(second, `document.body.textContent.includes('Submission not processed')`);
     console.log('PASS real Chrome validation error, harmless GET logout, protected POST logout, and old-tab rejection');
+    await require('./browser_it_authorization.cjs')({base, controlKey, send, tab, evaluate, navigate, until});
     console.log('SUCCESS: browser execution used isolated HTTP/MySQL only; production TLS and visual layout not certified');
   } finally {
     await send('Browser.close').catch(() => {});

@@ -26,6 +26,7 @@ Edit IT Asset
 
     <div class="card-body">
 
+        {% if has_permission('it_assets.manage') %}
         <form method="POST">
                     {% include 'partials/csrf_field.html' %}
 
@@ -304,6 +305,7 @@ Edit IT Asset
                     Save Changes
                 </button>
 
+                {% if has_permission('it_assets.view') %}
                 <a
                     href="{{ url_for(
                         'view_it_asset',
@@ -313,10 +315,12 @@ Edit IT Asset
                 >
                     Cancel
                 </a>
+                {% endif %}
 
             </div>
 
         </form>
+        {% endif %}
 
     </div>
 

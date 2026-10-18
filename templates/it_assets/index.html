@@ -41,12 +41,14 @@ IT Assets
         Reports
     </a>
 
+    {% if has_permission('it_assets.manage') %}
     <a
         href="{{ url_for('add_it_asset') }}"
         class="btn btn-primary"
     >
         Add Asset
     </a>
+    {% endif %}
 
 </div>
 
@@ -443,6 +445,7 @@ IT Assets
                                     View
                                 </a>
 
+                                {% if has_permission('it_assets.manage') %}
                                 <a
                                     href="{{ url_for(
                                         'edit_it_asset',
@@ -452,6 +455,7 @@ IT Assets
                                 >
                                     Edit
                                 </a>
+                                {% endif %}
 
                             </td>
 

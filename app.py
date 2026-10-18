@@ -8079,7 +8079,7 @@ def cancel_payroll_period_route(
     "/it/assets/add",
     methods=["GET", "POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("it_assets.manage")
 def add_it_asset():
 
     # ======================================================
@@ -8412,7 +8412,7 @@ def view_it_asset(asset_id):
     "/it/assets/<int:asset_id>/edit",
     methods=["GET", "POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("it_assets.manage")
 def edit_it_asset(asset_id):
 
     asset = get_it_asset_by_id(
@@ -8681,7 +8681,7 @@ def edit_it_asset(asset_id):
     "/it/assets/<int:asset_id>/assign",
     methods=["POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("it_assets.manage")
 def assign_it_asset_route(asset_id):
 
     employee_id = request.form.get(
@@ -8777,7 +8777,7 @@ def assign_it_asset_route(asset_id):
     "/it/assets/<int:asset_id>/unassign",
     methods=["POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("it_assets.manage")
 def unassign_it_asset_route(asset_id):
 
     try:
@@ -8815,7 +8815,7 @@ def unassign_it_asset_route(asset_id):
     "/it/assets/<int:asset_id>/maintenance/add",
     methods=["GET", "POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("it_assets.manage")
 def add_it_asset_maintenance(asset_id):
 
     asset = get_it_asset_by_id(
@@ -8971,7 +8971,7 @@ def add_it_asset_maintenance(asset_id):
     "/it/assets/maintenance/<int:maintenance_id>/complete",
     methods=["POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("it_assets.manage")
 def complete_it_asset_maintenance_route(
     maintenance_id,
 ):
@@ -9031,7 +9031,7 @@ def complete_it_asset_maintenance_route(
     "/it/assets/<int:asset_id>/retire",
     methods=["POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("it_assets.manage")
 def retire_it_asset_route(asset_id):
 
     try:
@@ -9068,7 +9068,7 @@ def retire_it_asset_route(asset_id):
     "/it/assets/<int:asset_id>/lost",
     methods=["POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("it_assets.manage")
 def mark_it_asset_lost_route(asset_id):
 
     try:
@@ -9105,7 +9105,7 @@ def mark_it_asset_lost_route(asset_id):
     "/it/assets/<int:asset_id>/restore",
     methods=["POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("it_assets.manage")
 def restore_it_asset_route(asset_id):
 
     try:
@@ -9159,7 +9159,7 @@ def it_asset_categories():
     "/it/assets/categories/add",
     methods=["GET", "POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("it_assets.manage")
 def add_it_asset_category():
 
     if request.method == "POST":
@@ -9247,7 +9247,7 @@ def add_it_asset_category():
     "/it/assets/categories/<int:category_id>/edit",
     methods=["GET", "POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("it_assets.manage")
 def edit_it_asset_category(category_id):
 
     category = get_it_asset_category_by_id(
@@ -9353,7 +9353,7 @@ def edit_it_asset_category(category_id):
     "/it/assets/categories/<int:category_id>/status",
     methods=["POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("it_assets.manage")
 def change_it_asset_category_status(category_id):
 
     category = get_it_asset_category_by_id(
@@ -9506,7 +9506,7 @@ def export_it_asset_report():
 # ==========================================================
 
 @app.route("/it/help-desk")
-@permission_required("it_assets.view")
+@permission_required("helpdesk.view")
 def help_desk():
 
     # ======================================================
@@ -9615,7 +9615,7 @@ def help_desk():
 # ==========================================================
 
 @app.route("/it/help-desk/reports")
-@permission_required("it_assets.view")
+@permission_required("helpdesk.view")
 def help_desk_reports():
 
     # ======================================================
@@ -9668,7 +9668,7 @@ def help_desk_reports():
 # ==========================================================
 
 @app.route("/it/help-desk/reports/export")
-@permission_required("it_assets.view")
+@permission_required("helpdesk.view")
 def export_help_desk_report():
 
     # ======================================================
@@ -9727,7 +9727,7 @@ def export_help_desk_report():
     "/it/help-desk/add",
     methods=["GET", "POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("helpdesk.manage")
 def add_helpdesk_ticket():
 
     employees = get_all_employees()
@@ -9917,7 +9917,7 @@ def add_helpdesk_ticket():
 @app.route(
     "/it/help-desk/<int:ticket_id>"
 )
-@permission_required("it_assets.view")
+@permission_required("helpdesk.view")
 def view_helpdesk_ticket(ticket_id):
 
     # ======================================================
@@ -9979,7 +9979,7 @@ def view_helpdesk_ticket(ticket_id):
     "/it/help-desk/<int:ticket_id>/assign",
     methods=["POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("helpdesk.manage")
 def assign_helpdesk_ticket_route(ticket_id):
 
     assigned_to = request.form.get(
@@ -10089,7 +10089,7 @@ def assign_helpdesk_ticket_route(ticket_id):
     "/it/help-desk/<int:ticket_id>/start",
     methods=["POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("helpdesk.manage")
 def start_helpdesk_ticket_route(ticket_id):
 
     try:
@@ -10126,7 +10126,7 @@ def start_helpdesk_ticket_route(ticket_id):
     "/it/help-desk/<int:ticket_id>/resolve",
     methods=["POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("helpdesk.manage")
 def resolve_helpdesk_ticket_route(ticket_id):
 
     resolution = request.form.get(
@@ -10183,7 +10183,7 @@ def resolve_helpdesk_ticket_route(ticket_id):
     "/it/help-desk/<int:ticket_id>/close",
     methods=["POST"],
 )
-@permission_required("it_assets.view")
+@permission_required("helpdesk.manage")
 def close_helpdesk_ticket_route(ticket_id):
 
     try:

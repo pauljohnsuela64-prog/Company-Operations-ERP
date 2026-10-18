@@ -32,6 +32,7 @@ Add IT Asset
 
     <div class="card-body">
 
+        {% if has_permission('it_assets.manage') %}
         <form method="POST">
                     {% include 'partials/csrf_field.html' %}
 
@@ -355,16 +356,19 @@ Add IT Asset
                     Save Asset
                 </button>
 
+                {% if has_permission('it_assets.view') %}
                 <a
                     href="{{ url_for('it_assets') }}"
                     class="btn btn-outline-secondary ms-2"
                 >
                     Cancel
                 </a>
+                {% endif %}
 
             </div>
 
         </form>
+        {% endif %}
 
     </div>
 
