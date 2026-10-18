@@ -676,6 +676,7 @@ def get_department_budget_details_by_id(budget_id):
 # ==========================================================
 
 def check_expense_against_budget(expense_id):
+    """Advisory display only; payment revalidates under its own transaction locks."""
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 

@@ -202,6 +202,7 @@ class BusinessAuditTests(unittest.TestCase):
             "status": before_status, "period_number": "PAY-0042", "request_number": "LV-0042",
             "start_date": date(2026, 1, 1), "end_date": date(2026, 1, 1),
             "annual_entitlement": None, "employee_id": 9, "leave_name": "Annual",
+            "amount": 10, "department_id": None, "expense_date": date(2026, 1, 1),
         }
 
         def reset_rows():
@@ -315,11 +316,14 @@ class BusinessAuditTests(unittest.TestCase):
     def test_budget_blocks_payment(self):
         case = next(c for c in ACTIONS if c.name == "expense_paid")
         self.prepare(case)
-        for budget in ({"budget_required": True, "budget_found": False, "department_name": "Ops", "budget_year": 2026}, {"budget_required": False, "can_pay": False, "over_by": 10}):
-            self.budget.return_value = budget
+        for message in ("Payment blocked. Ops does not have a budget for 2026.",
+                        "Payment blocked. This expense would exceed the department budget by \u20b110.00."):
+            self.operation.side_effect = ValueError(message)
             self.assertEqual(self.client.post(case.path, data=self.form).status_code, 302)
-            self.operation.assert_not_called()
             self.insert.assert_not_called()
+            self.budget.assert_not_called()
+            with self.client.session_transaction() as sess:
+                self.assertIn(("danger", message), sess["_flashes"])
 
     def test_protected_user_and_role_changes(self):
         case = next(c for c in ACTIONS if c.name == "user_deactivate")
