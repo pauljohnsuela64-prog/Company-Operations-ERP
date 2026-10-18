@@ -117,6 +117,40 @@ def run(port, data_dir):
         returned(a)
         print('PASS atomic initial history/asset ID, normal return, LOST/MAINTENANCE returns reject until recovery/completion; legacy RETIRED return preserves state, restore/completion, duplicates and stale same-employee forms')
 
+        # Recovery/completion must not depend on first performing a blocked return.
+        for mode in ['LOST', 'MAINTENANCE']:
+            for assigned in [True, False]:
+                a = asset(assigned)
+                custody = sql('SELECT * FROM it_asset_assignments WHERE asset_id=%s', (a,), True)
+                if mode == 'LOST':
+                    repo.mark_it_asset_lost(a)
+                    repo.restore_it_asset(a)
+                else:
+                    mid = maintain(a)
+                    repo.complete_it_asset_maintenance(mid, '2026-10-02')
+                assert state(a)[:2] == (('ASSIGNED',1) if assigned else ('AVAILABLE',None))
+                assert sql('SELECT * FROM it_asset_assignments WHERE asset_id=%s', (a,), True) == custody
+                if assigned:
+                    returned(a, custody[0][0])
+                    assert state(a)[:2] == ('AVAILABLE',None)
+        a = asset()
+        rejects(lambda: repo.retire_it_asset(a))
+        repo.mark_it_asset_lost(a)
+        rejects(lambda: repo.retire_it_asset(a))
+        repo.restore_it_asset(a)
+        mid = maintain(a)
+        rejects(lambda: repo.retire_it_asset(a))
+        repo.complete_it_asset_maintenance(mid, '2026-10-02')
+        rejects(lambda: repo.retire_it_asset(a))  # Completion retains existing custody.
+        returned(a)
+        repo.retire_it_asset(a)
+        rejects(lambda: repo.assign_it_asset(a,2,1,1))
+        rejects(lambda: maintain(a))
+        rejects(lambda: repo.mark_it_asset_lost(a))
+        repo.restore_it_asset(a)
+        assert state(a)[:2] == ('AVAILABLE',None)
+        print('PASS no recovery/completion dead ends without prior returns, unchanged assigned/unassigned history and complete retirement safeguards')
+
         for anomaly in ['missing', 'duplicate', 'employee', 'open-maintenance']:
             a = asset(); assignment = active(a)
             if anomaly == 'missing': sql('DELETE FROM it_asset_assignments WHERE asset_id=%s', (a,))
@@ -218,6 +252,42 @@ def run(port, data_dir):
         assert results[0] == 'committed'
         assert state(a)[:2] == ('LOST',1 if results[1] == 'rejected' else None)
         print('PASS six actual two-waiter MySQL races: duplicate returns, maintenance/return, completion/return, assignment/return, assignment/maintenance, loss/return')
+
+        a = asset(); assignment = active(a); repo.mark_it_asset_lost(a)
+        results = race(a, lambda: repo.restore_it_asset(a), lambda: returned(a,assignment))
+        assert results[0] == 'committed'
+        assert state(a)[:2] == (('ASSIGNED',1) if results[1] == 'rejected' else ('AVAILABLE',None))
+        if results[1] == 'rejected':
+            assert active(a) == assignment
+            returned(a,assignment)
+        assert state(a)[:2] == ('AVAILABLE',None)
+        a = asset(); assignment = active(a); repo.mark_it_asset_lost(a)
+        results = race(a, lambda: repo.restore_it_asset(a), lambda: maintain(a))
+        assert results[0] == 'committed' and active(a) == assignment
+        assert state(a)[:2] == (('ASSIGNED',1) if results[1] == 'rejected' else ('MAINTENANCE',1))
+        if results[1] == 'committed':
+            mid = sql("SELECT maintenance_id FROM it_asset_maintenance WHERE asset_id=%s AND status='OPEN'", (a,), True)[0][0]
+            repo.complete_it_asset_maintenance(mid,'2026-10-02')
+        returned(a,assignment)
+        a = asset(); assignment = active(a); mid = maintain(a)
+        assert race(a, lambda: repo.complete_it_asset_maintenance(mid,'2026-10-02'), lambda: repo.retire_it_asset(a)) == ['committed','rejected']
+        assert state(a)[:2] == ('ASSIGNED',1) and active(a) == assignment
+        returned(a,assignment); repo.retire_it_asset(a)
+        a = asset(); assignment = active(a); mid = maintain(a)
+        assert sorted(race(a, lambda: repo.complete_it_asset_maintenance(mid,'2026-10-02'), lambda: repo.complete_it_asset_maintenance(mid,'2026-10-02'))) == ['committed','rejected']
+        assert state(a)[:2] == ('ASSIGNED',1) and active(a) == assignment
+        a = asset(); assignment = active(a); repo.mark_it_asset_lost(a)
+        assert sorted(race(a, lambda: repo.restore_it_asset(a), lambda: repo.restore_it_asset(a))) == ['committed','rejected']
+        assert state(a)[:2] == ('ASSIGNED',1) and active(a) == assignment
+        a = asset(); assignment = active(a)
+        results = race(a, lambda: repo.retire_it_asset(a), lambda: returned(a,assignment))
+        assert results[1] == 'committed'
+        assert state(a)[:2] == (('RETIRED',None) if results[0] == 'committed' else ('AVAILABLE',None))
+        if state(a)[0] == 'RETIRED': repo.restore_it_asset(a)
+        repo.assign_it_asset(a,2,1,1)
+        rejects(lambda: returned(a,assignment))
+        assert state(a)[:2] == ('ASSIGNED',2) and active(a) != assignment
+        print('PASS six additional actual two-waiter races: recovery/return, recovery/maintenance, completion/retirement, duplicate completion/recovery, retirement/return; no lifecycle dead ends or stale custody closure')
 
         def client(uid):
             c = erp.app.test_client()

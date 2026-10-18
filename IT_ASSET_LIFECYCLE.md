@@ -151,3 +151,38 @@ On a disposable synthetic instance:
    configuration remain unverified.
 
 Await review before Step 2. No commit, push, merge or branch change performed.
+
+## Additional Step 2 policy regressions
+
+The approved LOST/MAINTENANCE return restriction remains mandatory. The additional
+verification starts from `d425b10` and changes tests/documentation only, without
+altering application state transitions, permissions or the existing legacy RETIRED
+return behavior.
+
+The disposable MySQL suite now explicitly proves:
+
+- Recovery and maintenance completion work without any prior Return attempt, for
+  both assigned and unassigned assets. Current custody/history is unchanged by
+  recovery/completion, and a subsequent legitimate return succeeds when assigned.
+- Retirement rejects assigned, LOST and MAINTENANCE assets. After recovery or
+  completion, assigned custody must still be returned before retirement. Retired
+  assets cannot be assigned, marked lost or sent into maintenance; restoration of
+  a normally retired unassigned asset remains available.
+- Six additional two-waiter InnoDB races cover recovery/return,
+  recovery/maintenance, completion/retirement, duplicate completion, duplicate
+  recovery and retirement/return. Together with the existing six, there are twelve
+  observed-lock-wait concurrency scenarios. Expected results depend on lock order:
+  blocked returns reject before recovery/completion, or succeed afterward; history
+  remains open or closes exactly once accordingly. Duplicate recovery/completion
+  commits once. Stale returns cannot close custody created after retirement/restore.
+
+No lifecycle dead end was found in supported, consistent workflows. Contradictory
+legacy data (for example, LOST with an OPEN maintenance record) still fails closed
+and can require an approved data repair; this is not silently converted into a new
+recovery or maintenance policy. No real data was inspected or repaired.
+
+The full Python suite (241 tests), JavaScript suite (11 tests) and disposable
+lifecycle suite passed. IT Authorization/Help Desk and session/security disposable
+regressions, compilation and diff checks also passed.
+No new browser behavior is introduced; the prior Chrome approved-policy coverage
+remains, and the manual visual/native-interaction checklist above still applies.
