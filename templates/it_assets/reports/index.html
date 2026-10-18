@@ -48,6 +48,20 @@ IT Asset Reports
 
 </div>
 
+<p class="text-muted">Counts reflect lifecycle status, not custody. Lost or maintenance assets may still have an assigned employee. This report and its Excel export cover all assets; use Back to Assets for filtered searches.</p>
+
+{% if diagnostics %}
+<div class="alert alert-warning">
+    <h5>History reconciliation required</h5>
+    <p>Read-only findings; no records have been repaired. Review the underlying history before changing these assets.</p>
+    <ul class="mb-0">
+    {% for finding in diagnostics %}
+        <li><a href="{{ url_for('view_it_asset', asset_id=finding.asset_id) }}">{{ finding.asset_tag }}</a>: {{ finding.issues | join('; ') }}.</li>
+    {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 
 <!-- # ========================================== -->
 <!-- # SUMMARY CARDS -->

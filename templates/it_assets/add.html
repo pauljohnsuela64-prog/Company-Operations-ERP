@@ -6,6 +6,8 @@ Add IT Asset
 
 
 {% block content %}
+{% from 'it_assets/partials/form_state.html' import unavailable_option with context %}
+{% if invalid_options %}<div class="alert alert-danger" role="alert">One or more selections are unavailable. Your values have been retained; review them before resubmitting.</div>{% endif %}
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
@@ -54,6 +56,7 @@ Add IT Asset
                         placeholder="IT-0001"
                         maxlength="50"
                         required
+                        value="{{ form_values.asset_tag }}"
                     >
 
                 </div>
@@ -74,6 +77,7 @@ Add IT Asset
                         placeholder="Accounting Laptop"
                         maxlength="150"
                         required
+                        value="{{ form_values.asset_name }}"
                     >
 
                 </div>
@@ -92,14 +96,15 @@ Add IT Asset
                         class="form-select"
                         required
                     >
+                        {{ unavailable_option('category_id') }}
 
-                        <option value="">
+                        <option value="" {% if form_values.category_id == ('') %}selected{% endif %}>
                             Select Category
                         </option>
 
                         {% for category in categories %}
 
-                            <option value="{{ category.category_id }}">
+                            <option value="{{ category.category_id }}" {% if form_values.category_id == (category.category_id|string) %}selected{% endif %}>
                                 {{ category.category_code }}
                                 -
                                 {{ category.category_name }}
@@ -126,6 +131,7 @@ Add IT Asset
                         class="form-control"
                         placeholder="Lenovo"
                         maxlength="100"
+                        value="{{ form_values.brand }}"
                     >
 
                 </div>
@@ -145,6 +151,7 @@ Add IT Asset
                         class="form-control"
                         placeholder="ThinkPad E14"
                         maxlength="100"
+                        value="{{ form_values.model }}"
                     >
 
                 </div>
@@ -163,6 +170,7 @@ Add IT Asset
                         name="serial_number"
                         class="form-control"
                         maxlength="100"
+                        value="{{ form_values.serial_number }}"
                     >
 
                 </div>
@@ -180,14 +188,15 @@ Add IT Asset
                         name="department_id"
                         class="form-select"
                     >
+                        {{ unavailable_option('department_id') }}
 
-                        <option value="">
+                        <option value="" {% if form_values.department_id == ('') %}selected{% endif %}>
                             No Department
                         </option>
 
                         {% for department in departments %}
 
-                            <option value="{{ department.department_id }}">
+                            <option value="{{ department.department_id }}" {% if form_values.department_id == (department.department_id|string) %}selected{% endif %}>
                                 {{ department.department_name }}
                             </option>
 
@@ -210,14 +219,15 @@ Add IT Asset
                         name="assigned_employee_id"
                         class="form-select"
                     >
+                        {{ unavailable_option('assigned_employee_id') }}
 
-                        <option value="">
+                        <option value="" {% if form_values.assigned_employee_id == ('') %}selected{% endif %}>
                             Unassigned
                         </option>
 
                         {% for employee in employees %}
 
-                            <option value="{{ employee.employee_id }}">
+                            <option value="{{ employee.employee_id }}" {% if form_values.assigned_employee_id == (employee.employee_id|string) %}selected{% endif %}>
 
                                 {{ employee.employee_number }}
                                 -
@@ -242,9 +252,10 @@ Add IT Asset
                     </label>
 
                     <input
-                        type="date"
+                        type="date" min="1000-01-01" max="9999-12-31"
                         name="purchase_date"
                         class="form-control"
+                        value="{{ form_values.purchase_date }}"
                     >
 
                 </div>
@@ -259,12 +270,13 @@ Add IT Asset
                     </label>
 
                     <input
-                        type="number"
+                        type="number" max="9999999999.99"
                         name="purchase_cost"
                         class="form-control"
                         min="0"
                         step="0.01"
                         placeholder="0.00"
+                        value="{{ form_values.purchase_cost }}"
                     >
 
                 </div>
@@ -279,9 +291,10 @@ Add IT Asset
                     </label>
 
                     <input
-                        type="date"
+                        type="date" min="1000-01-01" max="9999-12-31"
                         name="warranty_expiry"
                         class="form-control"
+                        value="{{ form_values.warranty_expiry }}"
                     >
 
                 </div>
@@ -299,24 +312,25 @@ Add IT Asset
                         name="condition_status"
                         class="form-select"
                     >
+                        {{ unavailable_option('condition_status') }}
 
-                        <option value="NEW">
+                        <option value="NEW" {% if form_values.condition_status == ('NEW') %}selected{% endif %}>
                             New
                         </option>
 
-                        <option value="GOOD" selected>
+                        <option value="GOOD" {% if form_values.condition_status == ('GOOD') %}selected{% endif %}>
                             Good
                         </option>
 
-                        <option value="FAIR">
+                        <option value="FAIR" {% if form_values.condition_status == ('FAIR') %}selected{% endif %}>
                             Fair
                         </option>
 
-                        <option value="POOR">
+                        <option value="POOR" {% if form_values.condition_status == ('POOR') %}selected{% endif %}>
                             Poor
                         </option>
 
-                        <option value="DAMAGED">
+                        <option value="DAMAGED" {% if form_values.condition_status == ('DAMAGED') %}selected{% endif %}>
                             Damaged
                         </option>
 
@@ -338,7 +352,7 @@ Add IT Asset
                         class="form-control"
                         rows="3"
                         maxlength="255"
-                    ></textarea>
+                    >{{ form_values.notes }}</textarea>
 
                 </div>
 

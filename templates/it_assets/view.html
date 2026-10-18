@@ -125,7 +125,7 @@ IT Asset Details
         {% endif %}
 
 
-        {% if has_permission('it_assets.manage') %}
+        {% if has_permission('it_assets.manage') and not asset.assigned_employee_id %}
         <form
             method="POST"
             action="{{ url_for(
@@ -167,7 +167,7 @@ IT Asset Details
                 type="submit"
                 class="btn btn-outline-success"
             >
-                Restore Asset
+                {{ "Recover Asset" if asset.status == "LOST" else "Restore Asset" }}
             </button>
 
         </form>
@@ -312,7 +312,13 @@ IT Asset Details
             
 
 
-            {% if has_permission('it_assets.manage') %}
+            {% if has_permission('it_assets.manage') and not active_assignment_id %}
+            <p class="text-warning">Assignment history requires review before this asset can be returned.</p>
+            {% endif %}
+            {% if has_permission('it_assets.manage') and asset.status in ['LOST', 'MAINTENANCE'] %}
+            <p class="text-warning">Recover lost equipment or complete maintenance before returning this asset.</p>
+            {% endif %}
+            {% if has_permission('it_assets.manage') and active_assignment_id and asset.status not in ['LOST', 'MAINTENANCE'] %}
             <form
                 method="POST"
                 action="{{ url_for(
@@ -321,6 +327,7 @@ IT Asset Details
                 ) }}"
             >
                     {% include 'partials/csrf_field.html' %}
+                <input type="hidden" name="assignment_id" value="{{ active_assignment_id }}">
 
                 <button
                     type="submit"
@@ -334,7 +341,7 @@ IT Asset Details
 
         {% else %}
 
-            {% if has_permission('it_assets.manage') %}
+            {% if has_permission('it_assets.manage') and asset.status == 'AVAILABLE' and not (assignment_history | selectattr('returned_at', 'none') | list) %}
             <form
                 method="POST"
                 action="{{ url_for(

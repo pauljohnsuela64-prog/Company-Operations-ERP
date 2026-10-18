@@ -9,6 +9,8 @@ module.exports = async function verify({base, controlKey, send, tab, evaluate, n
   async function request(t, path, fields = {}, tokenMode = 'valid', extraHeaders = {}) {
     return evaluate(t, `(async () => {
       const fields = ${JSON.stringify(fields)};
+      if (${JSON.stringify(path)}.endsWith('/unassign') && fields.assignment_id === undefined)
+        fields.assignment_id = document.querySelector('main input[name="assignment_id"]')?.value || '';
       if (${JSON.stringify(tokenMode)} === 'valid') fields.csrf_token = document.querySelector('meta[name="csrf-token"]').content;
       if (${JSON.stringify(tokenMode)} === 'invalid') fields.csrf_token = 'forged';
       const response = await fetch(${JSON.stringify(path)}, {method:'POST', body:new URLSearchParams(fields), headers:${JSON.stringify(extraHeaders)}});
@@ -100,6 +102,59 @@ module.exports = async function verify({base, controlKey, send, tab, evaluate, n
     await hasForm(t, ticket, ticket + '/start');
   }
   console.log('PASS Chrome IT Manager and Super Admin: management links/forms, persisted asset assign/return and ticket assignment, all 17 routes reject missing/invalid CSRF');
+
+  // Approved policy: stale Return forms cannot clear LOST/MAINTENANCE custody.
+  for (const status of ['LOST', 'MAINTENANCE']) {
+    assert.equal((await request(manager, asset + '/assign', {employee_id:'1'})).path, asset);
+    await hasForm(manager, asset, asset + '/unassign');
+    const assignment_id = await evaluate(manager, `document.querySelector('main input[name="assignment_id"]').value`);
+    if (status === 'LOST') {
+      assert.equal((await request(manager, asset + '/lost')).path, asset);
+    } else {
+      assert.equal((await request(manager, asset + '/maintenance/add', {
+        maintenance_type:'Repair', description:'Synthetic browser policy check', start_date:'2026-10-01'
+      })).path, asset);
+    }
+    await navigate(manager, asset);
+    assert.equal(await evaluate(manager, `Boolean(document.querySelector('main form[action="${asset}/unassign"]'))`), false);
+    const before = await snapshot();
+    const rejected = await request(manager, asset + '/unassign', {assignment_id});
+    assert(rejected.text.includes(status === 'LOST' ? 'Recover this asset before returning it.' : 'Complete maintenance before returning this asset.'));
+    assert.equal(await snapshot(), before);
+    if (status === 'LOST') {
+      assert.equal((await request(manager, asset + '/restore')).path, asset);
+    } else {
+      const completion = await evaluate(manager, `document.querySelector('main form[action$="/complete"]').getAttribute('action')`);
+      assert.equal((await request(manager, completion, {completed_date:'2026-10-02'})).path, asset);
+    }
+    await hasForm(manager, asset, asset + '/unassign');
+    assert.equal(await evaluate(manager, `document.querySelector('main input[name="assignment_id"]').value`), assignment_id);
+    assert.equal((await request(manager, asset + '/unassign')).path, asset);
+    await hasForm(manager, asset, asset + '/assign');
+  }
+  console.log('PASS Chrome LOST/MAINTENANCE return controls hidden, stale POST rejected without history changes, recovery/completion then legitimate return');
+
+  await require('./browser_it_asset_validation.cjs')({manager, navigate, evaluate, until, request, snapshot});
+  await require('./browser_it_asset_categories.cjs')({manager, navigate, evaluate, until, snapshot});
+
+  for (const viewer of [assetViewer, manager, admin]) {
+    await navigate(viewer, '/it/assets/reports');
+    assert(await evaluate(viewer, `document.body.textContent.includes('Counts reflect lifecycle status, not custody.')`));
+    const row = await evaluate(viewer, `[...document.querySelectorAll('main tr')].find(r => r.textContent.includes('BROWSER-ASSET'))?.textContent`);
+    assert(row && row.includes('Available') && row.includes('Good'));
+    const download = await evaluate(viewer, `(async()=>{const r=await fetch('/it/assets/reports/export');const b=new Uint8Array(await r.arrayBuffer());return {status:r.status,type:r.headers.get('content-type'),disposition:r.headers.get('content-disposition'),zip:b[0]===80&&b[1]===75};})()`);
+    assert.equal(download.status, 200);
+    assert(download.type.includes('spreadsheetml.sheet') && download.disposition.includes('attachment;') && download.zip);
+  }
+  console.log('PASS Chrome viewer/manager/admin reports show current lifecycle/condition and download an authorized XLSX attachment');
+
+  const auditor = await login('review-user');
+  await navigate(auditor, '/admin/audit-logs?module=IT_ASSETS');
+  const auditText = await evaluate(auditor, `document.querySelector('main table').textContent`);
+  for (const value of ['IT_ASSETS', 'IT_ASSET', 'BROWSER-ASSET', 'ASSIGN', 'RETURN', 'MARK_LOST', 'RECOVER', 'COMPLETE']) {
+    assert(auditText.includes(value), `Central IT audit page missing ${value}`);
+  }
+  console.log('PASS Chrome central Audit Logs: IT module filter, asset identity and committed lifecycle/maintenance actions visible');
 
   assert.equal((await request(manager, ticket + '/start')).path, ticket);
   await hasForm(manager, ticket, ticket + '/resolve');

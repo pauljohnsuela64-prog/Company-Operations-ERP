@@ -31,7 +31,7 @@ Edit Asset Category
                         type="text"
                         name="category_code"
                         class="form-control"
-                        value="{{ category.category_code }}"
+                        value="{{ form_values.category_code }}"
                         maxlength="30"
                         required
                     >
@@ -49,7 +49,7 @@ Edit Asset Category
                         type="text"
                         name="category_name"
                         class="form-control"
-                        value="{{ category.category_name }}"
+                        value="{{ form_values.category_name }}"
                         maxlength="100"
                         required
                     >
@@ -68,7 +68,7 @@ Edit Asset Category
                         class="form-control"
                         rows="3"
                         maxlength="255"
-                    >{{ category.description or "" }}</textarea>
+                    >{{ form_values.description }}</textarea>
 
                 </div>
 
