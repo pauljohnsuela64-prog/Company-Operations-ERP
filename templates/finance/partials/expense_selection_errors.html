@@ -1,0 +1,6 @@
+{% if form_selection_errors %}
+<div class="alert alert-danger" role="alert">
+    {% for message in form_selection_errors.values() %}<div>{{ message }}</div>{% endfor %}
+    Your selections have been retained. Review them before resubmitting.
+</div>
+{% endif %}

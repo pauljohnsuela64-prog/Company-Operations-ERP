@@ -1,3 +1,6 @@
+from budget_repository import get_department_budget_report
+from finance_reporting import filters as finance_filters, report as finance_report
+from finance_validation import calendar_year, identifier
 from inventory_reporting import report_filters, get_movement_page, get_reconciliation_page
 from procurement_validation import decimal_value, currency_amount
 from csrf_security import init_csrf
@@ -439,6 +442,7 @@ def record_audit_event(
     username=None,
     entity_lookup=None,
     identifier_key=None,
+    preserve_entity_id=False,
 ):
 
     actor_user_id = (
@@ -462,7 +466,12 @@ def record_audit_event(
             try:
                 entity = entity_lookup(entity_id)
                 if entity:
-                    entity_id = entity.get(identifier_key) or entity_id
+                    readable = entity.get(identifier_key)
+                    if preserve_entity_id:
+                        if readable:
+                            description = f"{description} Identifier: {readable}."
+                    else:
+                        entity_id = readable or entity_id
             except Exception:
                 # Keep the internal ID if the optional display lookup fails.
                 app.logger.exception("Unable to resolve audit entity identifier.")
@@ -3799,7 +3808,7 @@ def add_expense_category():
 
         try:
 
-            create_expense_category(
+            category_id = create_expense_category(
                 category_code,
                 category_name,
                 description or None,
@@ -3822,6 +3831,9 @@ def add_expense_category():
             raise
 
 
+        record_audit_event("FINANCE", "CREATE", "EXPENSE_CATEGORY", category_id,
+                           f"Expense category {category_id} ({category_code}) created.")
+
         flash(
             "Expense category created successfully.",
             "success",
@@ -3843,122 +3855,13 @@ def add_expense_category():
 @app.route("/finance/expenses")
 @permission_required("finance.view")
 def expenses():
+    selected = finance_filters(request.args)
+    return render_template('finance/expenses/index.html',
+        expenses=get_filtered_expenses(**selected), categories=get_all_expense_categories(),
+        search_text=selected['search_text'] or '', selected_status=selected['status'] or '',
+        selected_category=str(selected['category_id'] or ''), selected_year=str(selected['year'] or ''),
+        selected_filters=selected, filter_departments=get_all_departments(), current_year=date.today().year)
 
-    # ======================================================
-    # FILTER INPUT
-    # ======================================================
-
-    search_text = request.args.get(
-        "search",
-        "",
-    ).strip()
-
-    selected_status = request.args.get(
-        "status",
-        "",
-    ).strip()
-
-    selected_category = request.args.get(
-        "category_id",
-        "",
-    ).strip()
-
-    selected_year = request.args.get(
-        "year",
-        "",
-    ).strip()
-
-
-    # ======================================================
-    # STATUS VALIDATION
-    # ======================================================
-
-    allowed_statuses = {
-        "DRAFT",
-        "APPROVED",
-        "PAID",
-        "CANCELLED",
-    }
-
-    if (
-        selected_status
-        and selected_status not in allowed_statuses
-    ):
-        selected_status = ""
-
-
-    # ======================================================
-    # CATEGORY VALIDATION
-    # ======================================================
-
-    category_id_value = None
-
-    if selected_category:
-
-        try:
-            category_id_value = int(selected_category)
-
-        except ValueError:
-            selected_category = ""
-
-
-    # ======================================================
-    # YEAR VALIDATION
-    # ======================================================
-
-    year_value = None
-
-    if selected_year:
-
-        try:
-            year_value = int(selected_year)
-
-        except ValueError:
-            selected_year = ""
-
-
-    # ======================================================
-    # GET EXPENSE RECORDS
-    # ======================================================
-
-    if search_text:
-
-        expense_list = search_expenses(
-            search_text
-        )
-
-    else:
-
-        expense_list = get_filtered_expenses(
-            status=selected_status or None,
-            category_id=category_id_value,
-            year=year_value,
-            search_text=search_text or None,
-        )
-
-
-    categories = get_all_expense_categories()
-
-
-    # ======================================================
-    # SHOW PAGE
-    # ======================================================
-
-    return render_template(
-        "finance/expenses/index.html",
-        expenses=expense_list,
-        categories=categories,
-        search_text=search_text,
-        selected_status=selected_status,
-        selected_category=selected_category,
-        selected_year=selected_year,
-        current_year=date.today().year,
-    )
-
-
-# ==========================================================
-# FINANCE - EDIT EXPENSE CATEGORY
-# ==========================================================
 
 @app.route(
     "/finance/expense-categories/<int:category_id>/edit",
@@ -4068,7 +3971,7 @@ def edit_expense_category(category_id):
 
         try:
 
-            update_expense_category(
+            changed = update_expense_category(
                 category_id,
                 category_code,
                 category_name,
@@ -4091,6 +3994,12 @@ def edit_expense_category(category_id):
 
             raise
 
+
+        if not changed:
+            flash("Expense category was not changed. Reload and try again.", "warning")
+            return redirect(url_for("expense_categories"))
+        record_audit_event("FINANCE", "UPDATE", "EXPENSE_CATEGORY", category_id,
+                           f"Expense category {category_id} ({category_code}) updated.")
 
         flash(
             "Expense category updated successfully.",
@@ -4142,7 +4051,7 @@ def change_expense_category_status(category_id):
 
     new_status = not bool(category["is_active"])
 
-    set_expense_category_active_status(
+    changed = set_expense_category_active_status(
         category_id,
         new_status,
     )
@@ -4152,6 +4061,14 @@ def change_expense_category_status(category_id):
     # ======================================================
     # SUCCESS MESSAGE
     # ======================================================
+
+    if not changed:
+        flash("Expense category status was not changed. Reload and try again.", "warning")
+        return redirect(url_for("expense_categories"))
+    record_audit_event("FINANCE", "ACTIVATE" if new_status else "DEACTIVATE",
+                       "EXPENSE_CATEGORY", category_id,
+                       f"Expense category {category_id} ({category['category_code']}) "
+                       + ("activated." if new_status else "deactivated."))
 
     if new_status:
 
@@ -4185,361 +4102,7 @@ def change_expense_category_status(category_id):
 )
 @permission_required("finance.expenses.manage")
 def add_expense():
-
-    # ======================================================
-    # FORM OPTIONS
-    # ======================================================
-
-    categories = get_active_expense_categories()
-    departments = get_active_departments()
-    suppliers = get_active_suppliers()
-
-    purchase_orders = [
-        purchase_order
-        for purchase_order in get_all_purchase_orders()
-        if purchase_order["status"] != "CANCELLED"
-    ]
-
-
-    if request.method == "POST":
-
-        # ==================================================
-        # FORM INPUT
-        # ==================================================
-
-        expense_date = request.form.get(
-            "expense_date",
-            "",
-        ).strip()
-
-        category_id = request.form.get(
-            "category_id",
-            "",
-        ).strip()
-
-        department_id = request.form.get(
-            "department_id",
-            "",
-        ).strip()
-
-        supplier_id = request.form.get(
-            "supplier_id",
-            "",
-        ).strip()
-
-        purchase_order_id = request.form.get(
-            "purchase_order_id",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-        amount = request.form.get(
-            "amount",
-            "",
-        ).strip().replace(",", "")
-
-        reference_number = request.form.get(
-            "reference_number",
-            "",
-        ).strip()
-
-        payment_method = request.form.get(
-            "payment_method",
-            "",
-        ).strip()
-
-        notes = request.form.get(
-            "notes",
-            "",
-        ).strip()
-
-
-        # ==================================================
-        # REQUIRED FIELD VALIDATION
-        # ==================================================
-
-        if (
-            not expense_date
-            or not category_id
-            or not description
-            or not amount
-        ):
-
-            flash(
-                "Date, category, description, and amount are required.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/expenses/add.html",
-                categories=categories,
-                departments=departments,
-                suppliers=suppliers,
-                purchase_orders=purchase_orders,
-            )
-
-
-        # ==================================================
-        # AMOUNT VALIDATION
-        # ==================================================
-
-        try:
-
-            amount_value = Decimal(amount)
-
-            if amount_value <= 0:
-                raise InvalidOperation
-
-        except (InvalidOperation, ValueError):
-
-            flash(
-                "Amount must be greater than zero.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/expenses/add.html",
-                categories=categories,
-                departments=departments,
-                suppliers=suppliers,
-                purchase_orders=purchase_orders,
-            )
-
-
-        # ==================================================
-        # CATEGORY VALIDATION
-        # ==================================================
-
-        try:
-
-            category_id_value = int(category_id)
-
-        except ValueError:
-
-            flash(
-                "Invalid expense category.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_expense")
-            )
-
-
-        category = get_expense_category_by_id(
-            category_id_value
-        )
-
-        if not category or not category["is_active"]:
-
-            flash(
-                "Selected expense category is invalid or inactive.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_expense")
-            )
-
-
-        # ==================================================
-        # OPTIONAL DEPARTMENT
-        # ==================================================
-
-        department_id_value = None
-
-        if department_id:
-
-            try:
-
-                department_id_value = int(
-                    department_id
-                )
-
-            except ValueError:
-
-                flash(
-                    "Invalid department.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for("add_expense")
-                )
-
-            department = get_department_by_id(
-                department_id_value
-            )
-
-            if not department or not department["is_active"]:
-
-                flash(
-                    "Selected department is invalid or inactive.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for("add_expense")
-                )
-
-
-        # ==================================================
-        # OPTIONAL SUPPLIER
-        # ==================================================
-
-        supplier_id_value = None
-
-        if supplier_id:
-
-            try:
-
-                supplier_id_value = int(
-                    supplier_id
-                )
-
-            except ValueError:
-
-                flash(
-                    "Invalid supplier.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for("add_expense")
-                )
-
-            supplier = get_supplier_by_id(
-                supplier_id_value
-            )
-
-            if not supplier or not supplier["is_active"]:
-
-                flash(
-                    "Selected supplier is invalid or inactive.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for("add_expense")
-                )
-
-
-        # ==================================================
-        # OPTIONAL PURCHASE ORDER
-        # ==================================================
-
-        purchase_order_id_value = None
-
-        if purchase_order_id:
-
-            try:
-
-                purchase_order_id_value = int(
-                    purchase_order_id
-                )
-
-            except ValueError:
-
-                flash(
-                    "Invalid purchase order.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for("add_expense")
-                )
-
-            purchase_order = get_purchase_order_by_id(
-                purchase_order_id_value
-            )
-
-            if (
-                not purchase_order
-                or purchase_order["status"] == "CANCELLED"
-            ):
-
-                flash(
-                    "Selected purchase order is invalid or cancelled.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for("add_expense")
-                )
-
-
-        # ==================================================
-        # PAYMENT METHOD VALIDATION
-        # ==================================================
-
-        allowed_payment_methods = {
-            "CASH",
-            "BANK_TRANSFER",
-            "CHECK",
-            "CARD",
-            "OTHER",
-        }
-
-        if (
-            payment_method
-            and payment_method not in allowed_payment_methods
-        ):
-
-            flash(
-                "Invalid payment method.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_expense")
-            )
-
-
-        # ==================================================
-        # DATABASE INSERT
-        # ==================================================
-
-        expense_id, expense_number = create_expense(
-            expense_date,
-            category_id_value,
-            department_id_value,
-            supplier_id_value,
-            purchase_order_id_value,
-            description,
-            amount_value,
-            reference_number or None,
-            payment_method or None,
-            session["user_id"],
-            notes or None,
-        )
-
-
-        flash(
-            f"Expense {expense_number} created successfully.",
-            "success",
-        )
-
-        return redirect(
-            url_for("expenses")
-        )
-
-
-    # ======================================================
-    # SHOW FORM
-    # ======================================================
-
-    return render_template(
-        "finance/expenses/add.html",
-        categories=categories,
-        departments=departments,
-        suppliers=suppliers,
-        purchase_orders=purchase_orders,
-        today=date.today().isoformat(),
-    )
+    return _finance_expense_form()
 
 
 # ==========================================================
@@ -4632,7 +4195,7 @@ def approve_expense_route(expense_id):
             action="APPROVE",
             entity_type="EXPENSE",
             entity_id=expense_id,
-            description="Expense approved.",
+            description=f"Expense {expense_id} approved.",
             entity_lookup=get_expense_by_id,
             identifier_key="expense_number",
         )
@@ -4672,69 +4235,7 @@ def mark_expense_as_paid_route(expense_id):
 
     try:
 
-        # ==================================================
-        # CHECK DEPARTMENT BUDGET
-        # ==========================================================
-
-        budget_check = check_expense_against_budget(
-            expense_id
-        )
-
-
-        # ==================================================
-        # DEPARTMENT HAS NO BUDGET
-        # ==========================================================
-
-        if (
-            budget_check["budget_required"]
-            and not budget_check["budget_found"]
-        ):
-
-            flash(
-                (
-                    f"Payment blocked. "
-                    f"{budget_check['department_name']} "
-                    f"does not have a budget for "
-                    f"{budget_check['budget_year']}."
-                ),
-                "danger",
-            )
-
-            return redirect(
-                url_for(
-                    "view_expense",
-                    expense_id=expense_id,
-                )
-            )
-
-
-        # ==================================================
-        # PAYMENT WOULD EXCEED BUDGET
-        # ==========================================================
-
-        if not budget_check["can_pay"]:
-
-            flash(
-                (
-                    "Payment blocked. This expense would "
-                    "exceed the department budget by "
-                    f"₱{budget_check['over_by']:,.2f}."
-                ),
-                "danger",
-            )
-
-            return redirect(
-                url_for(
-                    "view_expense",
-                    expense_id=expense_id,
-                )
-            )
-
-
-        # ==================================================
-        # BUDGET CHECK PASSED
-        # ==========================================================
-
+        # Authoritative status and budget validation commit atomically in the repository.
         mark_expense_as_paid(
             expense_id
         )
@@ -4745,7 +4246,7 @@ def mark_expense_as_paid_route(expense_id):
             action="MARK_PAID",
             entity_type="EXPENSE",
             entity_id=expense_id,
-            description="Expense marked as paid.",
+            description=f"Expense {expense_id} marked as paid.",
             entity_lookup=get_expense_by_id,
             identifier_key="expense_number",
         )
@@ -4785,9 +4286,11 @@ def cancel_expense_route(expense_id):
 
     try:
 
-        cancel_expense(
-            expense_id
-        )
+        if not cancel_expense(expense_id):
+            raise ValueError("Expense was not cancelled.")
+        record_audit_event("FINANCE", "CANCEL", "EXPENSE", expense_id,
+                           f"Expense {expense_id} cancelled.", entity_lookup=get_expense_by_id,
+                           identifier_key="expense_number", preserve_entity_id=True)
 
         flash(
             "Expense cancelled successfully.",
@@ -4822,430 +4325,14 @@ def cancel_expense_route(expense_id):
 )
 @permission_required("finance.expenses.manage")
 def edit_expense(expense_id):
-
-    # ======================================================
-    # GET EXPENSE
-    # ======================================================
-
     expense = get_expense_by_id(expense_id)
-
     if not expense:
-        flash(
-            "Expense not found.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("expenses")
-        )
-
-
-    # ======================================================
-    # ONLY DRAFT EXPENSES CAN BE EDITED
-    # ======================================================
-
-    if expense["status"] != "DRAFT":
-
-        flash(
-            "Only draft expenses can be edited.",
-            "danger",
-        )
-
-        return redirect(
-            url_for(
-                "view_expense",
-                expense_id=expense_id,
-            )
-        )
-
-
-    # ======================================================
-    # FORM OPTIONS
-    # ======================================================
-
-    categories = get_active_expense_categories()
-    departments = get_active_departments()
-    suppliers = get_active_suppliers()
-
-    purchase_orders = [
-        purchase_order
-        for purchase_order in get_all_purchase_orders()
-        if purchase_order["status"] != "CANCELLED"
-    ]
-
-
-    if request.method == "POST":
-
-        # ==================================================
-        # FORM INPUT
-        # ==================================================
-
-        expense_date = request.form.get(
-            "expense_date",
-            "",
-        ).strip()
-
-        category_id = request.form.get(
-            "category_id",
-            "",
-        ).strip()
-
-        department_id = request.form.get(
-            "department_id",
-            "",
-        ).strip()
-
-        supplier_id = request.form.get(
-            "supplier_id",
-            "",
-        ).strip()
-
-        purchase_order_id = request.form.get(
-            "purchase_order_id",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-        amount = request.form.get(
-            "amount",
-            "",
-        ).strip().replace(",", "")
-
-        reference_number = request.form.get(
-            "reference_number",
-            "",
-        ).strip()
-
-        payment_method = request.form.get(
-            "payment_method",
-            "",
-        ).strip()
-
-        notes = request.form.get(
-            "notes",
-            "",
-        ).strip()
-
-
-        # ==================================================
-        # REQUIRED FIELDS
-        # ==================================================
-
-        if (
-            not expense_date
-            or not category_id
-            or not description
-            or not amount
-        ):
-
-            flash(
-                "Date, category, description, and amount are required.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/expenses/edit.html",
-                expense=expense,
-                categories=categories,
-                departments=departments,
-                suppliers=suppliers,
-                purchase_orders=purchase_orders,
-            )
-
-
-        # ==================================================
-        # AMOUNT VALIDATION
-        # ==================================================
-
-        try:
-
-            amount_value = Decimal(amount)
-
-            if amount_value <= 0:
-                raise InvalidOperation
-
-        except (InvalidOperation, ValueError):
-
-            flash(
-                "Amount must be greater than zero.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/expenses/edit.html",
-                expense=expense,
-                categories=categories,
-                departments=departments,
-                suppliers=suppliers,
-                purchase_orders=purchase_orders,
-            )
-
-
-        # ==================================================
-        # CATEGORY VALIDATION
-        # ==================================================
-
-        try:
-            category_id_value = int(category_id)
-
-        except ValueError:
-
-            flash(
-                "Invalid expense category.",
-                "danger",
-            )
-
-            return redirect(
-                url_for(
-                    "edit_expense",
-                    expense_id=expense_id,
-                )
-            )
-
-        category = get_expense_category_by_id(
-            category_id_value
-        )
-
-        if not category or not category["is_active"]:
-
-            flash(
-                "Selected expense category is invalid or inactive.",
-                "danger",
-            )
-
-            return redirect(
-                url_for(
-                    "edit_expense",
-                    expense_id=expense_id,
-                )
-            )
-
-
-        # ==================================================
-        # OPTIONAL DEPARTMENT
-        # ==================================================
-
-        department_id_value = None
-
-        if department_id:
-
-            try:
-                department_id_value = int(department_id)
-
-            except ValueError:
-
-                flash("Invalid department.", "danger")
-
-                return redirect(
-                    url_for(
-                        "edit_expense",
-                        expense_id=expense_id,
-                    )
-                )
-
-            department = get_department_by_id(
-                department_id_value
-            )
-
-            if not department or not department["is_active"]:
-
-                flash(
-                    "Selected department is invalid or inactive.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for(
-                        "edit_expense",
-                        expense_id=expense_id,
-                    )
-                )
-
-
-        # ==================================================
-        # OPTIONAL SUPPLIER
-        # ==================================================
-
-        supplier_id_value = None
-
-        if supplier_id:
-
-            try:
-                supplier_id_value = int(supplier_id)
-
-            except ValueError:
-
-                flash("Invalid supplier.", "danger")
-
-                return redirect(
-                    url_for(
-                        "edit_expense",
-                        expense_id=expense_id,
-                    )
-                )
-
-            supplier = get_supplier_by_id(
-                supplier_id_value
-            )
-
-            if not supplier or not supplier["is_active"]:
-
-                flash(
-                    "Selected supplier is invalid or inactive.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for(
-                        "edit_expense",
-                        expense_id=expense_id,
-                    )
-                )
-
-
-        # ==================================================
-        # OPTIONAL PURCHASE ORDER
-        # ==================================================
-
-        purchase_order_id_value = None
-
-        if purchase_order_id:
-
-            try:
-                purchase_order_id_value = int(
-                    purchase_order_id
-                )
-
-            except ValueError:
-
-                flash(
-                    "Invalid purchase order.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for(
-                        "edit_expense",
-                        expense_id=expense_id,
-                    )
-                )
-
-            purchase_order = get_purchase_order_by_id(
-                purchase_order_id_value
-            )
-
-            if (
-                not purchase_order
-                or purchase_order["status"] == "CANCELLED"
-            ):
-
-                flash(
-                    "Selected purchase order is invalid or cancelled.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for(
-                        "edit_expense",
-                        expense_id=expense_id,
-                    )
-                )
-
-
-        # ==================================================
-        # PAYMENT METHOD VALIDATION
-        # ==================================================
-
-        allowed_payment_methods = {
-            "CASH",
-            "BANK_TRANSFER",
-            "CHECK",
-            "CARD",
-            "OTHER",
-        }
-
-        if (
-            payment_method
-            and payment_method not in allowed_payment_methods
-        ):
-
-            flash(
-                "Invalid payment method.",
-                "danger",
-            )
-
-            return redirect(
-                url_for(
-                    "edit_expense",
-                    expense_id=expense_id,
-                )
-            )
-
-
-        # ==================================================
-        # DATABASE UPDATE
-        # ==================================================
-
-        try:
-
-            update_expense(
-                expense_id,
-                expense_date,
-                category_id_value,
-                department_id_value,
-                supplier_id_value,
-                purchase_order_id_value,
-                description,
-                amount_value,
-                reference_number or None,
-                payment_method or None,
-                notes or None,
-            )
-
-        except ValueError as error:
-
-            flash(
-                str(error),
-                "danger",
-            )
-
-            return redirect(
-                url_for(
-                    "view_expense",
-                    expense_id=expense_id,
-                )
-            )
-
-
-        flash(
-            "Expense updated successfully.",
-            "success",
-        )
-
-        return redirect(
-            url_for(
-                "view_expense",
-                expense_id=expense_id,
-            )
-        )
-
-
-    # ======================================================
-    # SHOW EDIT FORM
-    # ======================================================
-
-    return render_template(
-        "finance/expenses/edit.html",
-        expense=expense,
-        categories=categories,
-        departments=departments,
-        suppliers=suppliers,
-        purchase_orders=purchase_orders,
-    )
+        flash('Expense not found.', 'danger')
+        return redirect(url_for('expenses'))
+    if expense['status'] != 'DRAFT':
+        flash('Only draft expenses can be edited.', 'danger')
+        return redirect(url_for('view_expense', expense_id=expense_id))
+    return _finance_expense_form(expense)
 
 
 
@@ -5262,49 +4349,20 @@ def finance_summary():
     # ======================================================
 
     current_year = date.today().year
-
-    selected_year = request.args.get(
-        "year",
-        str(current_year),
-    ).strip()
-
-    try:
-
-        selected_year = int(selected_year)
-
-    except ValueError:
-
-        selected_year = current_year
-
-
-    # ======================================================
-    # SUMMARY DATA
-    # ======================================================
-
-    summary = get_finance_summary_by_year(
-    selected_year
-)
-
-    monthly_paid_expenses = get_monthly_paid_expenses(
-        selected_year
-    )
-
-    paid_expenses_by_category = (
-        get_paid_expenses_by_category(
-            selected_year
-        )
-    )
-
-
-    # ======================================================
-    # SHOW FINANCE SUMMARY
-    # ======================================================
-
+    selected = finance_filters(request.args, default_year=current_year)
+    selected_year = selected['year']
+    data = finance_report(selected)
+    summary = data['summary']
+    monthly_expenses = data['monthly_expenses']
+    category_expenses = data['category_expenses']
+    expense_records = data['expense_records']
     return render_template(
         "finance/index.html",
+        selected_filters=selected,
+        filter_categories=get_all_expense_categories(), filter_departments=get_all_departments(),
         summary=summary,
-        monthly_paid_expenses=monthly_paid_expenses,
-        paid_expenses_by_category=paid_expenses_by_category,
+        monthly_paid_expenses=monthly_expenses,
+        paid_expenses_by_category=category_expenses,
         selected_year=selected_year,
         current_year=current_year,
     )
@@ -5323,43 +4381,26 @@ def department_budgets():
     # ======================================================
 
     current_year = date.today().year
-
-    selected_year = request.args.get(
-        "year",
-        str(current_year),
-    ).strip()
-
-    try:
-        selected_year = int(selected_year)
-
-    except ValueError:
-        selected_year = current_year
-
-
-    # ======================================================
-    # GET BUDGET RECORDS
-    # ======================================================
-
-    budget_list = get_all_department_budgets(
-        year=selected_year
-    )
-
-
-    # ======================================================
-    # GET BUDGET SUMMARY
-    # ======================================================
-
-    budget_summary = get_budget_summary(
-        selected_year
-    )
-
-
-    # ======================================================
-    # SHOW BUDGET PAGE
-    # ======================================================
+    selected = finance_filters(request.args, default_year=current_year)
+    if 'year' in request.args:
+        try:
+            calendar_year(request.args.get('year', '').strip())
+        except ValueError as error:
+            flash(f'Invalid reporting year. {error} Showing {current_year}.', 'danger')
+            return redirect(url_for('department_budgets', year=current_year,
+                                    department_id=selected['department_id']))
+    selected_year = selected['year']
+    budget_list = get_all_department_budgets(year=selected_year)
+    if selected['department_id'] is not None:
+        budget_list = [b for b in budget_list if b['department_id'] == selected['department_id']]
+    budget_summary = dict(department_count=len(budget_list),
+        total_budget=sum((b['budget_amount'] for b in budget_list), Decimal('0.00')),
+        total_spent=sum((b['spent_amount'] for b in budget_list), Decimal('0.00')),
+        total_remaining=sum((b['remaining_amount'] for b in budget_list), Decimal('0.00')))
 
     return render_template(
         "finance/budgets/index.html",
+        selected_filters=selected, filter_departments=get_all_departments(),
         budgets=budget_list,
         budget_summary=budget_summary,
         selected_year=selected_year,
@@ -5376,195 +4417,7 @@ def department_budgets():
 )
 @permission_required("finance.expenses.manage")
 def add_department_budget():
-
-    # ======================================================
-    # GET ACTIVE DEPARTMENTS
-    # ======================================================
-
-    departments = get_active_departments()
-
-
-    # ======================================================
-    # FORM SUBMISSION
-    # ======================================================
-
-    if request.method == "POST":
-
-        department_id = request.form.get(
-            "department_id",
-            "",
-        ).strip()
-
-        budget_year = request.form.get(
-            "budget_year",
-            "",
-        ).strip()
-
-        budget_amount = request.form.get(
-            "budget_amount",
-            "",
-        ).strip()
-
-        notes = request.form.get(
-            "notes",
-            "",
-        ).strip()
-
-
-        # ==================================================
-        # REQUIRED FIELDS
-        # ==================================================
-
-        if (
-            not department_id
-            or not budget_year
-            or not budget_amount
-        ):
-            flash(
-                "Department, year, and budget amount are required.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/budgets/add.html",
-                departments=departments,
-            )
-
-
-        # ==================================================
-        # DEPARTMENT VALIDATION
-        # ==================================================
-
-        try:
-            department_id = int(department_id)
-
-        except ValueError:
-
-            flash(
-                "Invalid department.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/budgets/add.html",
-                departments=departments,
-            )
-
-
-        # ==================================================
-        # YEAR VALIDATION
-        # ==================================================
-
-        try:
-            budget_year = int(budget_year)
-
-        except ValueError:
-
-            flash(
-                "Budget year must be a valid year.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/budgets/add.html",
-                departments=departments,
-            )
-
-
-        # ==================================================
-        # AMOUNT VALIDATION
-        # ==================================================
-
-        try:
-            budget_amount = Decimal(
-                budget_amount.replace(",", "")
-            )
-
-        except InvalidOperation:
-
-            flash(
-                "Budget amount must be a valid number.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/budgets/add.html",
-                departments=departments,
-            )
-
-        if budget_amount <= 0:
-
-            flash(
-                "Budget amount must be greater than zero.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/budgets/add.html",
-                departments=departments,
-            )
-
-
-        # ==================================================
-        # DUPLICATE BUDGET CHECK
-        # ==================================================
-
-        existing_budget = (
-            get_department_budget_by_department_and_year(
-                department_id,
-                budget_year,
-            )
-        )
-
-        if existing_budget:
-
-            flash(
-                "This department already has a budget "
-                "for the selected year.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/budgets/add.html",
-                departments=departments,
-            )
-
-
-        # ==================================================
-        # DATABASE INSERT
-        # ==================================================
-
-        create_department_budget(
-            department_id=department_id,
-            budget_year=budget_year,
-            budget_amount=budget_amount,
-            notes=notes or None,
-            created_by=session["user_id"],
-        )
-
-
-        # ==================================================
-        # SUCCESS
-        # ==================================================
-
-        flash(
-            "Department budget created successfully.",
-            "success",
-        )
-
-        return redirect(
-            url_for("department_budgets")
-        )
-
-
-    # ======================================================
-    # SHOW ADD FORM
-    # ======================================================
-
-    return render_template(
-        "finance/budgets/add.html",
-        departments=departments,
-    )
+    return _finance_budget_form()
 
 
 # ==========================================================
@@ -5577,241 +4430,11 @@ def add_department_budget():
 )
 @permission_required("finance.expenses.manage")
 def edit_department_budget(budget_id):
-
-    # ======================================================
-    # GET EXISTING BUDGET
-    # ======================================================
-
-    budget = get_department_budget_by_id(
-        budget_id
-    )
-
+    budget = get_department_budget_by_id(budget_id)
     if not budget:
-
-        flash(
-            "Department budget was not found.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("department_budgets")
-        )
-
-
-    # ======================================================
-    # GET ACTIVE DEPARTMENTS
-    # ======================================================
-
-    departments = get_active_departments()
-
-
-    # ======================================================
-    # FORM SUBMISSION
-    # ======================================================
-
-    if request.method == "POST":
-
-        department_id = request.form.get(
-            "department_id",
-            "",
-        ).strip()
-
-        budget_year = request.form.get(
-            "budget_year",
-            "",
-        ).strip()
-
-        budget_amount = request.form.get(
-            "budget_amount",
-            "",
-        ).strip()
-
-        notes = request.form.get(
-            "notes",
-            "",
-        ).strip()
-
-
-        # ==================================================
-        # REQUIRED FIELDS
-        # ==================================================
-
-        if (
-            not department_id
-            or not budget_year
-            or not budget_amount
-        ):
-
-            flash(
-                "Department, year, and budget amount are required.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/budgets/edit.html",
-                budget=budget,
-                departments=departments,
-            )
-
-
-        # ==================================================
-        # DEPARTMENT VALIDATION
-        # ==================================================
-
-        try:
-            department_id = int(department_id)
-
-        except ValueError:
-
-            flash(
-                "Invalid department.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/budgets/edit.html",
-                budget=budget,
-                departments=departments,
-            )
-
-
-        # ==================================================
-        # YEAR VALIDATION
-        # ==================================================
-
-        try:
-            budget_year = int(budget_year)
-
-        except ValueError:
-
-            flash(
-                "Budget year must be a valid year.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/budgets/edit.html",
-                budget=budget,
-                departments=departments,
-            )
-
-
-        # ==================================================
-        # AMOUNT VALIDATION
-        # ==================================================
-
-        try:
-
-            budget_amount = Decimal(
-                budget_amount.replace(",", "")
-            )
-
-        except InvalidOperation:
-
-            flash(
-                "Budget amount must be a valid number.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/budgets/edit.html",
-                budget=budget,
-                departments=departments,
-            )
-
-        if budget_amount <= 0:
-
-            flash(
-                "Budget amount must be greater than zero.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/budgets/edit.html",
-                budget=budget,
-                departments=departments,
-            )
-
-
-        # ==================================================
-        # DUPLICATE DEPARTMENT / YEAR CHECK
-        # ==================================================
-
-        duplicate_budget = (
-            get_department_budget_by_department_and_year(
-                department_id,
-                budget_year,
-            )
-        )
-
-        if (
-            duplicate_budget
-            and duplicate_budget["budget_id"]
-            != budget_id
-        ):
-
-            flash(
-                "This department already has a budget "
-                "for the selected year.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/budgets/edit.html",
-                budget=budget,
-                departments=departments,
-            )
-
-
-        # ==================================================
-        # DATABASE UPDATE
-        # ==================================================
-
-        try:
-
-            update_department_budget(
-                budget_id=budget_id,
-                department_id=department_id,
-                budget_year=budget_year,
-                budget_amount=budget_amount,
-                notes=notes or None,
-            )
-
-        except ValueError as error:
-
-            flash(
-                str(error),
-                "danger",
-            )
-
-            return redirect(
-                url_for("department_budgets")
-            )
-
-
-        # ==================================================
-        # SUCCESS
-        # ==================================================
-
-        flash(
-            "Department budget updated successfully.",
-            "success",
-        )
-
-        return redirect(
-            url_for("department_budgets")
-        )
-
-
-    # ======================================================
-    # SHOW EDIT FORM
-    # ======================================================
-
-    return render_template(
-        "finance/budgets/edit.html",
-        budget=budget,
-        departments=departments,
-    )
+        flash('Department budget was not found.', 'danger')
+        return redirect(url_for('department_budgets'))
+    return _finance_budget_form(budget)
 
 
 # ==========================================================
@@ -5828,9 +4451,7 @@ def view_department_budget(budget_id):
     # GET BUDGET DETAILS
     # ======================================================
 
-    budget = get_department_budget_details_by_id(
-        budget_id
-    )
+    budget, paid_expenses = get_department_budget_report(budget_id)
 
     if not budget:
 
@@ -5848,20 +4469,11 @@ def view_department_budget(budget_id):
     # GET PAID EXPENSES
     # ======================================================
 
-    paid_expenses = get_paid_expenses_for_budget(
-        budget_id
-    )
-
-
-    # ======================================================
-    # CALCULATE USAGE
-    # ======================================================
-
-    budget_amount = float(
+    budget_amount = Decimal(
         budget["budget_amount"]
     )
 
-    spent_amount = float(
+    spent_amount = Decimal(
         budget["spent_amount"]
     )
 
@@ -5902,61 +4514,17 @@ def finance_reports():
     # ======================================================
 
     current_year = date.today().year
-
-    selected_year = request.args.get(
-        "year",
-        str(current_year),
-    ).strip()
-
-    try:
-        selected_year = int(selected_year)
-
-    except ValueError:
-        selected_year = current_year
-
-
-    # ======================================================
-    # REPORT SUMMARY
-    # ======================================================
-
-    summary = get_finance_summary_by_year(
-        selected_year
-    )
-
-
-    # ======================================================
-    # MONTHLY PAID EXPENSES
-    # ======================================================
-
-    monthly_expenses = get_monthly_paid_expenses(
-        selected_year
-    )
-
-
-    # ======================================================
-    # PAID EXPENSES BY CATEGORY
-    # ======================================================
-
-    category_expenses = get_paid_expenses_by_category(
-        selected_year
-    )
-
-
-    # ======================================================
-    # ALL EXPENSE RECORDS FOR YEAR
-    # ======================================================
-
-    expense_records = get_filtered_expenses(
-        year=selected_year
-    )
-
-
-    # ======================================================
-    # SHOW REPORT PAGE
-    # ======================================================
-
+    selected = finance_filters(request.args, default_year=current_year)
+    selected_year = selected['year']
+    data = finance_report(selected)
+    summary = data['summary']
+    monthly_expenses = data['monthly_expenses']
+    category_expenses = data['category_expenses']
+    expense_records = data['expense_records']
     return render_template(
         "finance/reports/index.html",
+        selected_filters=selected,
+        filter_categories=get_all_expense_categories(), filter_departments=get_all_departments(),
         summary=summary,
         monthly_expenses=monthly_expenses,
         category_expenses=category_expenses,
@@ -5979,50 +4547,20 @@ def export_finance_report():
     # ======================================================
 
     current_year = date.today().year
-
-    selected_year = request.args.get(
-        "year",
-        str(current_year),
-    ).strip()
-
-    try:
-        selected_year = int(selected_year)
-
-    except ValueError:
-        selected_year = current_year
-
-
-    # ======================================================
-    # GET REPORT DATA
-    # ======================================================
-
-    summary = get_finance_summary_by_year(
-        selected_year
-    )
-
-    monthly_expenses = get_monthly_paid_expenses(
-        selected_year
-    )
-
-    category_expenses = get_paid_expenses_by_category(
-        selected_year
-    )
-
-    expense_records = get_filtered_expenses(
-        year=selected_year
-    )
-
-
-    # ======================================================
-    # GENERATE EXCEL FILE
-    # ======================================================
-
+    selected = finance_filters(request.args, default_year=current_year)
+    selected_year = selected['year']
+    data = finance_report(selected)
+    summary = data['summary']
+    monthly_expenses = data['monthly_expenses']
+    category_expenses = data['category_expenses']
+    expense_records = data['expense_records']
     excel_file = generate_finance_report_excel(
         selected_year,
         summary,
         monthly_expenses,
         category_expenses,
         expense_records,
+        filter_labels=selected,
     )
 
 
@@ -6030,7 +4568,7 @@ def export_finance_report():
     # DOWNLOAD FILE
     # ======================================================
 
-    return send_file(
+    response = send_file(
         excel_file,
         as_attachment=True,
         download_name=(
@@ -6045,6 +4583,9 @@ def export_finance_report():
 # ==========================================================
 # PAYROLL - EMPLOYEE COMPENSATION
 # ==========================================================
+    response.headers['Cache-Control'] = 'private, no-store'
+    return response
+
 
 @app.route("/payroll/compensation")
 @permission_required("payroll.view")
@@ -13826,6 +12367,96 @@ def logout():
         url_for("login")
     )
 
+
+
+# Shared Finance form adapters. Repository validation is the write boundary.
+def _finance_expense_form(expense=None):
+    context = dict(categories=get_active_expense_categories(), departments=get_active_departments(),
+                   suppliers=get_active_suppliers(), purchase_orders=[po for po in get_all_purchase_orders()
+                   if po['status'] != 'CANCELLED'], today=date.today().isoformat())
+    # POST values take precedence over saved values, including explicitly cleared
+    # optional fields. Keep unavailable selections visible instead of falling
+    # back to None or the first eligible record. The repository remains authoritative.
+    selections, selection_errors = {}, {}
+    choices = (
+        ('category_id', 'categories', 'category_id', 'Expense category'),
+        ('department_id', 'departments', 'department_id', 'Department'),
+        ('supplier_id', 'suppliers', 'supplier_id', 'Supplier'),
+        ('purchase_order_id', 'purchase_orders', 'purchase_order_id', 'Purchase order'),
+        ('payment_method', None, None, 'Payment method'),
+    )
+    for name, collection, key, label in choices:
+        value = str(request.form.get(name, '') if request.method == 'POST'
+                    else (expense or {}).get(name) or '').strip()
+        if value and collection:
+            try:
+                value = str(identifier(value, label))
+            except ValueError:
+                pass
+        eligible = ({str(row[key]) for row in context[collection]} if collection else
+                    {'CASH', 'BANK_TRANSFER', 'CHECK', 'CARD', 'OTHER'})
+        selections[name] = value
+        if value and value not in eligible:
+            selection_errors[name] = f'{label} selection is invalid or no longer eligible. Please choose again.'
+    context.update(form_selections=selections, form_selection_errors=selection_errors)
+    template = 'finance/expenses/edit.html' if expense else 'finance/expenses/add.html'
+    if expense:
+        context['expense'] = expense
+    if request.method == 'POST':
+        fields = [request.form.get(name, '').strip() for name in (
+            'expense_date', 'category_id', 'department_id', 'supplier_id', 'purchase_order_id',
+            'description', 'amount', 'reference_number', 'payment_method', 'notes')]
+        try:
+            if expense:
+                if not update_expense(expense['expense_id'], *fields):
+                    raise ValueError('Expense was not updated.')
+            else:
+                # Creator belongs before notes in the existing repository API.
+                expense_id, expense_number = create_expense(*fields[:-1], session['user_id'], fields[-1])
+        except ValueError as error:
+            flash(str(error), 'danger')
+        else:
+            entity_id = expense['expense_id'] if expense else expense_id
+            number = expense['expense_number'] if expense else expense_number
+            record_audit_event('FINANCE', 'UPDATE' if expense else 'CREATE', 'EXPENSE', entity_id,
+                               f"Expense {entity_id} ({number}) " + ('updated.' if expense else 'created.'))
+            flash('Expense updated successfully.' if expense else 'Expense created successfully.', 'success')
+            return redirect(url_for('view_expense', expense_id=expense['expense_id']) if expense else url_for('expenses'))
+    return render_template(template, **context)
+
+
+def _finance_budget_form(budget=None):
+    departments = get_active_departments()
+    if budget and not any(d['department_id'] == budget['department_id'] for d in departments):
+        current = get_department_by_id(budget['department_id'])
+        if current:
+            departments.append(current)
+    context = dict(departments=departments)
+    if budget:
+        context['budget'] = budget
+    if request.method == 'POST':
+        fields = [request.form.get(name, '').strip() for name in ('department_id', 'budget_year', 'budget_amount', 'notes')]
+        try:
+            if budget:
+                if update_department_budget(budget['budget_id'], *fields) is False:
+                    raise ValueError('Department budget was not updated.')
+                budget_id = budget['budget_id']
+            else:
+                budget_id = create_department_budget(*fields, session['user_id'])
+        except ValueError as error:
+            flash(str(error), 'danger')
+        else:
+            department_id, year = int(fields[0]), int(fields[1])
+            code = next((d['department_code'] for d in departments if d['department_id'] == department_id),
+                        f'#{department_id}')
+            record_audit_event('FINANCE', 'UPDATE' if budget else 'CREATE', 'DEPARTMENT_BUDGET', budget_id,
+                               f"Budget {budget_id} for department {department_id} ({code}), year {year}, "
+                               + ('updated.' if budget else 'created.'),
+                               entity_lookup=(lambda _: get_department_by_id(department_id)) if code.startswith('#') else None,
+                               identifier_key='department_code', preserve_entity_id=True)
+            flash('Department budget updated successfully.' if budget else 'Department budget created successfully.', 'success')
+            return redirect(url_for('department_budgets'))
+    return render_template('finance/budgets/edit.html' if budget else 'finance/budgets/add.html', **context)
 
 
 if __name__ == "__main__":

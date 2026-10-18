@@ -1,0 +1,5 @@
+{% macro unavailable_option(name) -%}
+{% if name in form_selection_errors %}
+<option value="{{ form_selections[name] }}" selected>Unavailable selection: {{ form_selections[name] }} ? choose again</option>
+{% endif %}
+{%- endmacro %}

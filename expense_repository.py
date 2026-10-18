@@ -1,3 +1,4 @@
+from finance_validation import expense_values, identifier, lock_expense_references
 # ==========================================================
 # EXPENSE REPOSITORY
 #
@@ -5,6 +6,7 @@
 # ==========================================================
 
 import uuid
+from decimal import Decimal
 
 from database import get_connection
 
@@ -198,6 +200,11 @@ def create_expense(
     created_by,
     notes,
 ):
+    (expense_date, category_id, department_id, supplier_id, purchase_order_id,
+     description, amount, reference_number, payment_method, notes) = expense_values(
+        expense_date, category_id, department_id, supplier_id, purchase_order_id,
+        description, amount, reference_number, payment_method, notes)
+    created_by = identifier(created_by, 'Creator')
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -208,6 +215,8 @@ def create_expense(
         # ==================================================
 
         connection.start_transaction()
+        lock_expense_references(cursor, category_id, department_id, supplier_id, purchase_order_id)
+
 
 
         # ==================================================
@@ -439,84 +448,89 @@ def approve_expense(
 # ==========================================================
 
 def mark_expense_as_paid(expense_id):
+    """Validate and commit a single payment under its annual budget lock.
+
+    Lock order: expense -> department/year budget. Spending is a nonlocking
+    READ COMMITTED read *after* the budget lock, so a waiting payment sees the
+    preceding payer's commit without trying to lock that payer's expense.
+    """
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
-
     try:
-
-        # ==================================================
-        # START TRANSACTION
-        # ==================================================
-
-        connection.start_transaction()
-
-
-        # ==================================================
-        # LOCK EXPENSE
-        # ==================================================
-
+        connection.start_transaction(isolation_level="READ COMMITTED")
         cursor.execute(
             """
-            SELECT
-                expense_id,
-                expense_number,
-                status
-            FROM expenses
-            WHERE expense_id = %s
-            FOR UPDATE
+            SELECT expense_id, expense_number, status, amount,
+                   department_id, expense_date
+            FROM expenses WHERE expense_id = %s FOR UPDATE
             """,
             (expense_id,),
         )
-
         expense = cursor.fetchone()
-
-
-        # ==================================================
-        # VALIDATION
-        # ==================================================
-
         if not expense:
-            raise ValueError(
-                "Expense not found."
-            )
-
+            raise ValueError("Expense not found.")
         if expense["status"] != "APPROVED":
-            raise ValueError(
-                "Only approved expenses can be marked as paid."
+            raise ValueError("Only approved expenses can be marked as paid.")
+
+        amount = Decimal(expense["amount"])
+        if not amount.is_finite() or amount <= 0:
+            raise ValueError("Expense amount must be greater than zero.")
+        department_id = expense["department_id"]
+        if department_id is not None:
+            budget_year = expense["expense_date"].year
+            cursor.execute(
+                """
+                SELECT budget_id, budget_amount FROM department_budgets
+                WHERE department_id = %s AND budget_year = %s FOR UPDATE
+                """,
+                (department_id, budget_year),
             )
+            budget = cursor.fetchone()
+            if not budget:
+                cursor.execute(
+                    "SELECT department_name FROM departments WHERE department_id = %s",
+                    (department_id,),
+                )
+                department = cursor.fetchone()
+                name = department["department_name"] if department else f"Department {department_id}"
+                raise ValueError(f"Payment blocked. {name} does not have a budget for {budget_year}.")
 
+            # READ COMMITTED gives this statement a fresh snapshot after any
+            # wait for the budget lock. Never use a pre-lock/preflight total.
+            cursor.execute(
+                """
+                SELECT COALESCE(SUM(amount), 0) AS spent_amount FROM expenses
+                WHERE department_id = %s AND YEAR(expense_date) = %s
+                  AND status = 'PAID'
+                """,
+                (department_id, budget_year),
+            )
+            spent = Decimal(cursor.fetchone()["spent_amount"])
+            projected = spent + amount
+            limit = Decimal(budget["budget_amount"])
+            if projected > limit:
+                over_by = projected - limit
+                raise ValueError(
+                    "Payment blocked. This expense would exceed the department budget by "
+                    f"\u20b1{over_by:,.2f}."
+                )
 
-        # ==================================================
-        # DATABASE UPDATE
-        # ==================================================
-
+        # Departmentless expenses retain the existing no-budget-check policy.
         cursor.execute(
             """
-            UPDATE expenses
-            SET
-                status = 'PAID',
-                paid_at = NOW()
-            WHERE expense_id = %s
+            UPDATE expenses SET status = 'PAID', paid_at = NOW()
+            WHERE expense_id = %s AND status = 'APPROVED'
             """,
             (expense_id,),
         )
-
-
-        # ==================================================
-        # COMMIT
-        # ==================================================
-
+        if cursor.rowcount != 1:
+            raise ValueError("Only approved expenses can be marked as paid.")
         connection.commit()
-
         return True
-
     except Exception:
-
         connection.rollback()
         raise
-
     finally:
-
         cursor.close()
         connection.close()
 
@@ -645,6 +659,11 @@ def update_expense(
     payment_method,
     notes,
 ):
+    (expense_date, category_id, department_id, supplier_id, purchase_order_id,
+     description, amount, reference_number, payment_method, notes) = expense_values(
+        expense_date, category_id, department_id, supplier_id, purchase_order_id,
+        description, amount, reference_number, payment_method, notes)
+    expense_id = identifier(expense_id, 'Expense')
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
@@ -695,6 +714,7 @@ def update_expense(
         # DATABASE UPDATE
         # ==================================================
 
+        lock_expense_references(cursor, category_id, department_id, supplier_id, purchase_order_id)
         cursor.execute(
             """
             UPDATE expenses
@@ -769,13 +789,11 @@ def get_finance_summary():
                     0
                 ) AS total_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'DRAFT'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS draft_count,
+                    END), 0) AS draft_count,
 
                 COALESCE(
                     SUM(
@@ -788,13 +806,11 @@ def get_finance_summary():
                     0
                 ) AS draft_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'APPROVED'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS approved_count,
+                    END), 0) AS approved_count,
 
                 COALESCE(
                     SUM(
@@ -807,13 +823,11 @@ def get_finance_summary():
                     0
                 ) AS approved_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'PAID'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS paid_count,
+                    END), 0) AS paid_count,
 
                 COALESCE(
                     SUM(
@@ -826,13 +840,11 @@ def get_finance_summary():
                     0
                 ) AS paid_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'CANCELLED'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS cancelled_count,
+                    END), 0) AS cancelled_count,
 
                 COALESCE(
                     SUM(
@@ -984,13 +996,11 @@ def get_finance_summary_by_year(year):
                     0
                 ) AS total_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'DRAFT'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS draft_count,
+                    END), 0) AS draft_count,
 
                 COALESCE(
                     SUM(
@@ -1003,13 +1013,11 @@ def get_finance_summary_by_year(year):
                     0
                 ) AS draft_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'APPROVED'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS approved_count,
+                    END), 0) AS approved_count,
 
                 COALESCE(
                     SUM(
@@ -1022,13 +1030,11 @@ def get_finance_summary_by_year(year):
                     0
                 ) AS approved_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'PAID'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS paid_count,
+                    END), 0) AS paid_count,
 
                 COALESCE(
                     SUM(
@@ -1041,13 +1047,11 @@ def get_finance_summary_by_year(year):
                     0
                 ) AS paid_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'CANCELLED'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS cancelled_count,
+                    END), 0) AS cancelled_count,
 
                 COALESCE(
                     SUM(
@@ -1091,6 +1095,7 @@ def get_filtered_expenses(
     category_id=None,
     year=None,
     search_text=None,
+    department_id=None,
 ):
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
@@ -1235,6 +1240,12 @@ def get_filtered_expenses(
         # ==================================================
         # SORTING
         # ==========================================================
+
+        if department_id == 'none':
+            query += " AND e.department_id IS NULL"
+        elif department_id is not None:
+            query += " AND e.department_id = %s"
+            parameters.append(department_id)
 
         query += """
             ORDER BY

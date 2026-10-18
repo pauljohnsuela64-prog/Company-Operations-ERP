@@ -12,6 +12,8 @@ Add Expense
 
 
 {% block content %}
+{% from 'finance/partials/expense_selection.html' import unavailable_option with context %}
+{% include 'finance/partials/expense_selection_errors.html' %}
 
 
 <!-- # ========================================== -->
@@ -92,20 +94,16 @@ Add Expense
                         required
                     >
 
-                        <option value="">
+                        <option value="" {% if not form_selections.category_id %}selected{% endif %}>
                             Select category
                         </option>
 
+                        {{ unavailable_option('category_id') }}
                         {% for category in categories %}
 
                             <option
                                 value="{{ category.category_id }}"
-                                {% if
-                                    request.form.get('category_id')
-                                    == category.category_id|string
-                                %}
-                                    selected
-                                {% endif %}
+                                {% if form_selections.category_id == category.category_id|string %}selected{% endif %}
                             >
                                 {{ category.category_code }}
                                 -
@@ -132,14 +130,16 @@ Add Expense
                         class="form-select"
                     >
 
-                        <option value="">
+                        <option value="" {% if not form_selections.department_id %}selected{% endif %}>
                             None
                         </option>
 
+                        {{ unavailable_option('department_id') }}
                         {% for department in departments %}
 
                             <option
                                 value="{{ department.department_id }}"
+                                {% if form_selections.department_id == department.department_id|string %}selected{% endif %}
                             >
                                 {{ department.department_name }}
                             </option>
@@ -164,14 +164,16 @@ Add Expense
                         class="form-select"
                     >
 
-                        <option value="">
+                        <option value="" {% if not form_selections.supplier_id %}selected{% endif %}>
                             None
                         </option>
 
+                        {{ unavailable_option('supplier_id') }}
                         {% for supplier in suppliers %}
 
                             <option
                                 value="{{ supplier.supplier_id }}"
+                                {% if form_selections.supplier_id == supplier.supplier_id|string %}selected{% endif %}
                             >
                                 {{ supplier.supplier_name }}
                             </option>
@@ -196,14 +198,16 @@ Add Expense
                         class="form-select"
                     >
 
-                        <option value="">
+                        <option value="" {% if not form_selections.purchase_order_id %}selected{% endif %}>
                             None
                         </option>
 
+                        {{ unavailable_option('purchase_order_id') }}
                         {% for purchase_order in purchase_orders %}
 
                             <option
                                 value="{{ purchase_order.purchase_order_id }}"
+                                {% if form_selections.purchase_order_id == purchase_order.purchase_order_id|string %}selected{% endif %}
                             >
                                 {{ purchase_order.po_number }}
                             </option>
@@ -223,35 +227,12 @@ Add Expense
                         Payment Method
                     </label>
 
-                    <select
-                        name="payment_method"
-                        class="form-select"
-                    >
-
-                        <option value="">
-                            Not specified
-                        </option>
-
-                        <option value="CASH">
-                            Cash
-                        </option>
-
-                        <option value="BANK_TRANSFER">
-                            Bank Transfer
-                        </option>
-
-                        <option value="CHECK">
-                            Check
-                        </option>
-
-                        <option value="CARD">
-                            Card
-                        </option>
-
-                        <option value="OTHER">
-                            Other
-                        </option>
-
+                    <select name="payment_method" class="form-select">
+                        <option value="" {% if not form_selections.payment_method %}selected{% endif %}>Not specified</option>
+                        {{ unavailable_option('payment_method') }}
+                        {% for method in ['CASH', 'BANK_TRANSFER', 'CHECK', 'CARD', 'OTHER'] %}
+                        <option value="{{ method }}" {% if form_selections.payment_method == method %}selected{% endif %}>{{ method.replace('_', ' ') }}</option>
+                        {% endfor %}
                     </select>
 
                 </div>
@@ -290,7 +271,7 @@ Add Expense
 
                     <input
                         type="number"
-                        name="amount"
+                        name="amount" max="9999999999.99"
                         class="form-control"
                         min="0.01"
                         step="0.01"

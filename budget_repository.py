@@ -1,3 +1,4 @@
+from finance_validation import budget_values, identifier, lock_department
 # ==========================================================
 # FINANCE - BUDGET REPOSITORY
 # ==========================================================
@@ -162,10 +163,16 @@ def create_department_budget(
     notes,
     created_by,
 ):
+    department_id, budget_year, budget_amount, notes = budget_values(
+        department_id, budget_year, budget_amount, notes)
+    created_by = identifier(created_by, 'Creator')
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_department(cursor, department_id)
+
 
         # ==================================================
         # DATABASE INSERT
@@ -195,9 +202,12 @@ def create_department_budget(
 
         return cursor.lastrowid
 
-    except Exception:
-
+    except Exception as error:
         connection.rollback()
+        if getattr(error, 'errno', None) == 1062:
+            raise ValueError('This department already has a budget for the selected year.') from error
+        if getattr(error, 'errno', None) in (1205, 1213):
+            raise ValueError('Finance data changed concurrently. Reload and try again.') from error
         raise
 
     finally:
@@ -324,6 +334,9 @@ def update_department_budget(
     budget_amount,
     notes,
 ):
+    department_id, budget_year, budget_amount, notes = budget_values(
+        department_id, budget_year, budget_amount, notes)
+    budget_id = identifier(budget_id, 'Budget')
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -362,6 +375,7 @@ def update_department_budget(
         # DATABASE UPDATE
         # ==========================================================
 
+        lock_department(cursor, department_id)
         cursor.execute(
             """
             UPDATE department_budgets
@@ -391,11 +405,13 @@ def update_department_budget(
         connection.commit()
 
 
-    except Exception:
-
+    except Exception as error:
         connection.rollback()
+        if getattr(error, 'errno', None) == 1062:
+            raise ValueError('This department already has a budget for the selected year.') from error
+        if getattr(error, 'errno', None) in (1205, 1213):
+            raise ValueError('Finance data changed concurrently. Reload and try again.') from error
         raise
-
 
     finally:
 
@@ -501,8 +517,10 @@ def get_budget_summary(year):
 # Only PAID expenses count as actual spending.
 # ==========================================================
 
-def get_paid_expenses_for_budget(budget_id):
-    connection = get_connection()
+def get_paid_expenses_for_budget(budget_id, connection=None):
+    owns_connection = connection is None
+    if owns_connection:
+        connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
     try:
@@ -564,7 +582,8 @@ def get_paid_expenses_for_budget(budget_id):
     finally:
 
         cursor.close()
-        connection.close()
+        if owns_connection:
+            connection.close()
 
 
 # ==========================================================
@@ -578,8 +597,10 @@ def get_paid_expenses_for_budget(budget_id):
 # - Remaining amount
 # ==========================================================
 
-def get_department_budget_details_by_id(budget_id):
-    connection = get_connection()
+def get_department_budget_details_by_id(budget_id, connection=None):
+    owns_connection = connection is None
+    if owns_connection:
+        connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
     try:
@@ -659,7 +680,8 @@ def get_department_budget_details_by_id(budget_id):
     finally:
 
         cursor.close()
-        connection.close()
+        if owns_connection:
+            connection.close()
 
 # ==========================================================
 # CHECK EXPENSE AGAINST DEPARTMENT BUDGET
@@ -676,6 +698,7 @@ def get_department_budget_details_by_id(budget_id):
 # ==========================================================
 
 def check_expense_against_budget(expense_id):
+    """Advisory display only; payment revalidates under its own transaction locks."""
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
@@ -894,4 +917,19 @@ def check_expense_against_budget(expense_id):
     finally:
 
         cursor.close()
+        connection.close()
+
+def get_department_budget_report(budget_id):
+    """Budget totals and paid detail rows from the same read-only snapshot."""
+    connection = get_connection()
+    try:
+        connection.start_transaction(isolation_level='REPEATABLE READ', consistent_snapshot=True, readonly=True)
+        budget = get_department_budget_details_by_id(budget_id, connection=connection)
+        records = get_paid_expenses_for_budget(budget_id, connection=connection) if budget else []
+        connection.commit()
+        return budget, records
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
         connection.close()

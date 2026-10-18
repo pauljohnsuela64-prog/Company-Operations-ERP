@@ -1,3 +1,4 @@
+from finance_validation import text, identifier
 # ==========================================================
 # EXPENSE CATEGORY REPOSITORY
 #
@@ -116,6 +117,9 @@ def create_expense_category(
     category_name,
     description=None,
 ):
+    category_code = text(category_code, 'Category code', 30, True)
+    category_name = text(category_name, 'Category name', 100, True)
+    description = text(description, 'Description', 255)
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -162,6 +166,10 @@ def update_expense_category(
     category_name,
     description=None,
 ):
+    category_code = text(category_code, 'Category code', 30, True)
+    category_name = text(category_name, 'Category name', 100, True)
+    description = text(description, 'Description', 255)
+    category_id = identifier(category_id, 'Category')
     connection = get_connection()
     cursor = connection.cursor()
 
