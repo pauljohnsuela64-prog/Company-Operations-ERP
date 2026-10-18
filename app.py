@@ -439,6 +439,7 @@ def record_audit_event(
     username=None,
     entity_lookup=None,
     identifier_key=None,
+    preserve_entity_id=False,
 ):
 
     actor_user_id = (
@@ -462,7 +463,12 @@ def record_audit_event(
             try:
                 entity = entity_lookup(entity_id)
                 if entity:
-                    entity_id = entity.get(identifier_key) or entity_id
+                    readable = entity.get(identifier_key)
+                    if preserve_entity_id:
+                        if readable:
+                            description = f"{description} Identifier: {readable}."
+                    else:
+                        entity_id = readable or entity_id
             except Exception:
                 # Keep the internal ID if the optional display lookup fails.
                 app.logger.exception("Unable to resolve audit entity identifier.")
@@ -3799,7 +3805,7 @@ def add_expense_category():
 
         try:
 
-            create_expense_category(
+            category_id = create_expense_category(
                 category_code,
                 category_name,
                 description or None,
@@ -3821,6 +3827,9 @@ def add_expense_category():
 
             raise
 
+
+        record_audit_event("FINANCE", "CREATE", "EXPENSE_CATEGORY", category_id,
+                           f"Expense category {category_id} ({category_code}) created.")
 
         flash(
             "Expense category created successfully.",
@@ -4068,7 +4077,7 @@ def edit_expense_category(category_id):
 
         try:
 
-            update_expense_category(
+            changed = update_expense_category(
                 category_id,
                 category_code,
                 category_name,
@@ -4091,6 +4100,12 @@ def edit_expense_category(category_id):
 
             raise
 
+
+        if not changed:
+            flash("Expense category was not changed. Reload and try again.", "warning")
+            return redirect(url_for("expense_categories"))
+        record_audit_event("FINANCE", "UPDATE", "EXPENSE_CATEGORY", category_id,
+                           f"Expense category {category_id} ({category_code}) updated.")
 
         flash(
             "Expense category updated successfully.",
@@ -4142,7 +4157,7 @@ def change_expense_category_status(category_id):
 
     new_status = not bool(category["is_active"])
 
-    set_expense_category_active_status(
+    changed = set_expense_category_active_status(
         category_id,
         new_status,
     )
@@ -4152,6 +4167,14 @@ def change_expense_category_status(category_id):
     # ======================================================
     # SUCCESS MESSAGE
     # ======================================================
+
+    if not changed:
+        flash("Expense category status was not changed. Reload and try again.", "warning")
+        return redirect(url_for("expense_categories"))
+    record_audit_event("FINANCE", "ACTIVATE" if new_status else "DEACTIVATE",
+                       "EXPENSE_CATEGORY", category_id,
+                       f"Expense category {category_id} ({category['category_code']}) "
+                       + ("activated." if new_status else "deactivated."))
 
     if new_status:
 
@@ -4278,7 +4301,7 @@ def approve_expense_route(expense_id):
             action="APPROVE",
             entity_type="EXPENSE",
             entity_id=expense_id,
-            description="Expense approved.",
+            description=f"Expense {expense_id} approved.",
             entity_lookup=get_expense_by_id,
             identifier_key="expense_number",
         )
@@ -4329,7 +4352,7 @@ def mark_expense_as_paid_route(expense_id):
             action="MARK_PAID",
             entity_type="EXPENSE",
             entity_id=expense_id,
-            description="Expense marked as paid.",
+            description=f"Expense {expense_id} marked as paid.",
             entity_lookup=get_expense_by_id,
             identifier_key="expense_number",
         )
@@ -4369,9 +4392,11 @@ def cancel_expense_route(expense_id):
 
     try:
 
-        cancel_expense(
-            expense_id
-        )
+        if not cancel_expense(expense_id):
+            raise ValueError("Expense was not cancelled.")
+        record_audit_event("FINANCE", "CANCEL", "EXPENSE", expense_id,
+                           f"Expense {expense_id} cancelled.", entity_lookup=get_expense_by_id,
+                           identifier_key="expense_number", preserve_entity_id=True)
 
         flash(
             "Expense cancelled successfully.",
@@ -12592,13 +12617,18 @@ def _finance_expense_form(expense=None):
             'description', 'amount', 'reference_number', 'payment_method', 'notes')]
         try:
             if expense:
-                update_expense(expense['expense_id'], *fields)
+                if not update_expense(expense['expense_id'], *fields):
+                    raise ValueError('Expense was not updated.')
             else:
                 # Creator belongs before notes in the existing repository API.
-                create_expense(*fields[:-1], session['user_id'], fields[-1])
+                expense_id, expense_number = create_expense(*fields[:-1], session['user_id'], fields[-1])
         except ValueError as error:
             flash(str(error), 'danger')
         else:
+            entity_id = expense['expense_id'] if expense else expense_id
+            number = expense['expense_number'] if expense else expense_number
+            record_audit_event('FINANCE', 'UPDATE' if expense else 'CREATE', 'EXPENSE', entity_id,
+                               f"Expense {entity_id} ({number}) " + ('updated.' if expense else 'created.'))
             flash('Expense updated successfully.' if expense else 'Expense created successfully.', 'success')
             return redirect(url_for('view_expense', expense_id=expense['expense_id']) if expense else url_for('expenses'))
     return render_template(template, **context)
@@ -12617,12 +12647,22 @@ def _finance_budget_form(budget=None):
         fields = [request.form.get(name, '').strip() for name in ('department_id', 'budget_year', 'budget_amount', 'notes')]
         try:
             if budget:
-                update_department_budget(budget['budget_id'], *fields)
+                if update_department_budget(budget['budget_id'], *fields) is False:
+                    raise ValueError('Department budget was not updated.')
+                budget_id = budget['budget_id']
             else:
-                create_department_budget(*fields, session['user_id'])
+                budget_id = create_department_budget(*fields, session['user_id'])
         except ValueError as error:
             flash(str(error), 'danger')
         else:
+            department_id, year = int(fields[0]), int(fields[1])
+            code = next((d['department_code'] for d in departments if d['department_id'] == department_id),
+                        f'#{department_id}')
+            record_audit_event('FINANCE', 'UPDATE' if budget else 'CREATE', 'DEPARTMENT_BUDGET', budget_id,
+                               f"Budget {budget_id} for department {department_id} ({code}), year {year}, "
+                               + ('updated.' if budget else 'created.'),
+                               entity_lookup=(lambda _: get_department_by_id(department_id)) if code.startswith('#') else None,
+                               identifier_key='department_code', preserve_entity_id=True)
             flash('Department budget updated successfully.' if budget else 'Department budget created successfully.', 'success')
             return redirect(url_for('department_budgets'))
     return render_template('finance/budgets/edit.html' if budget else 'finance/budgets/add.html', **context)
