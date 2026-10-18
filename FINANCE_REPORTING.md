@@ -208,3 +208,51 @@ On a disposable synthetic instance:
 Interactive native browser checks, responsive visual acceptance, spreadsheet
 application behavior and production hosting were not automated in this step.
 Await review before Finance Step 5.
+
+## Step 5A: final functional corrections
+
+Expense Add/Edit forms now share POST-first selection state for category,
+department, supplier, purchase order and payment method. Explicitly cleared
+optional fields stay cleared; eligible saved selections remain on initial Edit.
+Malformed, missing or ineligible selected references remain selected as escaped
+"Unavailable selection" options with visible feedback. They never silently become
+None or another eligible record. Repository validation and transactional reference
+checks remain authoritative. Other submitted text/date/amount fields retain their
+existing redisplay behavior.
+
+Budget Add/Edit links now require the backend's existing
+`finance.expenses.manage` permission. Read-only pages retain `finance.view`.
+Valid selected years (1000–9999) remain available outside the default five-year
+list and department filters survive Apply. A malformed/unsupported year redirects
+to the current year with explicit validation/fallback feedback and retains the
+normalized department filter; it is not silently ignored.
+
+Budget status/progress comparisons use exact Decimal spending versus allocation:
+below allocation retains Normal/Warning, equal means Fully Used, above means
+Over Budget. One-decimal percentage display cannot determine exhaustion. Related
+expense budget previews already accept exact available balances and need no change.
+
+Verification: 237 Python tests, 11 JavaScript tests, all ten disposable MySQL
+Finance/cross-module regression suites, compilation, dependency and diff checks
+passed. The reporting runner now exercises failed Add/Edit corrections through
+real persisted links, payment, reports and audits, plus unavailable references,
+permissions, years and status boundaries. No repository/payment locking changes,
+new permissions, role grants, migrations or financial policies are introduced.
+
+`tests/mysql_finance_functional_browser.py` composes the existing isolated security
+review runner with `tests/browser_finance_functional.cjs`. Chrome verified native
+Add/Edit validation recovery, exact persisted references and CREATE/UPDATE audits,
+year selection through Apply, invalid-year feedback, exact boundaries that all
+display 100.0%, viewer/manager controls and forged budget POST denial. Existing
+security and IT browser checks also passed. The sandbox DevTools connection reset;
+the same runner succeeded outside the command sandbox with unchanged Chrome flags
+and application protections. Run it with:
+
+```powershell
+.\.venv\Scripts\python.exe -B tests/mysql_finance_functional_browser.py
+```
+
+The runner blocks external HTTPS assets, so fully styled desktop/mobile layouts,
+native spreadsheet application behavior and deployment HTTPS still require manual
+acceptance. Previously documented financial-policy, audit-durability and large
+report/export limitations remain. Await review before committing.

@@ -11,6 +11,74 @@ import mysql.connector
 from openpyxl import load_workbook
 import mysql_audit_smoke as harness
 from security_helpers import stamp_session, user_state, csrf_token_for
+from test_finance_functional import FormValues
+
+
+def verify_functional_corrections(erp, sql, c, post):
+    """Real form recovery must retain links through commit, audit and payment."""
+    sql("INSERT INTO suppliers(supplier_id,supplier_code,supplier_name) VALUES (1,'FORM1','Form 1'),(2,'FORM2','Form 2')")
+    sql("INSERT INTO purchase_orders(purchase_order_id,po_number,supplier_id,created_by) VALUES (1,'FORM1',1,1),(2,'FORM2',2,1)")
+    form = dict(expense_date='2026-12-31', category_id='2', department_id='2', supplier_id='2',
+                purchase_order_id='2', payment_method='CARD', description='Form recovery', amount='0',
+                reference_number='Retained reference', notes='Retained notes')
+    def snapshot():
+        return [sql('SELECT * FROM '+table+' ORDER BY 1', fetch=True)
+                for table in ['expenses', 'department_budgets', 'audit_logs']]
+    before = snapshot()
+    html = post('/finance/expenses/add', form).get_data(as_text=True)
+    values = FormValues(html)
+    for name in ['category_id', 'department_id', 'supplier_id', 'purchase_order_id', 'payment_method']:
+        assert values.selected(name) == form[name]
+    assert values.values['reference_number'] == form['reference_number'] and form['notes'] in html
+    assert snapshot() == before
+    # A forged/stale reference stays visibly selected; it cannot turn into None.
+    for name, value in [('department_id', '999'), ('supplier_id', '<invalid>'), ('purchase_order_id', '999')]:
+        response = post('/finance/expenses/add', dict(form, amount='0.20', **{name: value}))
+        html = response.get_data(as_text=True)
+        assert response.status_code == 200 and 'invalid or no longer eligible' in html
+        assert FormValues(html).selected(name) == value and snapshot() == before
+    for table, field in [('departments', 'department_id'), ('suppliers', 'supplier_id'), ('expense_categories', 'category_id')]:
+        sql(f'UPDATE {table} SET is_active=0 WHERE {field}=2')
+    sql("UPDATE purchase_orders SET status='CANCELLED' WHERE purchase_order_id=2")
+    html = post('/finance/expenses/add', dict(form, amount='0.20')).get_data(as_text=True)
+    values = FormValues(html)
+    for name in ['category_id', 'department_id', 'supplier_id', 'purchase_order_id']:
+        assert values.selected(name) == '2'
+    assert html.count('invalid or no longer eligible') == 4 and snapshot() == before
+    for table, field in [('departments', 'department_id'), ('suppliers', 'supplier_id'), ('expense_categories', 'category_id')]:
+        sql(f'UPDATE {table} SET is_active=1 WHERE {field}=2')
+    sql("UPDATE purchase_orders SET status='DRAFT' WHERE purchase_order_id=2")
+    assert post('/finance/expenses/add', dict(form, amount='0.20')).status_code == 302
+    eid = sql('SELECT MAX(expense_id) FROM expenses', fetch=True)[0][0]
+    assert sql('SELECT department_id,supplier_id,purchase_order_id,payment_method,amount FROM expenses WHERE expense_id=%s', (eid,), True) == [(2,2,2,'CARD',Decimal('0.20'))]
+    before = snapshot()
+    edited = dict(form, payment_method='BANK_TRANSFER')
+    values = FormValues(post(f'/finance/expenses/{eid}/edit', edited).get_data(as_text=True))
+    assert values.selected('department_id') == '2' and values.selected('payment_method') == 'BANK_TRANSFER'
+    assert snapshot() == before
+    assert post(f'/finance/expenses/{eid}/edit', dict(edited, amount='0.30')).status_code == 302
+    assert sql('SELECT department_id,amount,payment_method FROM expenses WHERE expense_id=%s', (eid,), True) == [(2,Decimal('0.30'),'BANK_TRANSFER')]
+    assert post('/finance/budgets/add', dict(department_id=2, budget_year=2026, budget_amount='1.00')).status_code == 302
+    assert post(f'/finance/expenses/{eid}/approve').status_code == 302
+    assert post(f'/finance/expenses/{eid}/paid').status_code == 302
+    import budget_repository
+    budget_id = sql('SELECT budget_id FROM department_budgets WHERE department_id=2 AND budget_year=2026', fetch=True)[0][0]
+    assert budget_repository.get_department_budget_report(budget_id)[0]['spent_amount'] == Decimal('0.70')
+    events = sql("SELECT action FROM audit_logs WHERE entity_type='EXPENSE' AND (entity_id=%s OR entity_id=(SELECT expense_number FROM expenses WHERE expense_id=%s)) ORDER BY audit_log_id", (str(eid), eid), True)
+    assert events == [('CREATE',), ('UPDATE',), ('APPROVE',), ('MARK_PAID',)]
+    for year in [2026, 2010, 2027, 1000, 9999]:
+        values = FormValues(c.get(f'/finance/budgets?year={year}&department_id=2').get_data(as_text=True))
+        assert values.selected('year') == str(year) and values.selected('department_id') == '2'
+    response = c.get('/finance/budgets?year=NaN&department_id=2', follow_redirects=True)
+    assert 'Invalid reporting year.' in response.get_data(as_text=True)
+    assert FormValues(response.get_data(as_text=True)).selected('department_id') == '2'
+    # Exact exhaustion is distinct from either side; unit/Chrome checks also
+    # cover amounts whose displayed percentages all round to 100.0%.
+    for amount, expected in [('0.69', 'Over Budget'), ('0.70', 'Fully Used'), ('0.71', 'Warning')]:
+        sql('UPDATE department_budgets SET budget_amount=%s WHERE budget_id=%s', (Decimal(amount), budget_id))
+        html = c.get('/finance/budgets?year=2026&department_id=2').get_data(as_text=True)
+        assert expected in html
+    print('PASS real Add/Edit failed validation and correction retain references through payment/reports/audits; unavailable references, year selection and exact budget labels')
 
 
 def run(port,data_dir):
@@ -149,10 +217,20 @@ def run(port,data_dir):
         assert any(r['expense_id']==cancelled and r['status']=='CANCELLED' for r in reports.report(selected)['expense_records'])
         print('PASS report snapshot during real concurrent commit, full create/edit/approve/pay and cancellation lifecycle, audit integrity and serialized safe XLSX')
 
+        verify_functional_corrections(erp, sql, c, post)
+
         viewer=client(2)
         assert viewer.get('/finance/reports/export?year=2026').location.endswith('/dashboard')
         sql("INSERT INTO role_permissions SELECT 2,permission_id FROM permissions WHERE permission_code='finance.view'")
         assert viewer.get('/finance/reports/export?year=2026').status_code==200
+        html=viewer.get('/finance/budgets?year=2026').get_data(as_text=True)
+        assert '/finance/budgets/add' not in html and not re.search(r'/finance/budgets/\d+/edit',html)
+        assert viewer.get('/finance/budgets/add').location.endswith('/dashboard')
+        before=sql('SELECT COUNT(*) FROM audit_logs',fetch=True)
+        assert viewer.post('/finance/budgets/add',data=dict(department_id=1,budget_year=2027,budget_amount='1',csrf_token=csrf_token_for(viewer))).location.endswith('/dashboard')
+        assert sql('SELECT COUNT(*) FROM audit_logs',fetch=True)==before
+        html=c.get('/finance/budgets?year=2026').get_data(as_text=True)
+        assert '/finance/budgets/add' in html and re.search(r'/finance/budgets/\d+/edit',html)
         assert viewer.post(f'/finance/expenses/{cancelled}/cancel',data={'csrf_token':csrf_token_for(viewer)}).location.endswith('/dashboard')
         anon=erp.app.test_client();assert anon.get('/finance/reports/export').location.endswith('/login')
         before=sql('SELECT COUNT(*) FROM audit_logs',fetch=True)

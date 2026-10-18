@@ -41,6 +41,9 @@ Department Budgets
 
                 <select name="year" class="form-select">
 
+                    {% if selected_year not in range(current_year, current_year - 5, -1) %}
+                    <option value="{{ selected_year }}" selected>{{ selected_year }}</option>
+                    {% endif %}
                     {% for year in range(
                     current_year,
                     current_year - 5,
@@ -68,9 +71,11 @@ Department Budgets
 
         <!-- # ADD BUDGET BUTTON -->
 
+        {% if has_permission("finance.expenses.manage") %}
         <a href="{{ url_for('add_department_budget') }}" class="btn btn-primary">
             Add Budget
         </a>
+        {% endif %}
 
     </div>
 
@@ -317,9 +322,14 @@ Department Budgets
 
                             <div class="progress" style="height: 8px;">
 
-                                {% if usage_percentage >= 100 %}
+                                {% if spent_amount > budget_amount %}
 
                                 <div class="progress-bar bg-danger budget-progress-bar"
+                                    data-progress="{{ progress_width }}"></div>
+
+                                {% elif spent_amount == budget_amount %}
+
+                                <div class="progress-bar bg-secondary budget-progress-bar"
                                     data-progress="{{ progress_width }}"></div>
 
                                 {% elif usage_percentage >= 80 %}
@@ -343,10 +353,16 @@ Department Budgets
 
                         <td>
 
-                            {% if usage_percentage >= 100 %}
+                            {% if spent_amount > budget_amount %}
 
                             <span class="badge bg-danger">
                                 Over Budget
+                            </span>
+
+                            {% elif spent_amount == budget_amount %}
+
+                            <span class="badge bg-secondary">
+                                Fully Used
                             </span>
 
                             {% elif usage_percentage >= 80 %}
@@ -377,12 +393,14 @@ Department Budgets
                                 View
                             </a>
 
+                            {% if has_permission("finance.expenses.manage") %}
                             <a href="{{ url_for(
             'edit_department_budget',
             budget_id=budget.budget_id
         ) }}" class="btn btn-sm btn-outline-primary">
                                 Edit
                             </a>
+                            {% endif %}
 
                         </td>
 

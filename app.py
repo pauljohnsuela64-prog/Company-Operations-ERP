@@ -1,5 +1,6 @@
 from budget_repository import get_department_budget_report
 from finance_reporting import filters as finance_filters, report as finance_report
+from finance_validation import calendar_year, identifier
 from inventory_reporting import report_filters, get_movement_page, get_reconciliation_page
 from procurement_validation import decimal_value, currency_amount
 from csrf_security import init_csrf
@@ -4381,6 +4382,13 @@ def department_budgets():
 
     current_year = date.today().year
     selected = finance_filters(request.args, default_year=current_year)
+    if 'year' in request.args:
+        try:
+            calendar_year(request.args.get('year', '').strip())
+        except ValueError as error:
+            flash(f'Invalid reporting year. {error} Showing {current_year}.', 'danger')
+            return redirect(url_for('department_budgets', year=current_year,
+                                    department_id=selected['department_id']))
     selected_year = selected['year']
     budget_list = get_all_department_budgets(year=selected_year)
     if selected['department_id'] is not None:
@@ -12366,6 +12374,31 @@ def _finance_expense_form(expense=None):
     context = dict(categories=get_active_expense_categories(), departments=get_active_departments(),
                    suppliers=get_active_suppliers(), purchase_orders=[po for po in get_all_purchase_orders()
                    if po['status'] != 'CANCELLED'], today=date.today().isoformat())
+    # POST values take precedence over saved values, including explicitly cleared
+    # optional fields. Keep unavailable selections visible instead of falling
+    # back to None or the first eligible record. The repository remains authoritative.
+    selections, selection_errors = {}, {}
+    choices = (
+        ('category_id', 'categories', 'category_id', 'Expense category'),
+        ('department_id', 'departments', 'department_id', 'Department'),
+        ('supplier_id', 'suppliers', 'supplier_id', 'Supplier'),
+        ('purchase_order_id', 'purchase_orders', 'purchase_order_id', 'Purchase order'),
+        ('payment_method', None, None, 'Payment method'),
+    )
+    for name, collection, key, label in choices:
+        value = str(request.form.get(name, '') if request.method == 'POST'
+                    else (expense or {}).get(name) or '').strip()
+        if value and collection:
+            try:
+                value = str(identifier(value, label))
+            except ValueError:
+                pass
+        eligible = ({str(row[key]) for row in context[collection]} if collection else
+                    {'CASH', 'BANK_TRANSFER', 'CHECK', 'CARD', 'OTHER'})
+        selections[name] = value
+        if value and value not in eligible:
+            selection_errors[name] = f'{label} selection is invalid or no longer eligible. Please choose again.'
+    context.update(form_selections=selections, form_selection_errors=selection_errors)
     template = 'finance/expenses/edit.html' if expense else 'finance/expenses/add.html'
     if expense:
         context['expense'] = expense
