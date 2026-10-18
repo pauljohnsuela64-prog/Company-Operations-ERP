@@ -161,6 +161,7 @@ from it_asset_repository import (
     update_it_asset_category,
     get_it_asset_report_by_category,
     get_it_asset_report_by_department,
+    get_it_asset_report_data,
 )
 
 from budget_repository import (
@@ -7361,44 +7362,11 @@ def it_asset_reports():
     # SUMMARY
     # ======================================================
 
-    summary = get_it_asset_summary()
-
-
-    # ======================================================
-    # CATEGORY REPORT
-    # ======================================================
-
-    category_summary = (
-        get_it_asset_report_by_category()
-    )
-
-
-    # ======================================================
-    # DEPARTMENT REPORT
-    # ======================================================
-
-    department_summary = (
-        get_it_asset_report_by_department()
-    )
-
-
-    # ======================================================
-    # ASSET REGISTER
-    # ======================================================
-
-    assets = get_filtered_it_assets()
-
-
-    # ======================================================
-    # SHOW REPORT
-    # ======================================================
+    report = get_it_asset_report_data()
 
     return render_template(
         "it_assets/reports/index.html",
-        summary=summary,
-        category_summary=category_summary,
-        department_summary=department_summary,
-        assets=assets,
+        **report,
     )
 
 
@@ -7414,17 +7382,7 @@ def export_it_asset_report():
     # GET REPORT DATA
     # ======================================================
 
-    summary = get_it_asset_summary()
-
-    category_summary = (
-        get_it_asset_report_by_category()
-    )
-
-    department_summary = (
-        get_it_asset_report_by_department()
-    )
-
-    assets = get_filtered_it_assets()
+    report = get_it_asset_report_data()
 
 
     # ======================================================
@@ -7433,10 +7391,7 @@ def export_it_asset_report():
 
     excel_file = (
         generate_it_asset_report_excel(
-            summary=summary,
-            category_summary=category_summary,
-            department_summary=department_summary,
-            assets=assets,
+            **{key: report[key] for key in ('summary', 'category_summary', 'department_summary', 'assets')},
         )
     )
 
@@ -7445,7 +7400,7 @@ def export_it_asset_report():
     # DOWNLOAD
     # ======================================================
 
-    return send_file(
+    response = send_file(
         excel_file,
         as_attachment=True,
         download_name=(
@@ -7456,6 +7411,9 @@ def export_it_asset_report():
             "officedocument.spreadsheetml.sheet"
         ),
     )
+
+    response.headers['Cache-Control'] = 'private, no-store'
+    return response
 
 # ==========================================================
 # IT MANAGEMENT - HELP DESK

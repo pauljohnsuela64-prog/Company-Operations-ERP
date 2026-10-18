@@ -125,7 +125,7 @@ IT Asset Details
         {% endif %}
 
 
-        {% if has_permission('it_assets.manage') %}
+        {% if has_permission('it_assets.manage') and not asset.assigned_employee_id %}
         <form
             method="POST"
             action="{{ url_for(
@@ -167,7 +167,7 @@ IT Asset Details
                 type="submit"
                 class="btn btn-outline-success"
             >
-                Restore Asset
+                {{ "Recover Asset" if asset.status == "LOST" else "Restore Asset" }}
             </button>
 
         </form>
@@ -341,7 +341,7 @@ IT Asset Details
 
         {% else %}
 
-            {% if has_permission('it_assets.manage') %}
+            {% if has_permission('it_assets.manage') and asset.status == 'AVAILABLE' and not (assignment_history | selectattr('returned_at', 'none') | list) %}
             <form
                 method="POST"
                 action="{{ url_for(

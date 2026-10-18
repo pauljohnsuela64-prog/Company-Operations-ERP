@@ -1023,8 +1023,9 @@ def complete_it_asset_maintenance(
 # GET IT ASSET SUMMARY
 # ==========================================================
 
-def get_it_asset_summary():
-    connection = get_connection()
+def get_it_asset_summary(connection=None):
+    owns_connection = connection is None
+    connection = connection if connection is not None else get_connection()
     cursor = connection.cursor(dictionary=True)
 
     try:
@@ -1068,7 +1069,8 @@ def get_it_asset_summary():
     finally:
 
         cursor.close()
-        connection.close()
+        if owns_connection:
+            connection.close()
 
 
 # ==========================================================
@@ -1080,8 +1082,10 @@ def get_filtered_it_assets(
     status=None,
     category_id=None,
     department_id=None,
+    connection=None,
 ):
-    connection = get_connection()
+    owns_connection = connection is None
+    connection = connection if connection is not None else get_connection()
     cursor = connection.cursor(dictionary=True)
 
     try:
@@ -1231,7 +1235,8 @@ def get_filtered_it_assets(
     finally:
 
         cursor.close()
-        connection.close()
+        if owns_connection:
+            connection.close()
 
 
 # ==========================================================
@@ -1712,8 +1717,9 @@ def set_it_asset_category_active_status(
 # IT ASSET REPORT - BY CATEGORY
 # ==========================================================
 
-def get_it_asset_report_by_category():
-    connection = get_connection()
+def get_it_asset_report_by_category(connection=None):
+    owns_connection = connection is None
+    connection = connection if connection is not None else get_connection()
     cursor = connection.cursor(dictionary=True)
 
     try:
@@ -1777,15 +1783,17 @@ def get_it_asset_report_by_category():
     finally:
 
         cursor.close()
-        connection.close()
+        if owns_connection:
+            connection.close()
 
 
 # ==========================================================
 # IT ASSET REPORT - BY DEPARTMENT
 # ==========================================================
 
-def get_it_asset_report_by_department():
-    connection = get_connection()
+def get_it_asset_report_by_department(connection=None):
+    owns_connection = connection is None
+    connection = connection if connection is not None else get_connection()
     cursor = connection.cursor(dictionary=True)
 
     try:
@@ -1851,4 +1859,57 @@ def get_it_asset_report_by_department():
     finally:
 
         cursor.close()
+        if owns_connection:
+            connection.close()
+
+
+def get_it_asset_report_data():
+    """Read all report sections from one nonlocking InnoDB snapshot."""
+    connection = get_connection()
+    try:
+        connection.start_transaction(isolation_level='REPEATABLE READ',
+                                     consistent_snapshot=True, readonly=True)
+        data = dict(summary=get_it_asset_summary(connection=connection),
+                    category_summary=get_it_asset_report_by_category(connection=connection),
+                    department_summary=get_it_asset_report_by_department(connection=connection),
+                    assets=get_filtered_it_assets(connection=connection))
+        cursor = connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT a.asset_id, a.asset_tag, a.status, a.assigned_employee_id,
+                       COALESCE(h.active_count, 0) AS active_count, h.employee_id AS history_employee_id,
+                       COALESCE(m.open_count, 0) AS open_count
+                FROM it_assets a
+                LEFT JOIN (
+                    SELECT asset_id, COUNT(*) AS active_count, MIN(employee_id) AS employee_id
+                    FROM it_asset_assignments WHERE returned_at IS NULL GROUP BY asset_id
+                ) h ON h.asset_id = a.asset_id
+                LEFT JOIN (
+                    SELECT asset_id, COUNT(*) AS open_count
+                    FROM it_asset_maintenance WHERE status = 'OPEN' GROUP BY asset_id
+                ) m ON m.asset_id = a.asset_id
+            """)
+            diagnostics = []
+            for row in cursor.fetchall():
+                issues = []
+                custody = row['assigned_employee_id']
+                if row['active_count'] != (1 if custody else 0):
+                    issues.append('Active assignment count differs from recorded custody')
+                elif custody and row['history_employee_id'] != custody:
+                    issues.append('Active assignment employee differs from recorded custody')
+                if (row['status'] == 'ASSIGNED' and not custody) or (row['status'] == 'AVAILABLE' and custody):
+                    issues.append('Asset status differs from recorded custody')
+                if row['open_count'] != (1 if row['status'] == 'MAINTENANCE' else 0):
+                    issues.append('Open maintenance count differs from asset status')
+                if issues:
+                    diagnostics.append(dict(asset_id=row['asset_id'], asset_tag=row['asset_tag'], issues=issues))
+            data['diagnostics'] = diagnostics
+        finally:
+            cursor.close()
+        connection.commit()
+        return data
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
         connection.close()

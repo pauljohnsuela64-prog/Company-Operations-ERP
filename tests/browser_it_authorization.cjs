@@ -136,6 +136,17 @@ module.exports = async function verify({base, controlKey, send, tab, evaluate, n
 
   await require('./browser_it_asset_validation.cjs')({manager, navigate, evaluate, until, request, snapshot});
 
+  for (const viewer of [assetViewer, manager, admin]) {
+    await navigate(viewer, '/it/assets/reports');
+    assert(await evaluate(viewer, `document.body.textContent.includes('Counts reflect lifecycle status, not custody.')`));
+    const row = await evaluate(viewer, `[...document.querySelectorAll('main tr')].find(r => r.textContent.includes('BROWSER-ASSET'))?.textContent`);
+    assert(row && row.includes('Available') && row.includes('Good'));
+    const download = await evaluate(viewer, `(async()=>{const r=await fetch('/it/assets/reports/export');const b=new Uint8Array(await r.arrayBuffer());return {status:r.status,type:r.headers.get('content-type'),disposition:r.headers.get('content-disposition'),zip:b[0]===80&&b[1]===75};})()`);
+    assert.equal(download.status, 200);
+    assert(download.type.includes('spreadsheetml.sheet') && download.disposition.includes('attachment;') && download.zip);
+  }
+  console.log('PASS Chrome viewer/manager/admin reports show current lifecycle/condition and download an authorized XLSX attachment');
+
   const auditor = await login('review-user');
   await navigate(auditor, '/admin/audit-logs?module=IT_ASSETS');
   const auditText = await evaluate(auditor, `document.querySelector('main table').textContent`);

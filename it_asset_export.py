@@ -4,6 +4,8 @@
 
 from io import BytesIO
 from decimal import Decimal
+import re
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 
 from openpyxl.utils import get_column_letter
 from openpyxl import Workbook
@@ -32,6 +34,13 @@ HEADER_FILL = PatternFill(
 # ==========================================================
 # VALUE HELPERS
 # ==========================================================
+
+def _text(value):
+    if not isinstance(value, str):
+        return value
+    value = ILLEGAL_CHARACTERS_RE.sub(lambda m: f'\\x{ord(m[0]):02x}', value)
+    return re.sub('[\ud800-\udfff\ufffe\uffff]', lambda m: f'\\u{ord(m[0]):04x}', value)
+
 
 def _number(value):
 
@@ -245,8 +254,8 @@ def generate_it_asset_report_excel(
 
         category_sheet.append(
             [
-                category["category_code"],
-                category["category_name"],
+                _text(category["category_code"]),
+                _text(category["category_name"]),
                 category["total_assets"],
                 category["available_count"],
                 category["assigned_count"],
@@ -292,9 +301,9 @@ def generate_it_asset_report_excel(
 
         department_sheet.append(
             [
-                department[
+                _text(department[
                     "department_name"
-                ],
+                ]),
                 department[
                     "total_assets"
                 ],
@@ -358,36 +367,36 @@ def generate_it_asset_report_excel(
 
         asset_sheet.append(
             [
-                asset[
+                _text(asset[
                     "asset_tag"
-                ],
-                asset[
+                ]),
+                _text(asset[
                     "asset_name"
-                ],
-                asset[
+                ]),
+                _text(asset[
                     "category_name"
-                ],
-                asset[
+                ]),
+                _text(asset[
                     "brand"
-                ] or "",
-                asset[
+                ] or ""),
+                _text(asset[
                     "model"
-                ] or "",
-                asset[
+                ] or ""),
+                _text(asset[
                     "serial_number"
-                ] or "",
-                asset[
+                ] or ""),
+                _text(asset[
                     "department_name"
-                ] or "",
-                asset[
+                ] or ""),
+                _text(asset[
                     "assigned_employee_name"
-                ] or "",
-                asset[
+                ] or ""),
+                _text(asset[
                     "status"
-                ],
-                asset[
+                ]),
+                _text(asset[
                     "condition_status"
-                ],
+                ]),
                 asset[
                     "purchase_date"
                 ],
@@ -399,9 +408,9 @@ def generate_it_asset_report_excel(
                 asset[
                     "warranty_expiry"
                 ],
-                asset[
+                _text(asset[
                     "notes"
-                ] or "",
+                ] or ""),
             ]
         )
 
@@ -500,6 +509,20 @@ def generate_it_asset_report_excel(
 
 
     # ======================================================
+    # Stored text is data, never an application-generated formula. Explicit string
+    # typing also covers whitespace/control-prefixed payloads and Excel errors.
+    # Leave numeric/date cells, headings and workbook structure untouched.
+    for sheet, first_row, columns in (
+        (category_sheet, 2, (1, 2)),
+        (department_sheet, 2, (1,)),
+        (asset_sheet, 2, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 14)),
+    ):
+        for row in sheet.iter_rows(min_row=first_row):
+            for column in columns:
+                cell = row[column - 1]
+                if isinstance(cell.value, str):
+                    cell.data_type = 's'
+
     # AUTO WIDTH
     # ======================================================
 
