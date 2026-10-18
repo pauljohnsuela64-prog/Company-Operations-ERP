@@ -45,29 +45,29 @@ Add Asset Maintenance
                         name="maintenance_type"
                         class="form-select"
                         required
-                    >
+                    >{% if form_values.maintenance_type and form_values.maintenance_type not in ['Repair','Preventive Maintenance','Upgrade','Inspection','Other'] %}<option value="{{ form_values.maintenance_type }}" selected>{{ form_values.maintenance_type }}</option>{% endif %}
 
-                        <option value="">
+                        <option value="" {% if form_values.maintenance_type == ('') %}selected{% endif %}>
                             Select Type
                         </option>
 
-                        <option value="Repair">
+                        <option value="Repair" {% if form_values.maintenance_type == ('Repair') %}selected{% endif %}>
                             Repair
                         </option>
 
-                        <option value="Preventive Maintenance">
+                        <option value="Preventive Maintenance" {% if form_values.maintenance_type == ('Preventive Maintenance') %}selected{% endif %}>
                             Preventive Maintenance
                         </option>
 
-                        <option value="Upgrade">
+                        <option value="Upgrade" {% if form_values.maintenance_type == ('Upgrade') %}selected{% endif %}>
                             Upgrade
                         </option>
 
-                        <option value="Inspection">
+                        <option value="Inspection" {% if form_values.maintenance_type == ('Inspection') %}selected{% endif %}>
                             Inspection
                         </option>
 
-                        <option value="Other">
+                        <option value="Other" {% if form_values.maintenance_type == ('Other') %}selected{% endif %}>
                             Other
                         </option>
 
@@ -85,10 +85,11 @@ Add Asset Maintenance
                     </label>
 
                     <input
-                        type="date"
+                        type="date" min="1000-01-01" max="9999-12-31"
                         name="start_date"
                         class="form-control"
                         required
+                        value="{{ form_values.start_date }}"
                     >
 
                 </div>
@@ -108,6 +109,7 @@ Add Asset Maintenance
                         class="form-control"
                         maxlength="255"
                         required
+                        value="{{ form_values.description }}"
                     >
 
                 </div>
@@ -126,6 +128,7 @@ Add Asset Maintenance
                         name="vendor"
                         class="form-control"
                         maxlength="150"
+                        value="{{ form_values.vendor }}"
                     >
 
                 </div>
@@ -140,11 +143,12 @@ Add Asset Maintenance
                     </label>
 
                     <input
-                        type="number"
+                        type="number" max="9999999999.99"
                         name="cost"
                         class="form-control"
                         min="0"
                         step="0.01"
+                        value="{{ form_values.cost }}"
                     >
 
                 </div>
@@ -163,7 +167,7 @@ Add Asset Maintenance
                         class="form-control"
                         rows="3"
                         maxlength="255"
-                    ></textarea>
+                    >{{ form_values.notes }}</textarea>
 
                 </div>
 

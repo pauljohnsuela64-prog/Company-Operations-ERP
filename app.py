@@ -1,3 +1,4 @@
+from it_asset_validation import ASSET_FIELDS as IT_ASSET_FIELDS, identifier as asset_identifier
 from budget_repository import get_department_budget_report
 from finance_reporting import filters as finance_filters, report as finance_report
 from finance_validation import calendar_year, identifier
@@ -6622,277 +6623,8 @@ def cancel_payroll_period_route(
 )
 @permission_required("it_assets.manage")
 def add_it_asset():
+    return _it_asset_form()
 
-    # ======================================================
-    # FORM OPTIONS
-    # ======================================================
-
-    categories = get_active_it_asset_categories()
-    departments = get_active_departments()
-    employees = get_all_employees()
-
-    if request.method == "POST":
-
-        # ==================================================
-        # FORM INPUT
-        # ==========================================================
-
-        asset_tag = request.form.get(
-            "asset_tag",
-            "",
-        ).strip().upper()
-
-        asset_name = request.form.get(
-            "asset_name",
-            "",
-        ).strip()
-
-        category_id = request.form.get(
-            "category_id",
-            "",
-        ).strip()
-
-        brand = request.form.get(
-            "brand",
-            "",
-        ).strip()
-
-        model = request.form.get(
-            "model",
-            "",
-        ).strip()
-
-        serial_number = request.form.get(
-            "serial_number",
-            "",
-        ).strip()
-
-        department_id = request.form.get(
-            "department_id",
-            "",
-        ).strip()
-
-        assigned_employee_id = request.form.get(
-            "assigned_employee_id",
-            "",
-        ).strip()
-
-        purchase_date = request.form.get(
-            "purchase_date",
-            "",
-        ).strip()
-
-        purchase_cost = request.form.get(
-            "purchase_cost",
-            "",
-        ).strip()
-
-        warranty_expiry = request.form.get(
-            "warranty_expiry",
-            "",
-        ).strip()
-
-        condition_status = request.form.get(
-            "condition_status",
-            "GOOD",
-        ).strip().upper()
-
-        notes = request.form.get(
-            "notes",
-            "",
-        ).strip()
-
-
-        # ==================================================
-        # REQUIRED FIELDS
-        # ==========================================================
-
-        if (
-            not asset_tag
-            or not asset_name
-            or not category_id
-        ):
-
-            flash(
-                "Asset tag, asset name, and category are required.",
-                "danger",
-            )
-
-            return render_template(
-                "it_assets/add.html",
-                categories=categories,
-                departments=departments,
-                employees=employees,
-            )
-
-
-        # ==================================================
-        # ID VALIDATION
-        # ==========================================================
-
-        try:
-            category_id_value = int(category_id)
-
-            department_id_value = (
-                int(department_id)
-                if department_id
-                else None
-            )
-
-            assigned_employee_id_value = (
-                int(assigned_employee_id)
-                if assigned_employee_id
-                else None
-            )
-
-        except ValueError:
-
-            flash(
-                "Invalid category, department, or employee.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_it_asset")
-            )
-
-
-        # ==================================================
-        # PURCHASE COST VALIDATION
-        # ==========================================================
-
-        purchase_cost_value = None
-
-        if purchase_cost:
-
-            try:
-
-                purchase_cost_value = Decimal(
-                    purchase_cost.replace(",", "")
-                )
-
-                if purchase_cost_value < 0:
-                    raise ValueError
-
-            except (
-                InvalidOperation,
-                ValueError,
-            ):
-
-                flash(
-                    "Purchase cost must be zero or greater.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for("add_it_asset")
-                )
-
-
-        # ==================================================
-        # CONDITION VALIDATION
-        # ==========================================================
-
-        allowed_conditions = {
-            "NEW",
-            "GOOD",
-            "FAIR",
-            "POOR",
-            "DAMAGED",
-        }
-
-        if condition_status not in allowed_conditions:
-
-            flash(
-                "Invalid asset condition.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_it_asset")
-            )
-
-
-        # ==================================================
-        # ASSET STATUS
-        #
-        # If assigned to an employee, mark it ASSIGNED.
-        # Otherwise it starts AVAILABLE.
-        # ==========================================================
-
-        if assigned_employee_id_value:
-
-            asset_status = "ASSIGNED"
-
-        else:
-
-            asset_status = "AVAILABLE"
-
-
-        # ==================================================
-        # DATABASE INSERT
-        # ==========================================================
-
-        try:
-
-            asset_id = create_it_asset(
-                asset_tag=asset_tag,
-                asset_name=asset_name,
-                category_id=category_id_value,
-                brand=brand or None,
-                model=model or None,
-                serial_number=serial_number or None,
-                department_id=department_id_value,
-                assigned_employee_id=assigned_employee_id_value,
-                purchase_date=purchase_date or None,
-                purchase_cost=purchase_cost_value,
-                warranty_expiry=warranty_expiry or None,
-                status=asset_status,
-                condition_status=condition_status,
-                notes=notes or None,
-                created_by=session["user_id"],
-            )
-
-        except Exception as error:
-
-            if getattr(error, "errno", None) == 1062:
-
-                flash(
-                    "Asset tag or serial number already exists.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for("add_it_asset")
-                )
-
-            raise
-
-
-        # ==================================================
-        # SUCCESS
-        # ==========================================================
-
-        flash(
-            f"IT asset {asset_tag} created successfully.",
-            "success",
-        )
-
-        return redirect(
-            url_for("it_assets")
-        )
-
-
-    # ======================================================
-    # SHOW FORM
-    # ======================================================
-
-    return render_template(
-        "it_assets/add.html",
-        categories=categories,
-        departments=departments,
-        employees=employees,
-    )
 
 # ==========================================================
 # IT MANAGEMENT - VIEW ASSET
@@ -6904,7 +6636,6 @@ def add_it_asset():
 @permission_required("it_assets.view")
 def view_it_asset(asset_id):
 
-    
 
     asset = get_it_asset_by_id(
         asset_id
@@ -6961,263 +6692,11 @@ def view_it_asset(asset_id):
 )
 @permission_required("it_assets.manage")
 def edit_it_asset(asset_id):
-
-    asset = get_it_asset_by_id(
-        asset_id
-    )
-
+    asset = get_it_asset_by_id(asset_id)
     if not asset:
-
-        flash(
-            "IT asset not found.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("it_assets")
-        )
-
-    categories = get_active_it_asset_categories()
-    departments = get_active_departments()
-
-    if request.method == "POST":
-
-        asset_tag = request.form.get(
-            "asset_tag",
-            "",
-        ).strip().upper()
-
-        asset_name = request.form.get(
-            "asset_name",
-            "",
-        ).strip()
-
-        category_id = request.form.get(
-            "category_id",
-            "",
-        ).strip()
-
-        brand = request.form.get(
-            "brand",
-            "",
-        ).strip()
-
-        model = request.form.get(
-            "model",
-            "",
-        ).strip()
-
-        serial_number = request.form.get(
-            "serial_number",
-            "",
-        ).strip()
-
-        department_id = request.form.get(
-            "department_id",
-            "",
-        ).strip()
-
-        purchase_date = request.form.get(
-            "purchase_date",
-            "",
-        ).strip()
-
-        purchase_cost = request.form.get(
-            "purchase_cost",
-            "",
-        ).strip()
-
-        warranty_expiry = request.form.get(
-            "warranty_expiry",
-            "",
-        ).strip()
-
-        condition_status = request.form.get(
-            "condition_status",
-            "GOOD",
-        ).strip().upper()
-
-        notes = request.form.get(
-            "notes",
-            "",
-        ).strip()
-
-
-        # ==================================================
-        # REQUIRED FIELDS
-        # ==========================================================
-
-        if (
-            not asset_tag
-            or not asset_name
-            or not category_id
-        ):
-
-            flash(
-                "Asset tag, asset name, and category are required.",
-                "danger",
-            )
-
-            return redirect(
-                url_for(
-                    "edit_it_asset",
-                    asset_id=asset_id,
-                )
-            )
-
-
-        # ==================================================
-        # ID VALIDATION
-        # ==========================================================
-
-        try:
-
-            category_id_value = int(
-                category_id
-            )
-
-            department_id_value = (
-                int(department_id)
-                if department_id
-                else None
-            )
-
-        except ValueError:
-
-            flash(
-                "Invalid category or department.",
-                "danger",
-            )
-
-            return redirect(
-                url_for(
-                    "edit_it_asset",
-                    asset_id=asset_id,
-                )
-            )
-
-
-        # ==================================================
-        # COST VALIDATION
-        # ==========================================================
-
-        purchase_cost_value = None
-
-        if purchase_cost:
-
-            try:
-
-                purchase_cost_value = Decimal(
-                    purchase_cost.replace(",", "")
-                )
-
-                if purchase_cost_value < 0:
-                    raise ValueError
-
-            except (
-                InvalidOperation,
-                ValueError,
-            ):
-
-                flash(
-                    "Purchase cost must be zero or greater.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for(
-                        "edit_it_asset",
-                        asset_id=asset_id,
-                    )
-                )
-
-
-        # ==================================================
-        # CONDITION VALIDATION
-        # ==========================================================
-
-        allowed_conditions = {
-            "NEW",
-            "GOOD",
-            "FAIR",
-            "POOR",
-            "DAMAGED",
-        }
-
-        if condition_status not in allowed_conditions:
-
-            flash(
-                "Invalid asset condition.",
-                "danger",
-            )
-
-            return redirect(
-                url_for(
-                    "edit_it_asset",
-                    asset_id=asset_id,
-                )
-            )
-
-
-        # ==================================================
-        # UPDATE
-        # ==========================================================
-
-        try:
-
-            update_it_asset(
-                asset_id=asset_id,
-                asset_tag=asset_tag,
-                asset_name=asset_name,
-                category_id=category_id_value,
-                brand=brand or None,
-                model=model or None,
-                serial_number=serial_number or None,
-                department_id=department_id_value,
-                purchase_date=purchase_date or None,
-                purchase_cost=purchase_cost_value,
-                warranty_expiry=warranty_expiry or None,
-                condition_status=condition_status,
-                notes=notes or None,
-            )
-
-        except Exception as error:
-
-            if getattr(error, "errno", None) == 1062:
-
-                flash(
-                    "Asset tag or serial number already exists.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for(
-                        "edit_it_asset",
-                        asset_id=asset_id,
-                    )
-                )
-
-            raise
-
-
-        flash(
-            "IT asset updated successfully.",
-            "success",
-        )
-
-        return redirect(
-            url_for(
-                "view_it_asset",
-                asset_id=asset_id,
-            )
-        )
-
-    return render_template(
-        "it_assets/edit.html",
-        asset=asset,
-        categories=categories,
-        departments=departments,
-    )
+        flash('IT asset not found.', 'danger')
+        return redirect(url_for('it_assets'))
+    return _it_asset_form(asset)
 
 
 # ==========================================================
@@ -7365,150 +6844,21 @@ def unassign_it_asset_route(asset_id):
 )
 @permission_required("it_assets.manage")
 def add_it_asset_maintenance(asset_id):
-
-    asset = get_it_asset_by_id(
-        asset_id
-    )
-
+    asset = get_it_asset_by_id(asset_id)
     if not asset:
-
-        flash(
-            "IT asset not found.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("it_assets")
-        )
-
-    if request.method == "POST":
-
-        maintenance_type = request.form.get(
-            "maintenance_type",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-        vendor = request.form.get(
-            "vendor",
-            "",
-        ).strip()
-
-        cost = request.form.get(
-            "cost",
-            "",
-        ).strip()
-
-        start_date = request.form.get(
-            "start_date",
-            "",
-        ).strip()
-
-        notes = request.form.get(
-            "notes",
-            "",
-        ).strip()
-
-
-        # ==================================================
-        # VALIDATION
-        # ==========================================================
-
-        if (
-            not maintenance_type
-            or not description
-            or not start_date
-        ):
-
-            flash(
-                "Maintenance type, description, and "
-                "start date are required.",
-                "danger",
-            )
-
-            return redirect(
-                url_for(
-                    "add_it_asset_maintenance",
-                    asset_id=asset_id,
-                )
-            )
-
-        cost_value = None
-
-        if cost:
-
-            try:
-
-                cost_value = Decimal(
-                    cost.replace(",", "")
-                )
-
-                if cost_value < 0:
-                    raise ValueError
-
-            except (
-                InvalidOperation,
-                ValueError,
-            ):
-
-                flash(
-                    "Maintenance cost must be zero or greater.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for(
-                        "add_it_asset_maintenance",
-                        asset_id=asset_id,
-                    )
-                )
-
-
-        # ==================================================
-        # CREATE RECORD
-        # ==========================================================
-
+        flash('IT asset not found.', 'danger')
+        return redirect(url_for('it_assets'))
+    fields = ('maintenance_type', 'description', 'vendor', 'cost', 'start_date', 'notes')
+    values = {name: request.form.get(name, '').strip() for name in fields}
+    if request.method == 'POST':
         try:
-
-            create_it_asset_maintenance(
-                asset_id=asset_id,
-                maintenance_type=maintenance_type,
-                description=description,
-                vendor=vendor or None,
-                cost=cost_value,
-                start_date=start_date,
-                notes=notes or None,
-                created_by=session["user_id"],
-            )
-
-            flash(
-                "Maintenance record created successfully.",
-                "success",
-            )
-
+            create_it_asset_maintenance(asset_id=asset_id, created_by=session['user_id'], **values)
         except ValueError as error:
-
-            flash(
-                str(error),
-                "danger",
-            )
-
-        return redirect(
-            url_for(
-                "view_it_asset",
-                asset_id=asset_id,
-            )
-        )
-
-
-    return render_template(
-        "it_assets/add_maintenance.html",
-        asset=asset,
-    )
+            flash(str(error), 'danger')
+        else:
+            flash('Maintenance record created successfully.', 'success')
+            return redirect(url_for('view_it_asset', asset_id=asset_id))
+    return render_template('it_assets/add_maintenance.html', asset=asset, form_values=values)
 
 
 # ==========================================================
@@ -12464,6 +11814,65 @@ def _finance_budget_form(budget=None):
             flash('Department budget updated successfully.' if budget else 'Department budget created successfully.', 'success')
             return redirect(url_for('department_budgets'))
     return render_template('finance/budgets/edit.html' if budget else 'finance/budgets/add.html', **context)
+
+
+def _it_asset_form(asset=None):
+    """Redisplay raw submitted values; repositories own validation and commits."""
+    categories = get_active_it_asset_categories()
+    departments = get_active_departments()
+    if asset:
+        if not any(c['category_id'] == asset['category_id'] for c in categories):
+            current = get_it_asset_category_by_id(asset['category_id'])
+            if current:
+                categories.append(current)
+        if asset['department_id'] is not None and not any(d['department_id'] == asset['department_id'] for d in departments):
+            current = get_department_by_id(asset['department_id'])
+            if current:
+                departments.append(current)
+    employees = get_all_employees() if not asset else []
+    names = IT_ASSET_FIELDS + (() if asset else ('assigned_employee_id',))
+    values = {}
+    for name in names:
+        if request.method == 'POST':
+            value = request.form.get(name, 'GOOD' if name == 'condition_status' else '')
+        else:
+            value = (asset or {}).get(name)
+            if name == 'condition_status' and value is None:
+                value = 'GOOD'
+        values[name] = '' if value is None else str(value).strip()
+    invalid_options = {}
+    for name, records, key in [('category_id', categories, 'category_id'),
+                                ('department_id', departments, 'department_id'),
+                                ('assigned_employee_id', employees, 'employee_id')]:
+        if name not in values:
+            continue
+        if values[name]:
+            try:
+                values[name] = str(asset_identifier(values[name], name.replace('_', ' ')))
+            except ValueError:
+                pass
+        if values[name] and not any(str(row[key]) == values[name] for row in records):
+            invalid_options[name] = 'Selected reference is unavailable. Review it before resubmitting.'
+    values['condition_status'] = values['condition_status'].upper()
+    if values['condition_status'] not in ('NEW', 'GOOD', 'FAIR', 'POOR', 'DAMAGED'):
+        invalid_options['condition_status'] = 'Invalid condition. Choose a supported condition.'
+    if request.method == 'POST':
+        fields = {name: request.form.get(name, 'GOOD' if name == 'condition_status' else '').strip() for name in IT_ASSET_FIELDS}
+        try:
+            if asset:
+                update_it_asset(asset_id=asset['asset_id'], **fields)
+            else:
+                employee = request.form.get('assigned_employee_id', '').strip()
+                create_it_asset(assigned_employee_id=employee, status='ASSIGNED' if employee else 'AVAILABLE',
+                                created_by=session['user_id'], **fields)
+        except ValueError as error:
+            flash(str(error), 'danger')
+        else:
+            flash('IT asset updated successfully.' if asset else 'IT asset created successfully.', 'success')
+            return redirect(url_for('view_it_asset', asset_id=asset['asset_id']) if asset else url_for('it_assets'))
+    return render_template('it_assets/edit.html' if asset else 'it_assets/add.html', asset=asset,
+                           categories=categories, departments=departments, employees=employees,
+                           form_values=values, invalid_options=invalid_options)
 
 
 if __name__ == "__main__":

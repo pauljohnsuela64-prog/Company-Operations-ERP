@@ -6,6 +6,8 @@ Edit IT Asset
 
 
 {% block content %}
+{% from 'it_assets/partials/form_state.html' import unavailable_option with context %}
+{% if invalid_options %}<div class="alert alert-danger" role="alert">One or more selections are unavailable. Your values have been retained; review them before resubmitting.</div>{% endif %}
 
 <div class="mb-4">
 
@@ -42,9 +44,9 @@ Edit IT Asset
                         type="text"
                         name="asset_tag"
                         class="form-control"
-                        value="{{ asset.asset_tag }}"
                         maxlength="50"
                         required
+                        value="{{ form_values.asset_tag }}"
                     >
 
                 </div>
@@ -60,9 +62,9 @@ Edit IT Asset
                         type="text"
                         name="asset_name"
                         class="form-control"
-                        value="{{ asset.asset_name }}"
                         maxlength="150"
                         required
+                        value="{{ form_values.asset_name }}"
                     >
 
                 </div>
@@ -79,18 +81,14 @@ Edit IT Asset
                         class="form-select"
                         required
                     >
+                        {{ unavailable_option('category_id') }}<option value="" {% if not form_values.category_id %}selected{% endif %}>Select Category</option>
 
                         {% for category in categories %}
 
                             <option
                                 value="{{ category.category_id }}"
-                                {% if
-                                    category.category_id
-                                    == asset.category_id
-                                %}
-                                    selected
-                                {% endif %}
-                            >
+
+                             {% if form_values.category_id == (category.category_id|string) %}selected{% endif %}>
                                 {{ category.category_code }}
                                 -
                                 {{ category.category_name }}
@@ -113,8 +111,8 @@ Edit IT Asset
                         type="text"
                         name="brand"
                         class="form-control"
-                        value="{{ asset.brand or '' }}"
                         maxlength="100"
+                        value="{{ form_values.brand }}"
                     >
 
                 </div>
@@ -130,8 +128,8 @@ Edit IT Asset
                         type="text"
                         name="model"
                         class="form-control"
-                        value="{{ asset.model or '' }}"
                         maxlength="100"
+                        value="{{ form_values.model }}"
                     >
 
                 </div>
@@ -147,8 +145,8 @@ Edit IT Asset
                         type="text"
                         name="serial_number"
                         class="form-control"
-                        value="{{ asset.serial_number or '' }}"
                         maxlength="100"
+                        value="{{ form_values.serial_number }}"
                     >
 
                 </div>
@@ -164,8 +162,9 @@ Edit IT Asset
                         name="department_id"
                         class="form-select"
                     >
+                        {{ unavailable_option('department_id') }}
 
-                        <option value="">
+                        <option value="" {% if form_values.department_id == ('') %}selected{% endif %}>
                             No Department
                         </option>
 
@@ -173,13 +172,8 @@ Edit IT Asset
 
                             <option
                                 value="{{ department.department_id }}"
-                                {% if
-                                    department.department_id
-                                    == asset.department_id
-                                %}
-                                    selected
-                                {% endif %}
-                            >
+
+                             {% if form_values.department_id == (department.department_id|string) %}selected{% endif %}>
                                 {{ department.department_name }}
                             </option>
 
@@ -200,6 +194,7 @@ Edit IT Asset
                         name="condition_status"
                         class="form-select"
                     >
+                        {{ unavailable_option('condition_status') }}
 
                         {% for condition in [
                             "NEW",
@@ -211,13 +206,8 @@ Edit IT Asset
 
                             <option
                                 value="{{ condition }}"
-                                {% if
-                                    condition
-                                    == asset.condition_status
-                                %}
-                                    selected
-                                {% endif %}
-                            >
+
+                             {% if form_values.condition_status == (condition|string) %}selected{% endif %}>
                                 {{ condition.title() }}
                             </option>
 
@@ -235,10 +225,10 @@ Edit IT Asset
                     </label>
 
                     <input
-                        type="date"
+                        type="date" min="1000-01-01" max="9999-12-31"
                         name="purchase_date"
                         class="form-control"
-                        value="{{ asset.purchase_date or '' }}"
+                        value="{{ form_values.purchase_date }}"
                     >
 
                 </div>
@@ -251,12 +241,12 @@ Edit IT Asset
                     </label>
 
                     <input
-                        type="number"
+                        type="number" max="9999999999.99"
                         name="purchase_cost"
                         class="form-control"
-                        value="{{ asset.purchase_cost or '' }}"
                         min="0"
                         step="0.01"
+                        value="{{ form_values.purchase_cost }}"
                     >
 
                 </div>
@@ -269,10 +259,10 @@ Edit IT Asset
                     </label>
 
                     <input
-                        type="date"
+                        type="date" min="1000-01-01" max="9999-12-31"
                         name="warranty_expiry"
                         class="form-control"
-                        value="{{ asset.warranty_expiry or '' }}"
+                        value="{{ form_values.warranty_expiry }}"
                     >
 
                 </div>
@@ -289,7 +279,7 @@ Edit IT Asset
                         class="form-control"
                         rows="3"
                         maxlength="255"
-                    >{{ asset.notes or "" }}</textarea>
+                    >{{ form_values.notes }}</textarea>
 
                 </div>
 

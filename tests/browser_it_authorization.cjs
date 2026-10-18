@@ -134,6 +134,8 @@ module.exports = async function verify({base, controlKey, send, tab, evaluate, n
   }
   console.log('PASS Chrome LOST/MAINTENANCE return controls hidden, stale POST rejected without history changes, recovery/completion then legitimate return');
 
+  await require('./browser_it_asset_validation.cjs')({manager, navigate, evaluate, until, request, snapshot});
+
   assert.equal((await request(manager, ticket + '/start')).path, ticket);
   await hasForm(manager, ticket, ticket + '/resolve');
   assert.equal((await request(manager, ticket + '/resolve', {resolution:'Browser fixed'})).path, ticket);

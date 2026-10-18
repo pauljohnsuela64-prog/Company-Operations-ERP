@@ -1,3 +1,5 @@
+from it_asset_validation import (asset_values, identifier, calendar_date, cost as validate_cost, text,
+                                 lock_references, lock_employee, translate_write_error)
 # ==========================================================
 # IT MANAGEMENT - IT ASSET REPOSITORY
 # ==========================================================
@@ -231,11 +233,21 @@ def create_it_asset(
     notes,
     created_by,
 ):
+    (asset_tag, asset_name, category_id, brand, model, serial_number,
+     department_id, purchase_date, purchase_cost, warranty_expiry,
+     condition_status, notes) = asset_values(locals())
+    assigned_employee_id = identifier(assigned_employee_id, 'Employee', True)
+    created_by = identifier(created_by, 'Creator')
+    if status not in ('AVAILABLE','ASSIGNED','MAINTENANCE','LOST','RETIRED'):
+        raise ValueError('Invalid asset status.')
+    if (status == 'ASSIGNED' and assigned_employee_id is None) or (status == 'AVAILABLE' and assigned_employee_id is not None):
+        raise ValueError('Asset status does not match its assignment.')
     connection = get_connection()
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
 
     try:
         connection.start_transaction()
+        lock_references(cursor, category_id, department_id, assigned_employee_id)
 
         cursor.execute(
             """
@@ -292,10 +304,12 @@ def create_it_asset(
         connection.commit()
         return asset_id
 
-    except Exception:
-
+    except Exception as error:
         connection.rollback()
-        raise
+        translated = translate_write_error(error)
+        if translated is error:
+            raise
+        raise translated from error
 
     finally:
 
@@ -322,8 +336,12 @@ def update_it_asset(
     condition_status,
     notes,
 ):
+    (asset_tag, asset_name, category_id, brand, model, serial_number,
+     department_id, purchase_date, purchase_cost, warranty_expiry,
+     condition_status, notes) = asset_values(locals())
+    asset_id = identifier(asset_id, 'Asset')
     connection = get_connection()
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
 
     try:
 
@@ -331,7 +349,7 @@ def update_it_asset(
 
         cursor.execute(
             """
-            SELECT asset_id
+            SELECT asset_id, category_id, department_id
             FROM it_assets
             WHERE asset_id = %s
             FOR UPDATE
@@ -339,10 +357,13 @@ def update_it_asset(
             (asset_id,),
         )
 
-        if not cursor.fetchone():
+        previous = cursor.fetchone()
+        if not previous:
             raise ValueError(
                 "IT asset was not found."
             )
+
+        lock_references(cursor, category_id, department_id, previous=previous)
 
         cursor.execute(
             """
@@ -382,10 +403,12 @@ def update_it_asset(
 
         connection.commit()
 
-    except Exception:
-
+    except Exception as error:
         connection.rollback()
-        raise
+        translated = translate_write_error(error)
+        if translated is error:
+            raise
+        raise translated from error
 
     finally:
 
@@ -403,6 +426,10 @@ def assign_it_asset(
     department_id,
     assigned_by,
 ):
+    asset_id = identifier(asset_id, 'Asset')
+    employee_id = identifier(employee_id, 'Employee')
+    department_id = identifier(department_id, 'Department', True)
+    assigned_by = identifier(assigned_by, 'Assigning user')
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
@@ -461,6 +488,12 @@ def assign_it_asset(
                 "This asset is already assigned."
             )
 
+
+        lock_employee(cursor, employee_id)
+        if department_id is not None:
+            cursor.execute('SELECT department_id FROM departments WHERE department_id=%s FOR SHARE', (department_id,))
+            if not cursor.fetchone():
+                raise ValueError('Selected department does not exist.')
 
         if asset['status'] != 'AVAILABLE':
             raise ValueError('Only available assets can be assigned.')
@@ -525,10 +558,12 @@ def assign_it_asset(
 
         connection.commit()
 
-    except Exception:
-
+    except Exception as error:
         connection.rollback()
-        raise
+        translated = translate_write_error(error)
+        if translated is error:
+            raise
+        raise translated from error
 
     finally:
 
@@ -678,6 +713,14 @@ def create_it_asset_maintenance(
     notes,
     created_by,
 ):
+    asset_id = identifier(asset_id, 'Asset')
+    created_by = identifier(created_by, 'Creator')
+    maintenance_type = text(maintenance_type, 'Maintenance type', 50, True)
+    description = text(description, 'Description', 255, True)
+    vendor = text(vendor, 'Vendor', 150)
+    notes = text(notes, 'Notes', 255)
+    cost = validate_cost(cost, 'Maintenance cost')
+    start_date = calendar_date(start_date, 'Start date')
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
@@ -814,10 +857,12 @@ def create_it_asset_maintenance(
 
         return maintenance_id
 
-    except Exception:
-
+    except Exception as error:
         connection.rollback()
-        raise
+        translated = translate_write_error(error)
+        if translated is error:
+            raise
+        raise translated from error
 
     finally:
 
@@ -837,6 +882,8 @@ def complete_it_asset_maintenance(
     maintenance_id,
     completed_date,
 ):
+    maintenance_id = identifier(maintenance_id, 'Maintenance')
+    completed_date = calendar_date(completed_date, 'Completion date')
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
@@ -866,7 +913,8 @@ def complete_it_asset_maintenance(
             SELECT
                 maintenance_id,
                 asset_id,
-                status
+                status,
+                start_date
 
             FROM it_asset_maintenance
 
@@ -894,6 +942,10 @@ def complete_it_asset_maintenance(
                 "can be completed."
             )
 
+
+        start_date = calendar_date(maintenance['start_date'], 'Maintenance start date')
+        if completed_date < start_date:
+            raise ValueError('Completion date cannot be before maintenance start date.')
 
         if asset['status'] != 'MAINTENANCE':
             raise ValueError('Asset state does not match open maintenance. Review it before completion.')
@@ -953,10 +1005,12 @@ def complete_it_asset_maintenance(
 
         return maintenance["asset_id"]
 
-    except Exception:
-
+    except Exception as error:
         connection.rollback()
-        raise
+        translated = translate_write_error(error)
+        if translated is error:
+            raise
+        raise translated from error
 
     finally:
 
