@@ -15,6 +15,7 @@ Edit Asset Category
 
     <div class="card-body">
 
+        {% if has_permission('it_assets.manage') %}
         <form method="POST">
                     {% include 'partials/csrf_field.html' %}
 
@@ -83,16 +84,19 @@ Edit Asset Category
                     Save Changes
                 </button>
 
+                {% if has_permission('it_assets.view') %}
                 <a
                     href="{{ url_for('it_asset_categories') }}"
                     class="btn btn-outline-secondary ms-2"
                 >
                     Cancel
                 </a>
+                {% endif %}
 
             </div>
 
         </form>
+        {% endif %}
 
     </div>
 

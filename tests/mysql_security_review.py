@@ -7,6 +7,7 @@ import ast
 from contextlib import ExitStack
 import importlib
 import json
+import logging
 from pathlib import Path
 import re
 import socket
@@ -16,6 +17,7 @@ import tempfile
 import threading
 import time
 import urllib.request
+import uuid
 from unittest.mock import patch
 
 import mysql.connector
@@ -52,10 +54,26 @@ def run(port,data_dir):
             result=cur.fetchall() if fetch else cur.lastrowid
             connection.commit()
             return result
-    sql("INSERT INTO roles(role_id,role_name) VALUES (1,'Review operator'),(2,'No permissions')")
+    sql("INSERT INTO roles(role_id,role_name) VALUES (1,'Review operator'),(2,'No permissions'),(3,'Asset Viewer'),(4,'Help Desk Viewer'),(5,'IT Manager'),(6,'Super Admin')")
     password_hash=generate_password_hash('review-password')
-    for uid,role,name in ((1,1,'review-user'),(2,2,'denied-user')):
+    for uid,role,name in ((1,1,'review-user'),(2,2,'denied-user'),(3,3,'asset-viewer'),
+                          (4,4,'helpdesk-viewer'),(5,5,'it-manager'),(6,6,'super-admin')):
         sql('INSERT INTO users(user_id,role_id,username,password_hash) VALUES (%s,%s,%s,%s)',(uid,role,name,password_hash))
+    migration=(harness.ROOT/'database/migrations/003_it_helpdesk_permissions.sql').read_text()
+    def upgrade():
+        with connect() as connection:
+            cur=connection.cursor()
+            for statement in re.sub(r'--[^\n]*','',migration).split(';'):
+                if statement.strip():cur.execute(statement)
+    upgrade()
+    for role,code in [(3,'it_assets.view'),(4,'helpdesk.view')]:
+        sql('INSERT INTO role_permissions SELECT %s,permission_id FROM permissions WHERE permission_code=%s',(role,code))
+    grants=sql('SELECT * FROM role_permissions ORDER BY role_id,permission_id',fetch=True)
+    upgrade()
+    assert sql('SELECT * FROM role_permissions ORDER BY role_id,permission_id',fetch=True)==grants
+    assert sql('SELECT COUNT(*) FROM role_permissions WHERE role_id IN (5,6)',fetch=True)==[(8,)]
+    assert sql('SELECT COUNT(*) FROM role_permissions WHERE role_id IN (1,2)',fetch=True)==[(0,)]
+    print('PASS migration 003: repeated application preserves custom viewer grants; canonical roles get exactly four each; unrelated roles unchanged')
     tree=ast.parse((harness.ROOT/'app.py').read_text())
     permissions={node.args[0].value for node in ast.walk(tree) if isinstance(node,ast.Call) and isinstance(node.func,ast.Name) and node.func.id=='permission_required'}
     for code in permissions:
@@ -70,7 +88,7 @@ def run(port,data_dir):
         stack.enter_context(patch.object(database,'get_connection',side_effect=connect))
         erp=importlib.import_module('app')
         stack.enter_context(patch.dict(erp.app.config,TESTING=True))
-        # Test-only read helpers are registered only on this disposable-server runner.
+        # Test-only helpers are registered only on this disposable-server runner.
         from flask import jsonify,session,request
         from itsdangerous import URLSafeTimedSerializer
         def old_token():
@@ -79,6 +97,26 @@ def run(port,data_dir):
             return jsonify(csrf_token=token)
         erp.app.add_url_rule('/__review/expired-token','review_expired_token',old_token)
         erp.app.add_url_rule('/__review/supplier-count','review_supplier_count',lambda:jsonify(count=sql('SELECT COUNT(*) FROM suppliers WHERE supplier_code=%s',(request.args.get('code'),),True)[0][0]))
+        browser_fixture={}
+        control_key=uuid.uuid4().hex
+        business_tables=('it_assets','it_asset_categories','it_asset_assignments','it_asset_maintenance',
+                         'helpdesk_tickets','helpdesk_ticket_history','audit_logs')
+        def it_fixture():
+            return jsonify(browser_fixture)
+        def it_snapshot():
+            return jsonify([sql('SELECT * FROM '+table+' ORDER BY 1',fetch=True) for table in business_tables])
+        def it_control():
+            # Fixed synthetic targets only; test runner only; genuine CSRF still required.
+            if request.headers.get('X-Review-Key')!=control_key:return 'Forbidden',403
+            action=request.form.get('action')
+            if action=='revoke':
+                sql("DELETE rp FROM role_permissions rp JOIN permissions p ON p.permission_id=rp.permission_id WHERE rp.role_id=5 AND p.permission_code IN ('it_assets.manage','helpdesk.manage')")
+            elif action=='disable':sql('UPDATE users SET is_active=0 WHERE user_id=5')
+            else:return 'Invalid action',400
+            return jsonify(ok=True)
+        erp.app.add_url_rule('/__review/it-fixture','review_it_fixture',it_fixture)
+        erp.app.add_url_rule('/__review/it-snapshot','review_it_snapshot',it_snapshot)
+        erp.app.add_url_rule('/__review/it-control','review_it_control',it_control,methods=['POST'])
         cases=[
             ('HR','/departments/add',dict(department_code='REVIEW',department_name='Review Department'),'departments'),
             ('Leave','/leave/types/add',dict(leave_code='REVIEW',leave_name='Review Leave',annual_entitlement='10',is_paid='1'),'leave_types'),
@@ -125,10 +163,18 @@ def run(port,data_dir):
             assert sql('SELECT COUNT(*) FROM '+table,fetch=True)[0][0]==count+1,module
             print(f'PASS {module}: rendered form, valid authorized write, unauthorized denial, and no business/audit writes for missing/invalid/expired CSRF')
 
+        aid=sql("INSERT INTO it_assets(asset_tag,asset_name,category_id,status,condition_status,created_by) VALUES ('BROWSER-ASSET','Browser Asset',1,'AVAILABLE','GOOD',1)")
+        tid=sql("INSERT INTO helpdesk_tickets(ticket_number,employee_id,category_id,subject,description,priority,status,created_by) VALUES ('BROWSER-TICKET',1,1,'Browser Ticket','Synthetic','MEDIUM','OPEN',1)")
+        from test_it_authorization import route_contract
+        browser_fixture.update(asset_id=aid,ticket_id=tid,routes=route_contract())
+
         chrome=Path(r'C:\Program Files\Google\Chrome\Application\chrome.exe')
         if not chrome.exists():
             print('BROWSER NOT RUN: Chrome executable unavailable; manual browser checklist remains required')
             return
+        web_logger=logging.getLogger('werkzeug')
+        stack.callback(web_logger.setLevel,web_logger.level)
+        web_logger.setLevel(logging.WARNING)
         server=make_server('127.0.0.1',0,erp.app,threaded=True)
         thread=threading.Thread(target=server.serve_forever,daemon=True)
         thread.start()
@@ -144,7 +190,7 @@ def run(port,data_dir):
                     while not active.exists() and time.monotonic()<deadline:time.sleep(0.1)
                     if not active.exists():raise RuntimeError('Chrome remote debugging did not become available')
                     debug_port=active.read_text().splitlines()[0]
-                    result=subprocess.run(['node',str(harness.ROOT/'tests/browser_security_review.cjs'),f'http://127.0.0.1:{server.server_port}',debug_port],capture_output=True,text=True,timeout=90,creationflags=flags)
+                    result=subprocess.run(['node',str(harness.ROOT/'tests/browser_security_review.cjs'),f'http://127.0.0.1:{server.server_port}',debug_port,control_key],capture_output=True,text=True,timeout=180,creationflags=flags)
                     print(result.stdout)
                     if result.returncode or 'SUCCESS: browser execution' not in result.stdout:raise RuntimeError(result.stderr or 'Browser did not complete its assertions')
                     process.wait(timeout=15)

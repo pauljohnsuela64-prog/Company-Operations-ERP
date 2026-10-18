@@ -249,6 +249,7 @@ Help Desk Ticket
             Technician Assignment
         </h5>
 
+        {% if has_permission('helpdesk.manage') %}
         <form
             method="POST"
             action="{{ url_for(
@@ -315,6 +316,7 @@ Help Desk Ticket
             </div>
 
         </form>
+        {% endif %}
 
     </div>
 
@@ -342,6 +344,7 @@ Help Desk Ticket
 
             {% if ticket.assigned_to %}
 
+                {% if has_permission('helpdesk.manage') %}
                 <form
                     method="POST"
                     action="{{ url_for(
@@ -359,6 +362,7 @@ Help Desk Ticket
                     </button>
 
                 </form>
+                {% endif %}
 
             {% else %}
 
@@ -375,6 +379,7 @@ Help Desk Ticket
 
         {% elif ticket.status == "IN_PROGRESS" %}
 
+            {% if has_permission('helpdesk.manage') %}
             <form
                 method="POST"
                 action="{{ url_for(
@@ -408,6 +413,7 @@ Help Desk Ticket
                 </button>
 
             </form>
+            {% endif %}
 
 
         <!-- # RESOLVED -->
@@ -429,6 +435,7 @@ Help Desk Ticket
 
             </div>
 
+            {% if has_permission('helpdesk.manage') %}
             <form
                 method="POST"
                 action="{{ url_for(
@@ -446,6 +453,7 @@ Help Desk Ticket
                 </button>
 
             </form>
+            {% endif %}
 
 
         <!-- # CLOSED -->

@@ -25,12 +25,14 @@ IT Asset Categories
 
     </div>
 
+    {% if has_permission('it_assets.manage') %}
     <a
         href="{{ url_for('add_it_asset_category') }}"
         class="btn btn-primary"
     >
         Add Category
     </a>
+    {% endif %}
 
 </div>
 
@@ -100,6 +102,7 @@ IT Asset Categories
 
                             <td>
 
+                                {% if has_permission('it_assets.manage') %}
                                 <a
                                     href="{{ url_for(
                                         'edit_it_asset_category',
@@ -109,8 +112,10 @@ IT Asset Categories
                                 >
                                     Edit
                                 </a>
+                                {% endif %}
 
 
+                                {% if has_permission('it_assets.manage') %}
                                 <form
                                     method="POST"
                                     action="{{ url_for(
@@ -142,6 +147,7 @@ IT Asset Categories
                                     {% endif %}
 
                                 </form>
+                                {% endif %}
 
                             </td>
 

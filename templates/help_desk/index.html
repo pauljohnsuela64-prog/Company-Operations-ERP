@@ -34,12 +34,14 @@ IT Help Desk
         Reports
     </a>
 
+    {% if has_permission('helpdesk.manage') %}
     <a
         href="{{ url_for('add_helpdesk_ticket') }}"
         class="btn btn-primary"
     >
         Create Ticket
     </a>
+    {% endif %}
 
 </div>
 
