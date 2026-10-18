@@ -151,3 +151,59 @@ implicitly. Verify the actual target before invoking it. The current development
 task authorizes disposable testing only, not an actual company database upgrade.
 Legacy APPROVED payment without evidence is blocked; company-approved correction/
 verification is required. Historical PAID records remain unchanged.
+
+# Payroll policy schema foundation (005)
+
+`005_payroll_policy.py` is an explicit, additive database upgrade. It requires the
+existing 004 columns, compatible InnoDB prerequisites and coordination row; it
+does not invoke 004 or repair an incompatible prerequisite. MySQL 8.0.17+ is
+required for enforced CHECK constraints and JSON_SCHEMA_VALID. Actual disposable
+verification uses MySQL 8.0.46. MariaDB is not supported by this migration.
+
+The upgrade adds two policy tables, six protection triggers and nullable policy/
+cutoff references on periods. It verifies existing definitions before applying
+DDL and verifies the completed installation. A connection-scoped advisory lock
+prevents simultaneous runs of 005; this lock does not pause application writers.
+Column definitions, engines, collations, indexes, foreign keys, enforced CHECK
+expressions and trigger bodies/modes are checked. Unexpected policy-table objects
+or constraints on the owned period columns require manual review. Missing additive
+stages can resume after an interruption; incompatible definitions are never dropped
+or automatically replaced.
+
+No approved or draft policy is seeded, no historical period is assigned a policy,
+and no permission or role grant is inserted. The proposed future permission names
+are `payroll.policy.manage`, `payroll.policy.approve`, `payroll.policy.activate`.
+The existing permissions table can hold these identifiers without schema changes;
+registration and reviewed grants belong to a later authorization checkpoint. There
+is no Super Admin bypass.
+
+Only after explicit operational approval: verify the backup/restore procedure and
+target, pause Payroll/HR writes across all workers, use a fresh migration connection,
+and run:
+
+```powershell
+.venv\Scripts\python.exe database/migrations/005_payroll_policy.py --host HOST --port 3306 --user MIGRATION_USER --database DATABASE
+```
+
+The script requires explicit connection arguments, prompts for the password, never
+reads `.env`, and never connects on import. It must be run by an account able to
+inspect metadata and create tables/indexes/checks/FKs/triggers. The target schema
+must already contain the existing application schemas and migration 004.
+Review the trigger DEFINER account and retain its required privileges. Managed or
+binary-logged servers may require an approved DBA to authorize trigger creation;
+the migration does not change server-wide trust or privilege settings.
+
+MySQL DDL implicitly commits and can wait for metadata locks. Do not interpret an
+exception as an atomic DDL rollback. Record the error, keep writers paused, review
+any incompatible object, and rerun the unchanged migration after resolving the
+cause through an approved process. No automatic destructive repair is provided.
+For an application rollback, retain the additive objects; do not automatically drop
+policy history or columns. A backup restore must account for subsequent business
+writes. Privileged administrators can bypass/drop database protections; these are
+not a defense against unrestricted DBA access.
+
+This checkpoint does not change existing calculation dispatch, approval/payment
+logic, fingerprints or legacy NULL handling. Policy-based enforcement requires a
+later coordinated code deployment; the presence of these tables does not approve
+the proposed development template or enable a new calculator. See
+`PAYROLL_POLICY_SCHEMA.md` for the contract, limits and test coverage.

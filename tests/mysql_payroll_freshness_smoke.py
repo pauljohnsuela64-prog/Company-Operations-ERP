@@ -141,6 +141,8 @@ def run(port, data_dir):
         else:raise AssertionError('Nontransactional guard accepted')
         sql('ALTER TABLE payroll_input_guard ENGINE=InnoDB')
         with connect() as connection:migration.upgrade(connection)
+        from payroll_schema_helpers import upgrade_policy_foundation
+        upgrade_policy_foundation(connect)
         assert sql('SELECT status,net_pay FROM payroll_entries WHERE payroll_period_id=%s',(legacy_paid,),True)==[dict(status='PAID',net_pay=Decimal('500'))]
         before_audit=len(logs());assert client().post(f'/payroll/periods/{legacy}/paid',data={}).status_code==302
         assert len(logs())==before_audit and erp.get_payroll_period_by_id(legacy)['status']=='APPROVED'

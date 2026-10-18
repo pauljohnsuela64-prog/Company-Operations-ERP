@@ -103,6 +103,8 @@ def run(port, data_dir):
         def logs():
             return sql("SELECT * FROM audit_logs ORDER BY audit_log_id", fetch=True)
 
+        from payroll_schema_helpers import upgrade_policy_foundation
+        upgrade_policy_foundation(connect)
         from decimal import Decimal
         from importlib.util import spec_from_file_location, module_from_spec
         import payroll_repository as compensation
