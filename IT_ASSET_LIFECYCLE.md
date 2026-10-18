@@ -13,7 +13,7 @@ Assets support AVAILABLE, ASSIGNED, MAINTENANCE, LOST and RETIRED. Conditions
 | Create | UI creates AVAILABLE without an employee, ASSIGNED with an employee. Initial custody now writes one assignment-history row in the same transaction. |
 | Edit | Metadata/condition/department changes; the edit repository does not change custody or lifecycle status. |
 | Assign | AVAILABLE, no current employee and no open assignment history -> ASSIGNED; creates one custody record. |
-| Return/unassign | Exactly one open history record matching the current employee and submitted assignment ID. ASSIGNED -> AVAILABLE. LOST/MAINTENANCE/RETIRED retain that status; custody is cleared. Department stays unchanged. |
+| Return/unassign | Exactly one open history record matching the current employee and submitted assignment ID. ASSIGNED -> AVAILABLE. LOST rejects until recovery; MAINTENANCE rejects until completion, preserving custody/history. A valid legacy RETIRED return retains RETIRED. Department stays unchanged. |
 | Start maintenance | AVAILABLE or ASSIGNED -> MAINTENANCE, retaining custody. Existing MAINTENANCE can only get a record if none is OPEN. LOST/RETIRED and duplicate OPEN maintenance reject. |
 | Complete maintenance | MAINTENANCE with exactly one matching OPEN record -> ASSIGNED if still held, otherwise AVAILABLE. Closes maintenance atomically. |
 | Mark lost | AVAILABLE or ASSIGNED -> LOST, retaining custody. Existing LOST, MAINTENANCE and RETIRED reject. |
@@ -23,13 +23,13 @@ Assets support AVAILABLE, ASSIGNED, MAINTENANCE, LOST and RETIRED. Conditions
 The maintenance schema also defines CANCELLED, but no maintenance-cancellation
 action currently exists. Completing COMPLETED/CANCELLED records rejects.
 
-The existing UI offers return for any assigned asset, including LOST/MAINTENANCE.
-This change preserves that custody workflow while preventing return from acting
-as recovery, restoration or maintenance completion. A RETIRED asset with current
-custody cannot arise through normal retirement, but returning an otherwise valid
-legacy custody record also keeps it RETIRED. No new prohibition on these returns
-has been imposed. Restricting exceptional-state custody returns requires business
-approval; it is separate from preventing them from becoming AVAILABLE.
+Approved return policy: LOST equipment must be recovered and MAINTENANCE equipment
+must complete maintenance before returning custody. Both attempts fail inside the
+locked transaction without closing assignment history or clearing the employee.
+The Return control is hidden and managers see recovery/completion guidance.
+After recovery/completion restores ASSIGNED, a normal return can proceed.
+A RETIRED asset with custody is a legacy anomaly; its previously implemented
+state-preserving return behavior is unchanged by this LOST/MAINTENANCE decision.
 
 ## Corrections and transactions
 
@@ -42,7 +42,7 @@ approval; it is separate from preventing them from becoming AVAILABLE.
   matching employee/expected assignment ID and checks open maintenance. It closes
   that exact history record (requiring one changed row) and clears current custody
   in the same transaction. ASSIGNED with OPEN maintenance is inconsistent and
-  rejects rather than becoming AVAILABLE. Non-ASSIGNED lifecycle states survive.
+  rejects rather than becoming AVAILABLE. LOST/MAINTENANCE returns reject before writes; legacy RETIRED state survives.
 - The rendered return form now includes a required assignment ID. Duplicate returns
   and stale forms after return/reassignment, even to the same employee, cannot close
   a new assignment. Missing tokens require reload. This ID is concurrency context,
@@ -114,6 +114,8 @@ other database writers and direct-SQL corruption remain operational risks.
 - Chrome security/IT role checks passed with unchanged security flags, including
   manager/Super Admin assign/return using the rendered assignment ID, independent
   viewer controls, all 17 mutation routes, CSRF, revocation and disabled accounts.
+  Added browser policy checks cover hidden LOST/MAINTENANCE return controls, stale
+  POST rejection with unchanged history, then recovery/completion and successful return.
 - Python/Jinja compilation, JavaScript syntax, dependencies and diff checks passed.
 
 ```powershell
@@ -126,8 +128,8 @@ node --test tests/horizontal_navigation.test.cjs
 
 ## Remaining policy decisions and manual checks
 
-Approval is required for any future restriction on LOST/MAINTENANCE custody
-returns, historical-data repair/backfill, department ownership rules versus
+The LOST/MAINTENANCE return restriction is approved and implemented. Separate
+approval is required for historical-data repair/backfill, department ownership rules versus
 employee department, mandatory return condition/sign-off, central audit durability
 or a database uniqueness migration. None is silently implemented here.
 
@@ -137,10 +139,11 @@ On a disposable synthetic instance:
    actors and timestamps. Edit metadata without rewriting historical custody.
 2. Submit native Return, then repeat/reload. Use two tabs: return/reassign to the
    same employee, then submit the older form; verify rejection and intact new history.
-3. Mark assigned equipment LOST, then return: it must stay LOST until recovery.
-   Start maintenance on assigned equipment, return it and then complete maintenance:
-   it must stay MAINTENANCE until completion. MySQL automates these exceptional
-   cases; Chrome's existing role suite covers normal browser return only.
+3. Mark assigned equipment LOST and submit an old Return form: it must reject
+   without changing custody/history. Recover, then return successfully. Start
+   maintenance on assigned equipment: Return must reject until completion, then
+   succeed once status is ASSIGNED. Both MySQL and Chrome automate these
+   policy cases; native button interaction and fully styled layouts remain manual checks.
 4. Inspect manager warning/absent Return for deliberately inconsistent synthetic
    history. Confirm viewer controls remain hidden and permission revocation works.
 5. Check fully styled desktop/mobile forms and feedback. The Chrome runner blocks

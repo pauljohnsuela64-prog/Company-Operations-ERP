@@ -103,6 +103,37 @@ module.exports = async function verify({base, controlKey, send, tab, evaluate, n
   }
   console.log('PASS Chrome IT Manager and Super Admin: management links/forms, persisted asset assign/return and ticket assignment, all 17 routes reject missing/invalid CSRF');
 
+  // Approved policy: stale Return forms cannot clear LOST/MAINTENANCE custody.
+  for (const status of ['LOST', 'MAINTENANCE']) {
+    assert.equal((await request(manager, asset + '/assign', {employee_id:'1'})).path, asset);
+    await hasForm(manager, asset, asset + '/unassign');
+    const assignment_id = await evaluate(manager, `document.querySelector('main input[name="assignment_id"]').value`);
+    if (status === 'LOST') {
+      assert.equal((await request(manager, asset + '/lost')).path, asset);
+    } else {
+      assert.equal((await request(manager, asset + '/maintenance/add', {
+        maintenance_type:'Repair', description:'Synthetic browser policy check', start_date:'2026-10-01'
+      })).path, asset);
+    }
+    await navigate(manager, asset);
+    assert.equal(await evaluate(manager, `Boolean(document.querySelector('main form[action="${asset}/unassign"]'))`), false);
+    const before = await snapshot();
+    const rejected = await request(manager, asset + '/unassign', {assignment_id});
+    assert(rejected.text.includes(status === 'LOST' ? 'Recover this asset before returning it.' : 'Complete maintenance before returning this asset.'));
+    assert.equal(await snapshot(), before);
+    if (status === 'LOST') {
+      assert.equal((await request(manager, asset + '/restore')).path, asset);
+    } else {
+      const completion = await evaluate(manager, `document.querySelector('main form[action$="/complete"]').getAttribute('action')`);
+      assert.equal((await request(manager, completion, {completed_date:'2026-10-02'})).path, asset);
+    }
+    await hasForm(manager, asset, asset + '/unassign');
+    assert.equal(await evaluate(manager, `document.querySelector('main input[name="assignment_id"]').value`), assignment_id);
+    assert.equal((await request(manager, asset + '/unassign')).path, asset);
+    await hasForm(manager, asset, asset + '/assign');
+  }
+  console.log('PASS Chrome LOST/MAINTENANCE return controls hidden, stale POST rejected without history changes, recovery/completion then legitimate return');
+
   assert.equal((await request(manager, ticket + '/start')).path, ticket);
   await hasForm(manager, ticket, ticket + '/resolve');
   assert.equal((await request(manager, ticket + '/resolve', {resolution:'Browser fixed'})).path, ticket);

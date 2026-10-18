@@ -564,7 +564,11 @@ def unassign_it_asset(asset_id, returned_by, assignment_id=None):
             raise ValueError('IT asset was not found.')
         if asset['assigned_employee_id'] is None:
             raise ValueError('This asset is not currently assigned.')
-        if asset['status'] not in ('ASSIGNED', 'LOST', 'MAINTENANCE', 'RETIRED'):
+        if asset['status'] == 'LOST':
+            raise ValueError('Recover this asset before returning it.')
+        if asset['status'] == 'MAINTENANCE':
+            raise ValueError('Complete maintenance before returning this asset.')
+        if asset['status'] not in ('ASSIGNED', 'RETIRED'):
             raise ValueError('Asset state is inconsistent with its assignment. Review it before returning.')
         cursor.execute(
             """SELECT assignment_id, employee_id FROM it_asset_assignments

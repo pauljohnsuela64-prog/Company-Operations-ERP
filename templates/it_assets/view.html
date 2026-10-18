@@ -315,7 +315,10 @@ IT Asset Details
             {% if has_permission('it_assets.manage') and not active_assignment_id %}
             <p class="text-warning">Assignment history requires review before this asset can be returned.</p>
             {% endif %}
-            {% if has_permission('it_assets.manage') and active_assignment_id %}
+            {% if has_permission('it_assets.manage') and asset.status in ['LOST', 'MAINTENANCE'] %}
+            <p class="text-warning">Recover lost equipment or complete maintenance before returning this asset.</p>
+            {% endif %}
+            {% if has_permission('it_assets.manage') and active_assignment_id and asset.status not in ['LOST', 'MAINTENANCE'] %}
             <form
                 method="POST"
                 action="{{ url_for(

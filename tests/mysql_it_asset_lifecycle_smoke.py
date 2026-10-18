@@ -97,18 +97,25 @@ def run(port, data_dir):
             elif status == 'MAINTENANCE': mid = maintain(a)
             else: sql("UPDATE it_assets SET status='RETIRED' WHERE asset_id=%s", (a,))  # legacy anomaly fixture only
             assignment = active(a)
-            returned(a, assignment)
-            assert state(a) == (status,None,1)
-            rejects(lambda: returned(a, assignment))
-            if status == 'MAINTENANCE': repo.complete_it_asset_maintenance(mid, '2026-10-02')
-            else: repo.restore_it_asset(a)
+            if status in ('LOST', 'MAINTENANCE'):
+                rejects(lambda: returned(a, assignment))
+                assert state(a) == (status,1,1) and active(a) == assignment
+                if status == 'MAINTENANCE': repo.complete_it_asset_maintenance(mid, '2026-10-02')
+                else: repo.restore_it_asset(a)
+                assert state(a)[0] == 'ASSIGNED'
+                returned(a, assignment)
+            else:
+                returned(a, assignment)
+                assert state(a) == (status,None,1)
+                repo.restore_it_asset(a)
             assert state(a)[0] == 'AVAILABLE'
+            rejects(lambda: returned(a, assignment))
         a = asset(); mid = maintain(a)
         repo.complete_it_asset_maintenance(mid, '2026-10-02')
         assert state(a)[0] == 'ASSIGNED'
         rejects(lambda: repo.complete_it_asset_maintenance(mid, '2026-10-02'))
         returned(a)
-        print('PASS atomic initial history/asset ID, normal return, LOST/MAINTENANCE/RETIRED custody returns preserve lifecycle, restore/completion, duplicates and stale same-employee forms')
+        print('PASS atomic initial history/asset ID, normal return, LOST/MAINTENANCE returns reject until recovery/completion; legacy RETIRED return preserves state, restore/completion, duplicates and stale same-employee forms')
 
         for anomaly in ['missing', 'duplicate', 'employee', 'open-maintenance']:
             a = asset(); assignment = active(a)
@@ -190,11 +197,13 @@ def run(port, data_dir):
         a = asset(); assignment = active(a)
         assert sorted(race(a, lambda: returned(a, assignment), lambda: returned(a, assignment))) == ['committed','rejected']
         a = asset(); assignment = active(a)
-        assert race(a, lambda: maintain(a), lambda: returned(a, assignment)) == ['committed','committed']
-        assert state(a)[:2] == ('MAINTENANCE',None)
+        results = race(a, lambda: maintain(a), lambda: returned(a, assignment))
+        assert results[0] == 'committed'
+        assert state(a)[:2] == ('MAINTENANCE',1 if results[1] == 'rejected' else None)
         a = asset(); assignment = active(a); mid = maintain(a)
-        assert race(a, lambda: repo.complete_it_asset_maintenance(mid,'2026-10-02'), lambda: returned(a,assignment)) == ['committed','committed']
-        assert state(a)[:2] == ('AVAILABLE',None)
+        results = race(a, lambda: repo.complete_it_asset_maintenance(mid,'2026-10-02'), lambda: returned(a,assignment))
+        assert results[0] == 'committed'
+        assert state(a)[:2] == (('ASSIGNED',1) if results[1] == 'rejected' else ('AVAILABLE',None))
         a = asset(); assignment = active(a)
         results = race(a, lambda: repo.assign_it_asset(a,2,1,1), lambda: returned(a,assignment))
         assert results[1] == 'committed'
@@ -205,8 +214,9 @@ def run(port, data_dir):
         assert state(a)[0] == 'MAINTENANCE'
         assert sql('SELECT COUNT(*) FROM it_asset_assignments WHERE asset_id=%s AND returned_at IS NULL', (a,), True)[0][0] == (1 if state(a)[1] == 2 else 0)
         a = asset(); assignment = active(a)
-        assert race(a, lambda: repo.mark_it_asset_lost(a), lambda: returned(a,assignment)) == ['committed','committed']
-        assert state(a)[:2] == ('LOST',None)
+        results = race(a, lambda: repo.mark_it_asset_lost(a), lambda: returned(a,assignment))
+        assert results[0] == 'committed'
+        assert state(a)[:2] == ('LOST',1 if results[1] == 'rejected' else None)
         print('PASS six actual two-waiter MySQL races: duplicate returns, maintenance/return, completion/return, assignment/return, assignment/maintenance, loss/return')
 
         def client(uid):
@@ -215,6 +225,19 @@ def run(port, data_dir):
                 stamp_session(erp.app,sess,user_state(user_id=uid,role_id=uid,username=f'life-{uid}',password_hash='synthetic'))
             return c
         manager, viewer = client(1), client(2)
+        for status in ['LOST', 'MAINTENANCE']:
+            a = asset(); assignment = active(a)
+            if status == 'LOST': repo.mark_it_asset_lost(a)
+            else: maintain(a)
+            html = manager.get(f'/it/assets/{a}').get_data(as_text=True)
+            assert f'/it/assets/{a}/unassign' not in html
+            assert 'before returning this asset' in html
+            before = snapshot()
+            assert manager.post(f'/it/assets/{a}/unassign',data=dict(assignment_id=assignment,csrf_token=csrf_token_for(manager))).status_code == 302
+            assert snapshot() == before and active(a) == assignment
+            with manager.session_transaction() as sess:
+                assert not any(kind=='success' for kind,_ in sess.get('_flashes',[]))
+                sess.pop('_flashes',None)
         a = asset(); assignment = active(a)
         html = manager.get(f'/it/assets/{a}').get_data(as_text=True)
         assert f'name="assignment_id" value="{assignment}"' in html
