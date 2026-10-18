@@ -1,0 +1,10 @@
+<div>
+    <label class="form-label mb-1" for="finance-department">Department</label>
+    <select id="finance-department" name="department_id" class="form-select">
+        <option value="">All departments</option>
+        <option value="none" {% if selected_filters.department_id == 'none' %}selected{% endif %}>No department</option>
+        {% for department in filter_departments %}
+        <option value="{{ department.department_id }}" {% if selected_filters.department_id == department.department_id %}selected{% endif %}>{{ department.department_name }}</option>
+        {% endfor %}
+    </select>
+</div>

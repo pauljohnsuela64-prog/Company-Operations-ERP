@@ -1,0 +1,23 @@
+<div>
+    <label class="form-label mb-1" for="finance-status">Status</label>
+    <select id="finance-status" name="status" class="form-select">
+        <option value="">All statuses</option>
+        {% for status in ['DRAFT', 'APPROVED', 'PAID', 'CANCELLED'] %}
+        <option value="{{ status }}" {% if selected_filters.status == status %}selected{% endif %}>{{ status }}</option>
+        {% endfor %}
+    </select>
+</div>
+<div>
+    <label class="form-label mb-1" for="finance-category">Category</label>
+    <select id="finance-category" name="category_id" class="form-select">
+        <option value="">All categories</option>
+        {% for category in filter_categories %}
+        <option value="{{ category.category_id }}" {% if selected_filters.category_id == category.category_id %}selected{% endif %}>{{ category.category_name }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% include 'finance/partials/department_filter.html' %}
+<div>
+    <label class="form-label mb-1" for="finance-search">Search</label>
+    <input id="finance-search" name="search" class="form-control" value="{{ selected_filters.search_text or '' }}">
+</div>

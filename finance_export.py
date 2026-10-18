@@ -7,6 +7,25 @@ from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 from openpyxl.utils import get_column_letter
+from openpyxl.cell.cell import Cell, ILLEGAL_CHARACTERS_RE
+import re
+
+
+def safe_text_cell(worksheet, value):
+    """Serialize risky database text as an explicit XLSX string, never a formula.
+
+    XML cannot represent some controls: show their escaped spelling rather than
+    failing the entire export. Legitimate numeric/date objects pass unchanged.
+    """
+    if not isinstance(value, str):
+        return value
+    value = ILLEGAL_CHARACTERS_RE.sub(lambda m: f'\\x{ord(m[0]):02x}', value)
+    value = re.sub('[\ud800-\udfff\ufffe\uffff]', lambda m: f'\\u{ord(m[0]):04x}', value)
+    if value.lstrip('\ufeff\u200b \t\r\n\v\f').startswith(('=', '+', '-', '@')):
+        cell = Cell(worksheet, value=value)
+        cell.data_type = 's'
+        return cell
+    return value
 
 
 # ==========================================================
@@ -49,6 +68,7 @@ def generate_finance_report_excel(
     monthly_expenses,
     category_expenses,
     expense_records,
+    filter_labels=None,
 ):
 
     workbook = Workbook()
@@ -67,6 +87,13 @@ def generate_finance_report_excel(
             year,
         ]
     )
+
+    if filter_labels:
+        labels = [f"{key}: {filter_labels[key]}" for key in ('status', 'category_id', 'department_id', 'search_text')
+                  if filter_labels.get(key) is not None]
+        if labels:
+            summary_sheet['D1'] = 'Filters'
+            summary_sheet['E1'] = safe_text_cell(summary_sheet, '; '.join(labels))
 
     summary_sheet.append([])
 
@@ -167,8 +194,8 @@ def generate_finance_report_excel(
 
         category_sheet.append(
             [
-                category["category_code"],
-                category["category_name"],
+                safe_text_cell(category_sheet, category["category_code"]),
+                safe_text_cell(category_sheet, category["category_name"]),
                 category["expense_count"],
                 category["total_amount"],
             ]
@@ -203,16 +230,16 @@ def generate_finance_report_excel(
 
         expense_sheet.append(
             [
-                expense["expense_number"],
+                safe_text_cell(expense_sheet, expense["expense_number"]),
                 expense["expense_date"],
-                expense["category_name"],
-                expense["department_name"] or "",
-                expense["supplier_name"] or "",
-                expense["po_number"] or "",
-                expense["description"],
+                safe_text_cell(expense_sheet, expense["category_name"]),
+                safe_text_cell(expense_sheet, expense["department_name"] or ""),
+                safe_text_cell(expense_sheet, expense["supplier_name"] or ""),
+                safe_text_cell(expense_sheet, expense["po_number"] or ""),
+                safe_text_cell(expense_sheet, expense["description"]),
                 expense["amount"],
                 expense["status"],
-                expense["reference_number"] or "",
+                safe_text_cell(expense_sheet, expense["reference_number"] or ""),
                 expense["payment_method"] or "",
             ]
         )

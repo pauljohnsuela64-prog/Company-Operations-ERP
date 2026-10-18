@@ -1,3 +1,5 @@
+from budget_repository import get_department_budget_report
+from finance_reporting import filters as finance_filters, report as finance_report
 from inventory_reporting import report_filters, get_movement_page, get_reconciliation_page
 from procurement_validation import decimal_value, currency_amount
 from csrf_security import init_csrf
@@ -3852,122 +3854,13 @@ def add_expense_category():
 @app.route("/finance/expenses")
 @permission_required("finance.view")
 def expenses():
+    selected = finance_filters(request.args)
+    return render_template('finance/expenses/index.html',
+        expenses=get_filtered_expenses(**selected), categories=get_all_expense_categories(),
+        search_text=selected['search_text'] or '', selected_status=selected['status'] or '',
+        selected_category=str(selected['category_id'] or ''), selected_year=str(selected['year'] or ''),
+        selected_filters=selected, filter_departments=get_all_departments(), current_year=date.today().year)
 
-    # ======================================================
-    # FILTER INPUT
-    # ======================================================
-
-    search_text = request.args.get(
-        "search",
-        "",
-    ).strip()
-
-    selected_status = request.args.get(
-        "status",
-        "",
-    ).strip()
-
-    selected_category = request.args.get(
-        "category_id",
-        "",
-    ).strip()
-
-    selected_year = request.args.get(
-        "year",
-        "",
-    ).strip()
-
-
-    # ======================================================
-    # STATUS VALIDATION
-    # ======================================================
-
-    allowed_statuses = {
-        "DRAFT",
-        "APPROVED",
-        "PAID",
-        "CANCELLED",
-    }
-
-    if (
-        selected_status
-        and selected_status not in allowed_statuses
-    ):
-        selected_status = ""
-
-
-    # ======================================================
-    # CATEGORY VALIDATION
-    # ======================================================
-
-    category_id_value = None
-
-    if selected_category:
-
-        try:
-            category_id_value = int(selected_category)
-
-        except ValueError:
-            selected_category = ""
-
-
-    # ======================================================
-    # YEAR VALIDATION
-    # ======================================================
-
-    year_value = None
-
-    if selected_year:
-
-        try:
-            year_value = int(selected_year)
-
-        except ValueError:
-            selected_year = ""
-
-
-    # ======================================================
-    # GET EXPENSE RECORDS
-    # ======================================================
-
-    if search_text:
-
-        expense_list = search_expenses(
-            search_text
-        )
-
-    else:
-
-        expense_list = get_filtered_expenses(
-            status=selected_status or None,
-            category_id=category_id_value,
-            year=year_value,
-            search_text=search_text or None,
-        )
-
-
-    categories = get_all_expense_categories()
-
-
-    # ======================================================
-    # SHOW PAGE
-    # ======================================================
-
-    return render_template(
-        "finance/expenses/index.html",
-        expenses=expense_list,
-        categories=categories,
-        search_text=search_text,
-        selected_status=selected_status,
-        selected_category=selected_category,
-        selected_year=selected_year,
-        current_year=date.today().year,
-    )
-
-
-# ==========================================================
-# FINANCE - EDIT EXPENSE CATEGORY
-# ==========================================================
 
 @app.route(
     "/finance/expense-categories/<int:category_id>/edit",
@@ -4455,49 +4348,20 @@ def finance_summary():
     # ======================================================
 
     current_year = date.today().year
-
-    selected_year = request.args.get(
-        "year",
-        str(current_year),
-    ).strip()
-
-    try:
-
-        selected_year = int(selected_year)
-
-    except ValueError:
-
-        selected_year = current_year
-
-
-    # ======================================================
-    # SUMMARY DATA
-    # ======================================================
-
-    summary = get_finance_summary_by_year(
-    selected_year
-)
-
-    monthly_paid_expenses = get_monthly_paid_expenses(
-        selected_year
-    )
-
-    paid_expenses_by_category = (
-        get_paid_expenses_by_category(
-            selected_year
-        )
-    )
-
-
-    # ======================================================
-    # SHOW FINANCE SUMMARY
-    # ======================================================
-
+    selected = finance_filters(request.args, default_year=current_year)
+    selected_year = selected['year']
+    data = finance_report(selected)
+    summary = data['summary']
+    monthly_expenses = data['monthly_expenses']
+    category_expenses = data['category_expenses']
+    expense_records = data['expense_records']
     return render_template(
         "finance/index.html",
+        selected_filters=selected,
+        filter_categories=get_all_expense_categories(), filter_departments=get_all_departments(),
         summary=summary,
-        monthly_paid_expenses=monthly_paid_expenses,
-        paid_expenses_by_category=paid_expenses_by_category,
+        monthly_paid_expenses=monthly_expenses,
+        paid_expenses_by_category=category_expenses,
         selected_year=selected_year,
         current_year=current_year,
     )
@@ -4516,43 +4380,19 @@ def department_budgets():
     # ======================================================
 
     current_year = date.today().year
-
-    selected_year = request.args.get(
-        "year",
-        str(current_year),
-    ).strip()
-
-    try:
-        selected_year = int(selected_year)
-
-    except ValueError:
-        selected_year = current_year
-
-
-    # ======================================================
-    # GET BUDGET RECORDS
-    # ======================================================
-
-    budget_list = get_all_department_budgets(
-        year=selected_year
-    )
-
-
-    # ======================================================
-    # GET BUDGET SUMMARY
-    # ======================================================
-
-    budget_summary = get_budget_summary(
-        selected_year
-    )
-
-
-    # ======================================================
-    # SHOW BUDGET PAGE
-    # ======================================================
+    selected = finance_filters(request.args, default_year=current_year)
+    selected_year = selected['year']
+    budget_list = get_all_department_budgets(year=selected_year)
+    if selected['department_id'] is not None:
+        budget_list = [b for b in budget_list if b['department_id'] == selected['department_id']]
+    budget_summary = dict(department_count=len(budget_list),
+        total_budget=sum((b['budget_amount'] for b in budget_list), Decimal('0.00')),
+        total_spent=sum((b['spent_amount'] for b in budget_list), Decimal('0.00')),
+        total_remaining=sum((b['remaining_amount'] for b in budget_list), Decimal('0.00')))
 
     return render_template(
         "finance/budgets/index.html",
+        selected_filters=selected, filter_departments=get_all_departments(),
         budgets=budget_list,
         budget_summary=budget_summary,
         selected_year=selected_year,
@@ -4603,9 +4443,7 @@ def view_department_budget(budget_id):
     # GET BUDGET DETAILS
     # ======================================================
 
-    budget = get_department_budget_details_by_id(
-        budget_id
-    )
+    budget, paid_expenses = get_department_budget_report(budget_id)
 
     if not budget:
 
@@ -4623,20 +4461,11 @@ def view_department_budget(budget_id):
     # GET PAID EXPENSES
     # ======================================================
 
-    paid_expenses = get_paid_expenses_for_budget(
-        budget_id
-    )
-
-
-    # ======================================================
-    # CALCULATE USAGE
-    # ======================================================
-
-    budget_amount = float(
+    budget_amount = Decimal(
         budget["budget_amount"]
     )
 
-    spent_amount = float(
+    spent_amount = Decimal(
         budget["spent_amount"]
     )
 
@@ -4677,61 +4506,17 @@ def finance_reports():
     # ======================================================
 
     current_year = date.today().year
-
-    selected_year = request.args.get(
-        "year",
-        str(current_year),
-    ).strip()
-
-    try:
-        selected_year = int(selected_year)
-
-    except ValueError:
-        selected_year = current_year
-
-
-    # ======================================================
-    # REPORT SUMMARY
-    # ======================================================
-
-    summary = get_finance_summary_by_year(
-        selected_year
-    )
-
-
-    # ======================================================
-    # MONTHLY PAID EXPENSES
-    # ======================================================
-
-    monthly_expenses = get_monthly_paid_expenses(
-        selected_year
-    )
-
-
-    # ======================================================
-    # PAID EXPENSES BY CATEGORY
-    # ======================================================
-
-    category_expenses = get_paid_expenses_by_category(
-        selected_year
-    )
-
-
-    # ======================================================
-    # ALL EXPENSE RECORDS FOR YEAR
-    # ======================================================
-
-    expense_records = get_filtered_expenses(
-        year=selected_year
-    )
-
-
-    # ======================================================
-    # SHOW REPORT PAGE
-    # ======================================================
-
+    selected = finance_filters(request.args, default_year=current_year)
+    selected_year = selected['year']
+    data = finance_report(selected)
+    summary = data['summary']
+    monthly_expenses = data['monthly_expenses']
+    category_expenses = data['category_expenses']
+    expense_records = data['expense_records']
     return render_template(
         "finance/reports/index.html",
+        selected_filters=selected,
+        filter_categories=get_all_expense_categories(), filter_departments=get_all_departments(),
         summary=summary,
         monthly_expenses=monthly_expenses,
         category_expenses=category_expenses,
@@ -4754,50 +4539,20 @@ def export_finance_report():
     # ======================================================
 
     current_year = date.today().year
-
-    selected_year = request.args.get(
-        "year",
-        str(current_year),
-    ).strip()
-
-    try:
-        selected_year = int(selected_year)
-
-    except ValueError:
-        selected_year = current_year
-
-
-    # ======================================================
-    # GET REPORT DATA
-    # ======================================================
-
-    summary = get_finance_summary_by_year(
-        selected_year
-    )
-
-    monthly_expenses = get_monthly_paid_expenses(
-        selected_year
-    )
-
-    category_expenses = get_paid_expenses_by_category(
-        selected_year
-    )
-
-    expense_records = get_filtered_expenses(
-        year=selected_year
-    )
-
-
-    # ======================================================
-    # GENERATE EXCEL FILE
-    # ======================================================
-
+    selected = finance_filters(request.args, default_year=current_year)
+    selected_year = selected['year']
+    data = finance_report(selected)
+    summary = data['summary']
+    monthly_expenses = data['monthly_expenses']
+    category_expenses = data['category_expenses']
+    expense_records = data['expense_records']
     excel_file = generate_finance_report_excel(
         selected_year,
         summary,
         monthly_expenses,
         category_expenses,
         expense_records,
+        filter_labels=selected,
     )
 
 
@@ -4805,7 +4560,7 @@ def export_finance_report():
     # DOWNLOAD FILE
     # ======================================================
 
-    return send_file(
+    response = send_file(
         excel_file,
         as_attachment=True,
         download_name=(
@@ -4820,6 +4575,9 @@ def export_finance_report():
 # ==========================================================
 # PAYROLL - EMPLOYEE COMPENSATION
 # ==========================================================
+    response.headers['Cache-Control'] = 'private, no-store'
+    return response
+
 
 @app.route("/payroll/compensation")
 @permission_required("payroll.view")

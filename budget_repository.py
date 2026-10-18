@@ -517,8 +517,10 @@ def get_budget_summary(year):
 # Only PAID expenses count as actual spending.
 # ==========================================================
 
-def get_paid_expenses_for_budget(budget_id):
-    connection = get_connection()
+def get_paid_expenses_for_budget(budget_id, connection=None):
+    owns_connection = connection is None
+    if owns_connection:
+        connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
     try:
@@ -580,7 +582,8 @@ def get_paid_expenses_for_budget(budget_id):
     finally:
 
         cursor.close()
-        connection.close()
+        if owns_connection:
+            connection.close()
 
 
 # ==========================================================
@@ -594,8 +597,10 @@ def get_paid_expenses_for_budget(budget_id):
 # - Remaining amount
 # ==========================================================
 
-def get_department_budget_details_by_id(budget_id):
-    connection = get_connection()
+def get_department_budget_details_by_id(budget_id, connection=None):
+    owns_connection = connection is None
+    if owns_connection:
+        connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
     try:
@@ -675,7 +680,8 @@ def get_department_budget_details_by_id(budget_id):
     finally:
 
         cursor.close()
-        connection.close()
+        if owns_connection:
+            connection.close()
 
 # ==========================================================
 # CHECK EXPENSE AGAINST DEPARTMENT BUDGET
@@ -911,4 +917,19 @@ def check_expense_against_budget(expense_id):
     finally:
 
         cursor.close()
+        connection.close()
+
+def get_department_budget_report(budget_id):
+    """Budget totals and paid detail rows from the same read-only snapshot."""
+    connection = get_connection()
+    try:
+        connection.start_transaction(isolation_level='REPEATABLE READ', consistent_snapshot=True, readonly=True)
+        budget = get_department_budget_details_by_id(budget_id, connection=connection)
+        records = get_paid_expenses_for_budget(budget_id, connection=connection) if budget else []
+        connection.commit()
+        return budget, records
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
         connection.close()

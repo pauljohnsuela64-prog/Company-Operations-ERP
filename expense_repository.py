@@ -789,13 +789,11 @@ def get_finance_summary():
                     0
                 ) AS total_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'DRAFT'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS draft_count,
+                    END), 0) AS draft_count,
 
                 COALESCE(
                     SUM(
@@ -808,13 +806,11 @@ def get_finance_summary():
                     0
                 ) AS draft_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'APPROVED'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS approved_count,
+                    END), 0) AS approved_count,
 
                 COALESCE(
                     SUM(
@@ -827,13 +823,11 @@ def get_finance_summary():
                     0
                 ) AS approved_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'PAID'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS paid_count,
+                    END), 0) AS paid_count,
 
                 COALESCE(
                     SUM(
@@ -846,13 +840,11 @@ def get_finance_summary():
                     0
                 ) AS paid_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'CANCELLED'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS cancelled_count,
+                    END), 0) AS cancelled_count,
 
                 COALESCE(
                     SUM(
@@ -1004,13 +996,11 @@ def get_finance_summary_by_year(year):
                     0
                 ) AS total_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'DRAFT'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS draft_count,
+                    END), 0) AS draft_count,
 
                 COALESCE(
                     SUM(
@@ -1023,13 +1013,11 @@ def get_finance_summary_by_year(year):
                     0
                 ) AS draft_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'APPROVED'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS approved_count,
+                    END), 0) AS approved_count,
 
                 COALESCE(
                     SUM(
@@ -1042,13 +1030,11 @@ def get_finance_summary_by_year(year):
                     0
                 ) AS approved_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'PAID'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS paid_count,
+                    END), 0) AS paid_count,
 
                 COALESCE(
                     SUM(
@@ -1061,13 +1047,11 @@ def get_finance_summary_by_year(year):
                     0
                 ) AS paid_amount,
 
-                SUM(
-                    CASE
+                COALESCE(SUM(CASE
                         WHEN status = 'CANCELLED'
                         THEN 1
                         ELSE 0
-                    END
-                ) AS cancelled_count,
+                    END), 0) AS cancelled_count,
 
                 COALESCE(
                     SUM(
@@ -1111,6 +1095,7 @@ def get_filtered_expenses(
     category_id=None,
     year=None,
     search_text=None,
+    department_id=None,
 ):
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
@@ -1255,6 +1240,12 @@ def get_filtered_expenses(
         # ==================================================
         # SORTING
         # ==========================================================
+
+        if department_id == 'none':
+            query += " AND e.department_id IS NULL"
+        elif department_id is not None:
+            query += " AND e.department_id = %s"
+            parameters.append(department_id)
 
         query += """
             ORDER BY

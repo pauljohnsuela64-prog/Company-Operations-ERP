@@ -497,7 +497,7 @@ Dashboard
                                 <div>
 
                                     <div class="text-muted small">
-                                        Expenses Awaiting Payment
+                                        Expenses Awaiting Payment (all dates)
                                     </div>
 
                                     <h2 class="mb-0">
@@ -507,7 +507,7 @@ Dashboard
                                 </div>
 
                                 <a
-                                    href="{{ url_for('expenses') }}"
+                                    href="{{ url_for('expenses', status='APPROVED') }}"
                                     class="btn btn-sm btn-outline-primary align-self-start"
                                 >
                                     View

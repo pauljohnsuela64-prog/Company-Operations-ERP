@@ -6,6 +6,7 @@ Department Budgets
 
 
 {% block content %}
+<p class="text-muted small">Only departments with a listed budget are included; departmentless expenses and spending without a budget are excluded.</p>
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER / YEAR FILTER -->
@@ -57,7 +58,8 @@ Department Budgets
             </div>
 
 
-            <button type="submit" class="btn btn-outline-primary">
+            {% include 'finance/partials/department_filter.html' %}
+        <button type="submit" class="btn btn-outline-primary">
                 Apply
             </button>
 
@@ -115,7 +117,7 @@ Department Budgets
             <div class="card-body">
 
                 <div class="text-muted mb-1">
-                    Total Spent
+                    Paid Against Listed Budgets
                 </div>
 
                 <h4 class="mb-0">
@@ -218,10 +220,10 @@ Department Budgets
                     {% for budget in budgets %}
 
                     {% set budget_amount =
-                    budget.budget_amount|float %}
+                    budget.budget_amount %}
 
                     {% set spent_amount =
-                    budget.spent_amount|float %}
+                    budget.spent_amount %}
 
 
                     <!-- # CALCULATE USAGE -->
