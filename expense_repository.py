@@ -1,3 +1,4 @@
+from finance_validation import expense_values, identifier, lock_expense_references
 # ==========================================================
 # EXPENSE REPOSITORY
 #
@@ -199,6 +200,11 @@ def create_expense(
     created_by,
     notes,
 ):
+    (expense_date, category_id, department_id, supplier_id, purchase_order_id,
+     description, amount, reference_number, payment_method, notes) = expense_values(
+        expense_date, category_id, department_id, supplier_id, purchase_order_id,
+        description, amount, reference_number, payment_method, notes)
+    created_by = identifier(created_by, 'Creator')
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -209,6 +215,8 @@ def create_expense(
         # ==================================================
 
         connection.start_transaction()
+        lock_expense_references(cursor, category_id, department_id, supplier_id, purchase_order_id)
+
 
 
         # ==================================================
@@ -651,6 +659,11 @@ def update_expense(
     payment_method,
     notes,
 ):
+    (expense_date, category_id, department_id, supplier_id, purchase_order_id,
+     description, amount, reference_number, payment_method, notes) = expense_values(
+        expense_date, category_id, department_id, supplier_id, purchase_order_id,
+        description, amount, reference_number, payment_method, notes)
+    expense_id = identifier(expense_id, 'Expense')
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
@@ -701,6 +714,7 @@ def update_expense(
         # DATABASE UPDATE
         # ==================================================
 
+        lock_expense_references(cursor, category_id, department_id, supplier_id, purchase_order_id)
         cursor.execute(
             """
             UPDATE expenses

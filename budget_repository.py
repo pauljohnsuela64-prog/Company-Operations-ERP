@@ -1,3 +1,4 @@
+from finance_validation import budget_values, identifier, lock_department
 # ==========================================================
 # FINANCE - BUDGET REPOSITORY
 # ==========================================================
@@ -162,10 +163,16 @@ def create_department_budget(
     notes,
     created_by,
 ):
+    department_id, budget_year, budget_amount, notes = budget_values(
+        department_id, budget_year, budget_amount, notes)
+    created_by = identifier(created_by, 'Creator')
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_department(cursor, department_id)
+
 
         # ==================================================
         # DATABASE INSERT
@@ -195,9 +202,12 @@ def create_department_budget(
 
         return cursor.lastrowid
 
-    except Exception:
-
+    except Exception as error:
         connection.rollback()
+        if getattr(error, 'errno', None) == 1062:
+            raise ValueError('This department already has a budget for the selected year.') from error
+        if getattr(error, 'errno', None) in (1205, 1213):
+            raise ValueError('Finance data changed concurrently. Reload and try again.') from error
         raise
 
     finally:
@@ -324,6 +334,9 @@ def update_department_budget(
     budget_amount,
     notes,
 ):
+    department_id, budget_year, budget_amount, notes = budget_values(
+        department_id, budget_year, budget_amount, notes)
+    budget_id = identifier(budget_id, 'Budget')
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -362,6 +375,7 @@ def update_department_budget(
         # DATABASE UPDATE
         # ==========================================================
 
+        lock_department(cursor, department_id)
         cursor.execute(
             """
             UPDATE department_budgets
@@ -391,11 +405,13 @@ def update_department_budget(
         connection.commit()
 
 
-    except Exception:
-
+    except Exception as error:
         connection.rollback()
+        if getattr(error, 'errno', None) == 1062:
+            raise ValueError('This department already has a budget for the selected year.') from error
+        if getattr(error, 'errno', None) in (1205, 1213):
+            raise ValueError('Finance data changed concurrently. Reload and try again.') from error
         raise
-
 
     finally:
 
