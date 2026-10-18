@@ -1,5 +1,5 @@
 from it_asset_validation import (asset_values, identifier, calendar_date, cost as validate_cost, text,
-                                 lock_references, lock_employee, translate_write_error)
+                                 category_values, lock_references, lock_employee, translate_write_error)
 # ==========================================================
 # IT MANAGEMENT - IT ASSET REPOSITORY
 # ==========================================================
@@ -1584,6 +1584,7 @@ def create_it_asset_category(
     category_name,
     description,
 ):
+    category_code, category_name, description = category_values(category_code, category_name, description)
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -1634,6 +1635,7 @@ def update_it_asset_category(
     category_name,
     description,
 ):
+    category_code, category_name, description = category_values(category_code, category_name, description)
     connection = get_connection()
     cursor = connection.cursor()
 

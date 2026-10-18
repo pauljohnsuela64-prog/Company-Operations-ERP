@@ -80,6 +80,15 @@ def asset_values(raw):
     )
 
 
+def category_values(category_code, category_name, description):
+    """Validate normalized category text before any SQL, in every SQL mode."""
+    code = text(category_code, 'Category code', 30, True).upper()
+    # Uppercasing can expand Unicode characters; enforce the persisted length too.
+    code = text(code, 'Category code', 30, True)
+    return (code, text(category_name, 'Category name', 100, True),
+            text(description, 'Description', 255))
+
+
 def lock_employee(cursor, employee_id):
     if employee_id is not None:
         cursor.execute('SELECT employee_id, employment_status FROM employees WHERE employee_id=%s FOR SHARE', (employee_id,))

@@ -30,6 +30,7 @@ Add Asset Category
                     <input
                         type="text"
                         name="category_code"
+                        value="{{ form_values.category_code }}"
                         class="form-control"
                         maxlength="30"
                         required
@@ -47,6 +48,7 @@ Add Asset Category
                     <input
                         type="text"
                         name="category_name"
+                        value="{{ form_values.category_name }}"
                         class="form-control"
                         maxlength="100"
                         required
@@ -66,7 +68,7 @@ Add Asset Category
                         class="form-control"
                         rows="3"
                         maxlength="255"
-                    ></textarea>
+                    >{{ form_values.description }}</textarea>
 
                 </div>
 

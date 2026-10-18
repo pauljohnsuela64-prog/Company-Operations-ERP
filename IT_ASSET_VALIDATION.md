@@ -159,3 +159,53 @@ is blocked in automation, so full visual acceptance is incomplete. No production
 scale performance claim is made.
 
 Await review before Step 3. No commit, push, merge or branch change performed.
+
+
+## Step 5A: category validation correction
+
+Baseline: `fix/it-asset-lifecycle` at `21adc0d`. Category Add/Edit previously relied
+on HTML maxlength for their VARCHAR limits. Forged oversized input could produce
+MySQL error 1406 in strict mode or silently truncate and audit a successful write
+in non-strict mode.
+
+Both routes now share a category form handler and `category_values()` from the
+existing validation module. The category repositories also validate before opening
+a connection. Code/name are required; normalized code/name/description have maximum
+lengths 30/100/255. Whitespace is stripped for persistence, codes are uppercased,
+and uppercase Unicode expansion is checked against the code limit. An empty
+optional description remains SQL NULL. Category names remain non-unique; only
+category codes are unique in the existing schema. No new business rule is added.
+
+Validation and duplicate-code failures render the same Add/Edit page with all
+submitted values retained and HTML-escaped, including oversized text for correction.
+There is no redirect that discards rejected Edit values. Validation runs before SQL;
+existing write transactions/rollback and activation/deactivation are unchanged.
+Successful changed records retain exactly one central CREATE/UPDATE event after
+commit. Invalid, duplicate, denied and rolled-back writes emit no success event;
+the central best-effort audit failure boundary remains unchanged.
+
+Regression coverage is in `tests/test_it_asset_category_validation.py`,
+`tests/mysql_it_asset_category_validation_smoke.py`, and
+`tests/browser_it_asset_categories.cjs` (called by the existing browser harness).
+The new MySQL suite explicitly sets and verifies strict and non-strict session
+modes, tests exact boundaries and overflow on CREATE/UPDATE, missing fields, raw
+form retention/escaping, Unicode normalization, optional descriptions, duplicate
+codes, unchanged database/audit snapshots, real UPDATE rollback, activation,
+CSRF and fresh permission revocation. Direct repository invalid input is also
+rejected before SQL. All database records are synthetic and disposable.
+
+No schema/migration, role grant, lifecycle/return policy, historical repair or
+unrelated module change is required. Existing manual visual acceptance,
+production TLS, best-effort audit durability, legacy reconciliation and export
+scaling limitations remain as documented in the prior IT steps.
+
+Step 5A final verification: 267 Python tests, 11 JavaScript tests and seventeen
+disposable MySQL suites passed, including the new dual-mode category suite and
+existing IT lifecycle/validation/audit/reporting/authorization, Finance,
+Inventory, Procurement, receiving, security and central Audit Logs suites.
+Chrome native category Add/Edit passed all three overflow/retry cases, duplicate
+retention and activation/deactivation alongside existing IT/security workflows.
+Compilation passed for 88 Python sources, 104 Jinja templates and six CJS scripts;
+dependency and diff checks passed. Styled visual acceptance and production TLS
+remain manual checks. Changes are ready for review before an authorized Git
+checkpoint or Pull Request; no commit, push or branch change was performed.

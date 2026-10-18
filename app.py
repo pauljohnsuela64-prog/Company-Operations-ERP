@@ -1,4 +1,4 @@
-from it_asset_validation import ASSET_FIELDS as IT_ASSET_FIELDS, identifier as asset_identifier
+from it_asset_validation import ASSET_FIELDS as IT_ASSET_FIELDS, identifier as asset_identifier, category_values
 from budget_repository import get_department_budget_report
 from finance_reporting import filters as finance_filters, report as finance_report
 from finance_validation import calendar_year, identifier
@@ -7096,89 +7096,7 @@ def it_asset_categories():
 )
 @permission_required("it_assets.manage")
 def add_it_asset_category():
-
-    if request.method == "POST":
-
-        category_code = request.form.get(
-            "category_code",
-            "",
-        ).strip().upper()
-
-        category_name = request.form.get(
-            "category_name",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-
-        # ==================================================
-        # VALIDATION
-        # ==========================================================
-
-        if not category_code or not category_name:
-
-            flash(
-                "Category code and category name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "it_assets/categories/add.html"
-            )
-
-
-        # ==================================================
-        # DATABASE INSERT
-        # ==========================================================
-
-        try:
-
-            category_id = create_it_asset_category(
-                category_code,
-                category_name,
-                description or None,
-            )
-
-        except Exception as error:
-
-            if getattr(error, "errno", None) == 1062:
-
-                flash(
-                    "Asset category code already exists.",
-                    "danger",
-                )
-
-                return render_template(
-                    "it_assets/categories/add.html"
-                )
-
-            raise
-
-
-        if not category_id:
-            flash('Asset category was not created.', 'warning')
-            return redirect(url_for('it_asset_categories'))
-        record_audit_event('IT_ASSETS', 'CREATE', 'IT_ASSET_CATEGORY', category_id,
-                           f'IT asset category {category_id} created.',
-                           entity_lookup=get_it_asset_category_by_id, identifier_key='category_code', preserve_entity_id=True)
-
-        flash(
-            "Asset category created successfully.",
-            "success",
-        )
-
-        return redirect(
-            url_for("it_asset_categories")
-        )
-
-
-    return render_template(
-        "it_assets/categories/add.html"
-    )
+    return _it_asset_category_form()
 
 
 # ==========================================================
@@ -7191,106 +7109,44 @@ def add_it_asset_category():
 )
 @permission_required("it_assets.manage")
 def edit_it_asset_category(category_id):
-
-    category = get_it_asset_category_by_id(
-        category_id
-    )
-
+    category = get_it_asset_category_by_id(category_id)
     if not category:
-
-        flash(
-            "Asset category not found.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("it_asset_categories")
-        )
+        flash('Asset category not found.', 'danger')
+        return redirect(url_for('it_asset_categories'))
+    return _it_asset_category_form(category)
 
 
-    if request.method == "POST":
-
-        category_code = request.form.get(
-            "category_code",
-            "",
-        ).strip().upper()
-
-        category_name = request.form.get(
-            "category_name",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-
-        if not category_code or not category_name:
-
-            flash(
-                "Category code and category name are required.",
-                "danger",
-            )
-
-            return redirect(
-                url_for(
-                    "edit_it_asset_category",
-                    category_id=category_id,
-                )
-            )
-
-
+def _it_asset_category_form(category=None):
+    fields = ('category_code', 'category_name', 'description')
+    values = {name: (category.get(name) or '') if category else '' for name in fields}
+    if request.method == 'POST':
+        values = {name: request.form.get(name, '') for name in fields}
         try:
-
-            changed = update_it_asset_category(
-                category_id,
-                category_code,
-                category_name,
-                description or None,
-            )
-
+            code, name, description = category_values(**values)
+            if category:
+                changed = update_it_asset_category(category['category_id'], code, name, description)
+                category_id = category['category_id']
+            else:
+                category_id = create_it_asset_category(code, name, description)
+                changed = bool(category_id)
+        except ValueError as error:
+            flash(str(error), 'danger')
         except Exception as error:
-
-            if getattr(error, "errno", None) == 1062:
-
-                flash(
-                    "Asset category code already exists.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for(
-                        "edit_it_asset_category",
-                        category_id=category_id,
-                    )
-                )
-
-            raise
-
-
-        if not changed:
-            flash('Asset category was not changed. Reload and try again.', 'warning')
+            if getattr(error, 'errno', None) != 1062:
+                raise
+            flash('Asset category code already exists.', 'danger')
+        else:
+            if not changed:
+                flash('Asset category was not changed. Reload and try again.', 'warning')
+                return redirect(url_for('it_asset_categories'))
+            action = 'UPDATE' if category else 'CREATE'
+            record_audit_event('IT_ASSETS', action, 'IT_ASSET_CATEGORY', category_id,
+                               f"IT asset category {category_id} {'updated' if category else 'created'}.",
+                               entity_lookup=get_it_asset_category_by_id, identifier_key='category_code', preserve_entity_id=True)
+            flash('Asset category updated successfully.' if category else 'Asset category created successfully.', 'success')
             return redirect(url_for('it_asset_categories'))
-        record_audit_event('IT_ASSETS', 'UPDATE', 'IT_ASSET_CATEGORY', category_id,
-                           f'IT asset category {category_id} updated.',
-                           entity_lookup=get_it_asset_category_by_id, identifier_key='category_code', preserve_entity_id=True)
-
-        flash(
-            "Asset category updated successfully.",
-            "success",
-        )
-
-        return redirect(
-            url_for("it_asset_categories")
-        )
-
-
-    return render_template(
-        "it_assets/categories/edit.html",
-        category=category,
-    )
-
+    return render_template('it_assets/categories/edit.html' if category else 'it_assets/categories/add.html',
+                           category=category, form_values=values)
 
 
 
