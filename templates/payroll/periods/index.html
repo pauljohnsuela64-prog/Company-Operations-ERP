@@ -34,6 +34,7 @@ Payroll Periods
 
 
         {% if has_permission("payroll.process") %}
+        <a href="{{ url_for('generate_payroll_periods') }}" class="btn btn-outline-primary me-2">Generate Monthly Cutoffs</a>
 
         <a href="{{ url_for('add_payroll_period') }}" class="btn btn-primary">
             New Payroll Period
@@ -96,6 +97,7 @@ Payroll Periods
                         <td>
 
                             {{ period.period_name }}
+                            <div class="text-muted small">{% if period.policy_version_id %}Policy ID {{ period.policy_version_id }} ? Cutoff {{ period.cutoff_code }}{% else %}Legacy/manual ? No policy{% endif %}</div>
 
                         </td>
 

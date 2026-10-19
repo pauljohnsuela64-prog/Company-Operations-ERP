@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Generate Payroll Cutoffs{% endblock %}
+{% block content %}
+<h2>Generate Monthly Payroll Cutoffs</h2>
+<p>Dates follow the activated semi-monthly calendar. Enter each payment date explicitly. Generation creates DRAFT periods only; it does not calculate payroll.</p>
+<form method="POST" class="card card-body mb-4">
+{% include 'partials/csrf_field.html' %}
+<div class="row g-3">
+{% for key,label,type in [('year','Year','number'),('month','Month','number'),('pay_date_a','Cutoff A payment date','date'),('pay_date_b','Cutoff B payment date','date')] %}
+<div class="col-md-3"><label class="form-label" for="{{ key }}">{{ label }}</label><input class="form-control" id="{{ key }}" name="{{ key }}" type="{{ type }}" value="{{ values[key] }}" {% if key=='year' %}min="1000" max="9999" required{% elif key=='month' %}min="1" max="12" required{% endif %}></div>
+{% endfor %}
+</div>
+<div class="mt-3"><button class="btn btn-outline-primary" name="action" value="preview">Preview</button> <button class="btn btn-primary" name="action" value="generate">Generate Both Cutoffs</button> <a class="btn btn-secondary" href="{{ url_for('payroll_periods') }}">Back</a></div>
+</form>
+{% if result %}
+<table class="table"><thead><tr><th>Cutoff</th><th>Start</th><th>End (inclusive)</th><th>Policy version</th><th>Result</th></tr></thead><tbody>
+{% for cutoff in result %}<tr><td>{{ cutoff.cutoff_code }}</td><td>{{ cutoff.start_date }}</td><td>{{ cutoff.end_date }}</td><td>{{ cutoff.version_number }}</td><td>{% if cutoff.payroll_period_id %}<a href="{{ url_for('view_payroll_period',payroll_period_id=cutoff.payroll_period_id) }}">Period {{ cutoff.payroll_period_id }}</a> — {{ 'Created' if cutoff.created else 'Already exists' }}{% else %}Preview only — revalidated at generation{% endif %}</td></tr>{% endfor %}
+</tbody></table>
+{% endif %}
+{% endblock %}

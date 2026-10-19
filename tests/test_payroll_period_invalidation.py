@@ -8,7 +8,7 @@ import payroll_period_repository as repository
 class PayrollPeriodInvalidationTests(unittest.TestCase):
     def setUp(self):
         self.connection=MagicMock();self.cursor=self.connection.cursor.return_value
-        self.cursor.fetchone.return_value=dict(start_date=date(2026,2,2),end_date=date(2026,2,6),status='DRAFT')
+        self.cursor.fetchone.return_value=dict(policy_version_id=None,start_date=date(2026,2,2),end_date=date(2026,2,6),status='DRAFT')
         self.cursor.fetchall.return_value=[dict(payroll_entry_id=1,status='CALCULATED')]
         self.cursor.rowcount=1
         self.patch=patch.object(repository,'get_connection',return_value=self.connection)
@@ -30,6 +30,18 @@ class PayrollPeriodInvalidationTests(unittest.TestCase):
         self.connection.start_transaction.assert_called_once();self.connection.commit.assert_called_once()
 
     def test_metadata_edit_does_not_invalidate(self):
+        self.assertTrue(self.update(end=date(2026,2,6)))
+        self.assertEqual(self.cursor.execute.call_count,2)
+
+    def test_pinned_dates_cannot_be_changed(self):
+        self.cursor.fetchone.return_value['policy_version_id']=3
+        with self.assertRaisesRegex(ValueError,'pinned'):
+            self.update()
+        self.connection.commit.assert_not_called()
+        self.connection.rollback.assert_called_once()
+
+    def test_pinned_metadata_edit_preserves_calculations(self):
+        self.cursor.fetchone.return_value['policy_version_id']=3
         self.assertTrue(self.update(end=date(2026,2,6)))
         self.assertEqual(self.cursor.execute.call_count,2)
 

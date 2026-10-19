@@ -1,6 +1,7 @@
 from payroll_validation import payroll_money
 import payroll_policy_repository as payroll_policies
 import payroll_policy_validation as policy_validation
+import payroll_generation_repository as payroll_generation
 from it_asset_validation import ASSET_FIELDS as IT_ASSET_FIELDS, identifier as asset_identifier, category_values
 from budget_repository import get_department_budget_report
 from finance_reporting import filters as finance_filters, report as finance_report
@@ -4633,6 +4634,38 @@ def _policy_audit(action, policy):
     record_audit_event(module='PAYROLL', action=action, entity_type='PAYROLL_POLICY',
         entity_id=policy['policy_version_id'],
         description=f"Policy version {policy['version_number']} {action.lower()}; effective {policy['effective_from']:%Y-%m-%d}.")
+
+
+@app.route('/payroll/periods/generate', methods=['GET', 'POST'])
+@permission_required('payroll.process')
+def generate_payroll_periods():
+    values = dict(year='', month='', pay_date_a='', pay_date_b='')
+    result = None
+    if request.method == 'POST':
+        values.update({key: request.form.get(key, '') for key in values})
+        try:
+            allowed = {*values, 'action', 'csrf_token'}
+            if set(request.form) - allowed or any(len(request.form.getlist(key)) != 1 for key in request.form):
+                raise ValueError('Generation has unsupported or repeated fields.')
+            action = request.form.get('action')
+            if action not in ('preview', 'generate'):
+                raise ValueError('Choose Preview or Generate.')
+            result = payroll_generation.generate_month(**values, actor_id=session['user_id'],
+                preview=action == 'preview', timezone_name=app.config['ERP_PAYROLL_TIMEZONE'])
+            if action == 'generate':
+                for cutoff in result:
+                    if cutoff['created']:
+                        record_audit_event(module='PAYROLL', action='CREATE', entity_type='PAYROLL_PERIOD',
+                            entity_id=cutoff['payroll_period_id'],
+                            description=f"Generated {cutoff['start_date']:%Y-%m} cutoff {cutoff['cutoff_code']}; policy version {cutoff['version_number']}.")
+                flash('Generation complete. Existing matching periods were preserved.' if any(c['created'] for c in result)
+                      else 'Both matching periods already exist. No periods were created.', 'success')
+        except ValueError as error:
+            flash(str(error), 'danger')
+        except Exception:
+            app.logger.exception('Payroll cutoff generation failed')
+            flash('Unable to generate periods. No success was confirmed; reload and check existing periods before retrying.', 'danger')
+    return render_template('payroll/periods/generate.html', values=values, result=result)
 
 
 def _policy_action_fields(allowed):

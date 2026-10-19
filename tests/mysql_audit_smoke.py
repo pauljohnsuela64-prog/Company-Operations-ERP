@@ -80,6 +80,8 @@ def run(port, data_dir):
         database = importlib.import_module("database")
         stack.enter_context(patch.object(database, "get_connection", side_effect=connect))
         erp = importlib.import_module("app")
+        from payroll_schema_helpers import upgrade_policy_foundation
+        upgrade_policy_foundation(connect)
         stack.enter_context(patch.dict(erp.app.config, TESTING=True))
         stack.enter_context(patch.object(erp.app.logger, "exception"))
         # All repository imports bind to the isolated factory above. No business

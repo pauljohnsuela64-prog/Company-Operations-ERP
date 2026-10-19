@@ -6,6 +6,7 @@ Edit Payroll Period
 
 
 {% block content %}
+{% if period.policy_version_id %}<p class="alert alert-info">Generated cutoff dates and the policy reference are pinned. To change cutoff boundaries, use the existing cancel-and-recreate workflow.</p>{% endif %}
 
 <div class="mb-4">
 
@@ -62,6 +63,7 @@ Edit Payroll Period
                     <input
                         type="date"
                         name="start_date"
+                        {% if period.policy_version_id %}readonly{% endif %}
                         class="form-control"
                         value="{{ period.start_date }}"
                         required
@@ -81,6 +83,7 @@ Edit Payroll Period
                     <input
                         type="date"
                         name="end_date"
+                        {% if period.policy_version_id %}readonly{% endif %}
                         class="form-control"
                         value="{{ period.end_date }}"
                         required

@@ -142,6 +142,10 @@ def run(port,data_dir):
             return jsonify(ok=True)
         erp.app.add_url_rule('/__review/policy-snapshot','review_policy_snapshot',policy_snapshot)
         erp.app.add_url_rule('/__review/policy-control','review_policy_control',policy_control,methods=['POST'])
+        def generation_snapshot():
+            return jsonify(periods=sql("SELECT payroll_period_id,start_date,end_date,pay_date,policy_version_id,cutoff_code,status FROM payroll_periods WHERE policy_version_id IS NOT NULL ORDER BY payroll_period_id",fetch=True),
+                audits=sql("SELECT user_id,action,entity_id,description FROM audit_logs WHERE entity_type='PAYROLL_PERIOD' AND action='CREATE' ORDER BY audit_log_id",fetch=True))
+        erp.app.add_url_rule('/__review/generation-snapshot','review_generation_snapshot',generation_snapshot)
         # Payroll smoke uses only this fresh schema and synthetic records.
         from importlib.util import spec_from_file_location,module_from_spec
         spec=spec_from_file_location('browser_payroll_upgrade',harness.ROOT/'database/migrations/004_payroll_freshness.py')

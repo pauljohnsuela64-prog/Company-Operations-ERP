@@ -28,6 +28,8 @@ def get_all_payroll_periods():
                 pp.payroll_period_id,
                 pp.period_number,
                 pp.period_name,
+                pp.policy_version_id,
+                pp.cutoff_code,
                 pp.start_date,
                 pp.end_date,
                 pp.pay_date,
@@ -104,6 +106,8 @@ def get_payroll_period_by_id(
                 payroll_period_id,
                 period_number,
                 period_name,
+                policy_version_id,
+                cutoff_code,
                 start_date,
                 end_date,
                 pay_date,
@@ -343,7 +347,7 @@ def update_payroll_period(
         connection.start_transaction()
         lock_payroll_inputs(cursor)
         # Match calculation/workflow ordering: period first, then its entries.
-        cursor.execute("""SELECT start_date, end_date, status FROM payroll_periods
+        cursor.execute("""SELECT start_date, end_date, status, policy_version_id FROM payroll_periods
                           WHERE payroll_period_id = %s FOR UPDATE""", (payroll_period_id,))
         previous = cursor.fetchone()
         if not previous or previous['status'] != 'DRAFT':
@@ -352,6 +356,8 @@ def update_payroll_period(
         _reject_overlap(cursor, start_date, end_date, payroll_period_id)
         dates_changed = (str(previous['start_date']) != str(start_date)
                          or str(previous['end_date']) != str(end_date))
+        if dates_changed and previous['policy_version_id'] is not None:
+            raise ValueError('Generated cutoff dates and policy references are pinned. Use the existing cancel-and-recreate workflow instead.')
         if dates_changed:
             cursor.execute("""SELECT payroll_entry_id, status FROM payroll_entries
                               WHERE payroll_period_id = %s ORDER BY payroll_entry_id FOR UPDATE""",

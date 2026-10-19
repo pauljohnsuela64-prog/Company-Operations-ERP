@@ -117,6 +117,7 @@ const keepAlive = setInterval(() => {}, 1000);
     console.log('PASS real Chrome validation error, harmless GET logout, protected POST logout, and old-tab rejection');
     await require('./browser_payroll_monetary.cjs')({base, send, tab, evaluate, navigate, until});
     await require('./browser_payroll_policy.cjs')({base, controlKey, send, tab, evaluate, navigate, until});
+    await require('./browser_payroll_generation.cjs')({base, send, tab, evaluate, navigate, until});
     await require('./browser_it_authorization.cjs')({base, controlKey, send, tab, evaluate, navigate, until});
     console.log('SUCCESS: browser execution used isolated HTTP/MySQL only; production TLS and visual layout not certified');
   } finally {
