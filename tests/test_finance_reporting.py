@@ -1,3 +1,4 @@
+import os
 from datetime import date
 from decimal import Decimal
 import unittest
@@ -38,11 +39,13 @@ class FinanceReportingTests(unittest.TestCase):
         self.assertEqual(filters(dict(year='999999999999',category_id='-1',department_id='NaN'),2026)['year'],2026)
 
     def test_workbook_roundtrip_dangerous_text_keeps_numeric_date_and_formatting(self):
-        payloads=['=1+1','+SUM(A1:A2)','-1+1','@SUM(A1:A2)',' =1+1','\t=1+1','\r\n=1+1',
+        payloads=['=1+1','+SUM(A1:A2)','-1+1','@SUM(A1:A2)',' =1+1','\t=1+1','\r\n=1+1','\r=1+1','\n=1+1','\n\n=1+1',
                   '\ufeff=1+1','\u200b=1+1','\u00a0=1+1','\x00=1+1','\x0b@SUM(A1:A2)',
                   '=HYPERLINK("https://invalid.example","click")']
         for payload in payloads:
             with self.subTest(payload=repr(payload)):
+                # Text serialization expands LF to platform newlines; XML normalizes CRLF/CR.
+                expected = payload.replace('\n', os.linesep).replace('\r\n', '\n').replace('\r', '\n')
                 row=self.records()[0]
                 for key in ['expense_number','category_name','department_name','supplier_name','po_number','description','reference_number']:
                     row[key]=payload
@@ -55,7 +58,7 @@ class FinanceReportingTests(unittest.TestCase):
                     self.assertEqual(cell.data_type,'s')
                     self.assertNotEqual(cell.data_type,'f')
                     if '\x00' not in payload and '\x0b' not in payload:
-                        self.assertEqual(cell.value,payload.replace('\r','\n'))  # XML newline normalization.
+                        self.assertEqual(cell.value,expected)
                 self.assertEqual(wb['Category Breakdown']['A2'].data_type,'s')
                 self.assertEqual(wb['Category Breakdown']['B2'].data_type,'s')
                 self.assertEqual(wb['Expense Records']['H2'].data_type,'n')

@@ -1,4 +1,5 @@
 """Synthetic IT reporting/export regressions; never connect to company databases."""
+import os
 from contextlib import ExitStack
 from datetime import date
 from decimal import Decimal
@@ -21,8 +22,10 @@ def report_fixture(text='Asset'):
 
 class AssetExportTests(unittest.TestCase):
     def test_xlsx_payloads_are_strings_in_every_user_text_column(self):
-        for payload in ['=1+1','+SUM(A1:A2)','-1+2','@SUM(A1:A2)',' \t\r\n=HYPERLINK("https://invalid.example")','\ufeff\u200b=1','\u00a0=1','\x00=1','\x0b+1','\ud800=1','\uffff=1','#N/A','Ordinary text']:
+        for payload in ['=1+1','+SUM(A1:A2)','-1+2','@SUM(A1:A2)','\r=1+1','\n=1+1','\n\n=1+1',' \t\r\n=HYPERLINK("https://invalid.example")','\ufeff\u200b=1','\u00a0=1','\x00=1','\x0b+1','\ud800=1','\uffff=1','#N/A','Ordinary text']:
             with self.subTest(payload=repr(payload)):
+                # Text serialization expands LF to platform newlines; XML normalizes CRLF/CR.
+                expected = payload.replace('\n', os.linesep).replace('\r\n', '\n').replace('\r', '\n')
                 wb=load_workbook(generate_it_asset_report_excel(**report_fixture(payload)),data_only=False)
                 self.assertEqual(wb.sheetnames,['Summary','By Category','By Department','Asset Register'])
                 for name,columns in [('By Category',[1,2]),('By Department',[1]),('Asset Register',[1,2,3,4,5,6,7,8,14])]:
@@ -30,7 +33,7 @@ class AssetExportTests(unittest.TestCase):
                         cell=wb[name].cell(2,column)
                         self.assertEqual(cell.data_type,'s')
                         self.assertTrue(cell.value)
-                        if not any(c in payload for c in ['\x00','\x0b','\ud800','\uffff']):self.assertEqual(cell.value,payload.replace(chr(13),chr(10)))
+                        if not any(c in payload for c in ['\x00','\x0b','\ud800','\uffff']):self.assertEqual(cell.value,expected)
                 self.assertEqual(wb['Asset Register']['L2'].data_type,'n')
                 self.assertEqual(wb['Asset Register']['L2'].value,0.1)
                 self.assertEqual(wb['Asset Register']['K2'].data_type,'d')
