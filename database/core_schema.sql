@@ -60,9 +60,11 @@ CREATE TABLE IF NOT EXISTS departments (
     description VARCHAR(255),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    revision BIGINT NOT NULL DEFAULT 1,
+    CONSTRAINT ck_departments_revision_positive CHECK (revision >= 1),
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ON UPDATE CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB;
 
 
 -- =========================================================
@@ -88,6 +90,8 @@ CREATE TABLE IF NOT EXISTS employees (
     employment_status VARCHAR(30) NOT NULL DEFAULT 'Active',
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    revision BIGINT NOT NULL DEFAULT 1,
+    CONSTRAINT ck_employees_revision_positive CHECK (revision >= 1),
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ON UPDATE CURRENT_TIMESTAMP,
 
@@ -95,7 +99,7 @@ CREATE TABLE IF NOT EXISTS employees (
         FOREIGN KEY (department_id)
         REFERENCES departments(department_id)
         ON DELETE SET NULL
-);
+) ENGINE=InnoDB;
 
 
 -- =========================================================

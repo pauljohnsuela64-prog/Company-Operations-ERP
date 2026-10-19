@@ -9,6 +9,7 @@ from unittest.mock import patch
 from werkzeug.datastructures import MultiDict
 from hr_validation import (HRValidationError, EMPLOYEE_FIELDS, EMPLOYMENT_STATUSES,
                            employee_values, department_values, identifier, form_values)
+from hr_revision import HRWriteResult, HRMissingRecordError
 from security_helpers import csrf_client, stamp_session, user_state
 
 
@@ -93,17 +94,17 @@ class HRRouteTests(unittest.TestCase):
         self.stack.enter_context(patch.object(self.erp, 'get_authorization_state', side_effect=lambda uid:self.state))
         self.client = csrf_client(self.erp.app)
         with self.client.session_transaction() as session: stamp_session(self.erp.app, session, self.state)
-        self.employee = dict(employee_values(EMPLOYEE), employee_id=1, employment_status='Active')
-        self.department = dict(DEPARTMENT, department_id=1, is_active=True)
+        self.employee = dict(employee_values(EMPLOYEE), employee_id=1, employment_status='Active', revision=1)
+        self.department = dict(DEPARTMENT, department_id=1, is_active=True, revision=1)
         for name, value in [('get_employee_by_id',self.employee),('get_department_by_id',self.department),
                             ('get_active_departments',[self.department]),('get_all_departments',[self.department]),
-                            ('get_all_employees',[]),('create_employee',1),('update_employee',True),
-                            ('create_department',1),('update_department',True),('set_department_active_status',True)]:
+                            ('get_all_employees',[]),('create_employee',1),('update_employee',HRWriteResult(2)),
+                            ('create_department',1),('update_department',HRWriteResult(2)),('set_department_active_status',HRWriteResult(2))]:
             setattr(self,name,self.stack.enter_context(patch.object(self.erp,name,return_value=value)))
 
     def test_employee_errors_retain_submitted_values_and_selection(self):
         for path in ['/employees/add','/employees/1/edit']:
-            fields=dict(EMPLOYEE, first_name='X'*101, phone='Retained phone', employment_status='Active')
+            fields=dict(EMPLOYEE, first_name='X'*101, phone='Retained phone', employment_status='Active', expected_revision='1')
             response=self.client.post(path,data=fields)
             self.assertEqual(response.status_code,200)
             html=response.get_data(as_text=True)
@@ -115,7 +116,7 @@ class HRRouteTests(unittest.TestCase):
     def test_duplicate_and_reference_errors_retain_forms_without_success(self):
         for path, name in [('/employees/add','create_employee'),('/employees/1/edit','update_employee')]:
             getattr(self,name).side_effect=HRValidationError('Employee number or email already exists.')
-            fields=dict(EMPLOYEE, department_id='999', first_name='Retained first', employment_status='Active')
+            fields=dict(EMPLOYEE, department_id='999', first_name='Retained first', employment_status='Active', expected_revision='1')
             response=self.client.post(path,data=fields)
             self.assertEqual(response.status_code,200)
             html=response.get_data(as_text=True)
@@ -126,7 +127,7 @@ class HRRouteTests(unittest.TestCase):
 
     def test_department_errors_retain_long_description_and_no_write(self):
         for path in ['/departments/add','/departments/1/edit']:
-            fields=dict(DEPARTMENT,department_code='X'*21,description='Retained <description> & notes')
+            fields=dict(DEPARTMENT,expected_revision='1',department_code='X'*21,description='Retained <description> & notes')
             response=self.client.post(path,data=fields)
             self.assertEqual(response.status_code,200)
             self.assertIn(escape(fields['description']),response.get_data(as_text=True))
@@ -135,20 +136,20 @@ class HRRouteTests(unittest.TestCase):
     def test_missing_targets_and_concurrent_disappearance_do_not_flash_success(self):
         for path,lookup in [('/employees/1/edit',self.get_employee_by_id),('/departments/1/edit',self.get_department_by_id)]:
             lookup.return_value=None
-            self.assertEqual(self.client.post(path,data=EMPLOYEE).status_code,302)
+            self.assertEqual(self.client.post(path,data=EMPLOYEE).status_code,404)
         self.get_employee_by_id.return_value=self.employee
-        self.update_employee.return_value=False
-        response=self.client.post('/employees/1/edit',data=dict(EMPLOYEE,employment_status='Active'))
-        self.assertEqual(response.status_code,200)
+        self.update_employee.side_effect=HRMissingRecordError('Employee no longer exists.')
+        response=self.client.post('/employees/1/edit',data=dict(EMPLOYEE,employment_status='Active', expected_revision='1'))
+        self.assertEqual(response.status_code,404)
         self.assertIn('Employee no longer exists',response.get_data(as_text=True))
 
     def test_desired_state_is_explicit_and_repeatable(self):
         for desired in ('0','0','1','1'):
-            self.assertEqual(self.client.post('/departments/1/status',data={'is_active':desired}).status_code,302)
-            self.set_department_active_status.assert_called_with(1,desired=='1')
+            self.assertEqual(self.client.post('/departments/1/status',data={'is_active':desired,'expected_revision':'1'}).status_code,302)
+            self.set_department_active_status.assert_called_with(1,desired=='1',expected_revision=1)
         self.set_department_active_status.reset_mock()
         for fields in ({},{'is_active':'true'}, MultiDict([('is_active','0'),('is_active','1')])):
-            self.assertEqual(self.client.post('/departments/1/status',data=fields).status_code,302)
+            self.assertEqual(self.client.post('/departments/1/status',data=MultiDict([*fields.items(multi=True),('expected_revision','1')]) if isinstance(fields,MultiDict) else dict(fields,expected_revision='1')).status_code,302)
         self.set_department_active_status.assert_not_called()
 
     def test_permissions_revocation_csrf_and_disabled_accounts(self):

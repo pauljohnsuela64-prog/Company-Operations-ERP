@@ -1,5 +1,16 @@
 # Goods receipt duplicate protection
 
+## Standalone HR upgrade 008
+
+`008_hr_employee_department_revisions.py` is an independently invoked HR upgrade,
+not a sequential runner step. It has no dependency on unfinished Payroll migrations
+004-007. See [HR_REVISIONS.md](../../HR_REVISIONS.md) for explicit targeting,
+preflight/repeatability, interrupted-DDL recovery, deployment and rollback limits.
+Never run migrations implicitly at application startup. This upgrade requires
+MySQL 8.0.16+ and InnoDB; it must be reviewed and applied by an approved operator.
+
+## Receiving upgrade 001
+
 `procurement_schema.sql` includes the new definition for fresh installations.
 `CREATE TABLE IF NOT EXISTS` does not upgrade existing tables.
 
