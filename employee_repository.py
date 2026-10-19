@@ -1,4 +1,5 @@
 from database import get_connection
+from payroll_freshness import lock_payroll_inputs, raise_payroll_lock_error
 
 
 def get_all_employees():
@@ -84,6 +85,8 @@ def create_employee(
     cursor = connection.cursor()
 
     try:
+        connection.start_transaction()
+        lock_payroll_inputs(cursor)
         cursor.execute(
             """
             INSERT INTO employees (
@@ -118,8 +121,9 @@ def create_employee(
 
         connection.commit()
 
-    except Exception:
+    except Exception as error:
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
     finally:
@@ -144,6 +148,19 @@ def update_employee(
     cursor = connection.cursor()
 
     try:
+        cursor.execute('SELECT hire_date,employment_status FROM employees WHERE employee_id=%s',(employee_id,))
+        previous=cursor.fetchone()
+        material=previous is not None and ((str(previous[0]) if previous[0] else '')!=(str(hire_date) if hire_date else '') or previous[1]!=employment_status)
+        connection.rollback()
+        connection.start_transaction()
+        if material:lock_payroll_inputs(cursor)
+        # A profile-only submission must not overwrite a concurrent eligibility change.
+        if not material:
+            cursor.execute("""UPDATE employees SET employee_number=%s,department_id=%s,first_name=%s,middle_name=%s,
+                last_name=%s,email=%s,phone=%s,job_title=%s WHERE employee_id=%s""",
+                (employee_number,department_id,first_name,middle_name,last_name,email,phone,job_title,employee_id))
+            connection.commit()
+            return
         cursor.execute(
             """
             UPDATE employees
@@ -177,8 +194,9 @@ def update_employee(
 
         connection.commit()
 
-    except Exception:
+    except Exception as error:
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
     finally:

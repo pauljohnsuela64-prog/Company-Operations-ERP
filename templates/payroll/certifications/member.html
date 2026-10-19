@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Prepare Employee Evidence{% endblock %}
+{% block content %}
+<h2>Employee {{ employee_id }} — Revision {{ row.revision }}</h2>
+<p class="alert alert-warning">These are prepared claims, not verified company approval. Hire/status and compensation snapshots are read from ERP. Missing history is not inferred. Calendar dates follow the pinned weekday template and require an approved source before publication.</p>
+<div class="card card-body mb-3"><p>ERP hire date: {{ current_source.hire_date or 'Unknown' }} · Current status: {{ current_source.employment_status }} (not historical proof)</p>{% if current_source.compensation %}<p>Compensation ID {{ current_source.compensation.compensation_id }} · {{ current_source.compensation.pay_type }} · {{ current_source.compensation.currency_code }} {{ current_source.compensation.basic_rate }} · Effective {{ current_source.compensation.effective_date }}</p>{% else %}<p>No compensation record. Eligibility remains unresolved.</p>{% endif %}</div>
+<form method="POST" class="card card-body">
+{% include 'partials/csrf_field.html' %}<input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="source_token" value="{{ source_token }}">
+{% for key,options in [('disposition',['INCLUDE','EXCLUDE']),('eligibility',['UNRESOLVED','FULL_CUTOFF','NOT_ELIGIBLE']),('verification_status',['UNVERIFIED','VERIFIED'])] %}
+<label class="form-label" for="{{ key }}">{{ key|replace('_',' ')|title }}</label><select class="form-select mb-3" id="{{ key }}" name="{{ key }}"><option value="">Choose</option>{% for choice in options %}<option {% if values[key]==choice %}selected{% endif %}>{{ choice }}</option>{% endfor %}</select>{% endfor %}
+{% for key in ['exclusion_reason','exclusion_reference','employment_coverage_start','employment_coverage_end','employment_reference','compensation_coverage_end','compensation_reference'] %}
+<label class="form-label" for="{{ key }}">{{ key|replace('_',' ')|title }}</label><input class="form-control mb-3" id="{{ key }}" name="{{ key }}" type="{{ 'date' if 'start' in key or 'end' in key else 'text' }}" maxlength="255" value="{{ values[key] }}">{% endfor %}
+{% include 'payroll/certifications/exceptions_fields.html' %}
+<button class="btn btn-primary">Save Prepared Evidence</button>
+</form>
+{% endblock %}

@@ -1,4 +1,5 @@
 from payroll_validation import payroll_money
+from payroll_freshness import lock_payroll_inputs, raise_payroll_lock_error
 # ==========================================================
 # PAYROLL REPOSITORY
 # ==========================================================
@@ -257,6 +258,8 @@ def create_employee_compensation(
 
     try:
 
+        connection.start_transaction()
+        lock_payroll_inputs(cursor)
         cursor.execute(
             """
             INSERT INTO employee_compensation (
@@ -292,9 +295,10 @@ def create_employee_compensation(
 
         return cursor.lastrowid
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
     finally:
@@ -323,7 +327,16 @@ def update_employee_compensation(
     cursor = connection.cursor()
 
     try:
-
+        cursor.execute('SELECT pay_type,basic_rate,effective_date FROM employee_compensation WHERE compensation_id=%s',(compensation_id,))
+        previous=cursor.fetchone()
+        material=previous is not None and (previous[0]!=pay_type or previous[1]!=basic_rate or str(previous[2])!=str(effective_date))
+        connection.rollback()
+        connection.start_transaction()
+        if material:lock_payroll_inputs(cursor)
+        else:
+            cursor.execute('UPDATE employee_compensation SET notes=%s,updated_by=%s WHERE compensation_id=%s',(notes,updated_by,compensation_id))
+            connection.commit()
+            return
         cursor.execute(
             """
             UPDATE employee_compensation
@@ -349,9 +362,10 @@ def update_employee_compensation(
 
         connection.commit()
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        raise_payroll_lock_error(error)
         raise
 
     finally:

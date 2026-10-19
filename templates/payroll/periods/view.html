@@ -6,6 +6,7 @@ Payroll Period
 
 
 {% block content %}
+<a class="btn btn-outline-secondary mb-3" href="{{ url_for('certification_index',payroll_period_id=period.payroll_period_id) }}">Cutoff Certifications</a>
 <p class="text-muted">{% if period.policy_version_id %}Policy ID {{ period.policy_version_id }} · Cutoff {{ period.cutoff_code }} (pinned){% else %}Legacy/manual period: no policy assigned.{% endif %}</p>
 
 <!-- # ========================================== -->

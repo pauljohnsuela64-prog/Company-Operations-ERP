@@ -226,3 +226,14 @@ repository checks, trigger-generated transactional business events, direct-SQL
 limits, controlled deployment, DDL recovery and disposable verification. Keep the
 unchanged 005 file alongside 006; its metadata comparison helpers are reused.
 Actual database upgrades require separate operational approval.
+
+# Certification correction references (007)
+
+`007_payroll_correction_references.py` is an explicitly approved additive extension
+for correction reason/reference storage and the corresponding SUPERSEDE event.
+It preserves existing 006 history with NULL new fields and changes no payment
+eligibility. Review `PAYROLL_CERTIFICATION_WORKFLOW.md` before any controlled
+upgrade: writes must be paused across the DROP/CREATE seal-trigger replacement.
+After 007, use 007 for repeated verification of the extended schema, rather than
+rerunning 006's frozen pre-extension manifest. No upgrade runs at app startup;
+no company database upgrade or production role grant is authorized by this task.

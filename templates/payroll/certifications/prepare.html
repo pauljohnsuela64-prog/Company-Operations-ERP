@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Prepare Certification{% endblock %}
+{% block content %}
+<h2>{{ 'Correct' if previous else 'Prepare' }} Cutoff Certification</h2>
+<p>Period {{ period.period_number }} · {{ period.start_date }} to {{ period.end_date }} · Policy {{ period.policy_version_id }}</p>
+<div class="alert alert-warning">{{ blocker }} Select the declared population from your authoritative roster, including historical/inactive employees. Current status does not establish eligibility.</div>
+<form method="POST" class="card card-body">
+{% include 'partials/csrf_field.html' %}
+<input type="hidden" name="token" value="{{ values.token }}"><input type="hidden" name="predecessor_id" value="{{ values.predecessor_id }}">
+<label class="form-label" for="employee_ids">Declared roster population (all inclusions and exclusions)</label>
+<select class="form-select mb-3" id="employee_ids" name="employee_ids" multiple size="8">
+{% for employee in employees %}<option value="{{ employee.employee_id }}" {% if employee.employee_id|string in values.employee_ids|map('string')|list %}selected{% endif %}>{{ employee.employee_number }} — {{ employee.first_name }} {{ employee.last_name }} ({{ employee.employment_status }})</option>{% endfor %}
+{% for selected in values.employee_ids %}{% if selected|string not in employees|map(attribute='employee_id')|map('string')|list %}<option value="{{ selected }}" selected>Unavailable employee reference: {{ selected }}</option>{% endif %}{% endfor %}
+</select>
+{% for key,label in [('roster_reference','Authoritative roster source / completeness reference'),('calendar_reference','Calendar source / version reference')] %}<label class="form-label" for="{{ key }}">{{ label }}</label><input class="form-control mb-3" id="{{ key }}" name="{{ key }}" value="{{ values[key] }}" maxlength="255" required>{% endfor %}
+{% if previous or (row and row.predecessor_certification_id) %}<p>Replacement of {{ 'revision ' ~ previous.revision if previous else 'certification ' ~ row.predecessor_certification_id }}. Published history will be preserved.</p>{% for key,label in [('correction_reason','Correction reason'),('correction_reference','Correction supporting reference')] %}<label class="form-label" for="{{ key }}">{{ label }}</label><input class="form-control mb-3" id="{{ key }}" name="{{ key }}" value="{{ values[key] }}" maxlength="255" required>{% endfor %}{% endif %}
+{% include 'payroll/certifications/exceptions_fields.html' %}
+<button class="btn btn-primary">Save Unsealed Preparation</button>
+</form>
+{% endblock %}

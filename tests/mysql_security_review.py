@@ -88,8 +88,8 @@ def run(port,data_dir):
         stack.enter_context(patch.object(database,'get_connection',side_effect=connect))
         erp=importlib.import_module('app')
         stack.enter_context(patch.dict(erp.app.config,TESTING=True))
-        from payroll_schema_helpers import upgrade_policy_foundation
-        upgrade_policy_foundation(connect)
+        from payroll_schema_helpers import upgrade_certification_workflow
+        upgrade_certification_workflow(connect)
         for uid,role,name,permissions in (
             (7,7,'policy-viewer',('payroll.view',)),
             (8,8,'policy-manager',('payroll.view','payroll.policy.manage')),

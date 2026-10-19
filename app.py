@@ -2,6 +2,8 @@ from payroll_validation import payroll_money
 import payroll_policy_repository as payroll_policies
 import payroll_policy_validation as policy_validation
 import payroll_generation_repository as payroll_generation
+import payroll_certification_repository as certifications
+from flask import abort
 from it_asset_validation import ASSET_FIELDS as IT_ASSET_FIELDS, identifier as asset_identifier, category_values
 from budget_repository import get_department_budget_report
 from finance_reporting import filters as finance_filters, report as finance_report
@@ -4666,6 +4668,178 @@ def generate_payroll_periods():
             app.logger.exception('Payroll cutoff generation failed')
             flash('Unable to generate periods. No success was confirmed; reload and check existing periods before retrying.', 'danger')
     return render_template('payroll/periods/generate.html', values=values, result=result)
+
+
+def _certification_fields(allowed, repeated=()):
+    if set(request.form)-set(allowed)-{'csrf_token'} or any(len(request.form.getlist(key))!=1 for key in request.form if key not in repeated):
+        raise ValueError('Certification action has unsupported or repeated fields.')
+
+
+def _certification_audit(action,row):
+    entity_id=row['predecessor_certification_id'] if action=='SUPERSEDE' else row['certification_id']
+    description=(f"Period {row['payroll_period_id']}; certification {entity_id} superseded by {row['certification_id']}; replacement revision {row['revision']}."
+                 if action=='SUPERSEDE' else f"Period {row['payroll_period_id']}; certification {entity_id}; revision {row['revision']}.")
+    record_audit_event('PAYROLL',action,'PAYROLL_CERTIFICATION',entity_id,description)
+
+
+def _certification_exceptions(values):
+    dates=values.getlist('exception_date');kinds=values.getlist('exception_kind');refs=values.getlist('exception_reference')
+    if len(dates)!=len(kinds) or len(dates)!=len(refs):raise ValueError('Exception fields are incomplete.')
+    return [dict(date=d,kind=k,source_reference=r) for d,k,r in zip(dates,kinds,refs) if d or k or r]
+
+
+@app.route('/payroll/periods/<int:payroll_period_id>/certifications')
+@permission_required('payroll.view')
+def certification_index(payroll_period_id):
+    period=get_payroll_period_by_id(payroll_period_id)
+    if not period:abort(404)
+    return render_template('payroll/certifications/index.html',period=period,
+        revisions=certifications.list_certifications(payroll_period_id),current=certifications.current_certification(payroll_period_id),blocker=certifications.PUBLICATION_BLOCKER)
+
+
+@app.route('/payroll/certifications/<int:certification_id>')
+@permission_required('payroll.view')
+def certification_detail(certification_id):
+    try:row=certifications.review(certification_id)
+    except ValueError as error:
+        flash(str(error),'danger');return redirect(url_for('payroll_periods'))
+    period=get_payroll_period_by_id(row['payroll_period_id'])
+    evidence=certifications.authoritative_evidence(period,session['user_id'])
+    previous=certifications.get_certification(row['predecessor_certification_id']) if row['predecessor_certification_id'] else None
+    comparisons=[]
+    if previous:
+        before={m['employee_id']:m for m in previous['members']};after={m['employee_id']:m for m in row['members']}
+        for eid in sorted(set(before)|set(after)):
+            fields=(set(before.get(eid,{}))|set(after.get(eid,{})))-{'certification_id','employee_id','material_source_digest'}
+            comparisons.append(dict(employee_id=eid,changes=[dict(field=field,before=before.get(eid,{}).get(field),after=after.get(eid,{}).get(field))
+                for field in sorted(fields) if before.get(eid,{}).get(field)!=after.get(eid,{}).get(field)]))
+    return render_template('payroll/certifications/detail.html',row=row,period=period,
+        token=certifications.revision_token(row),previous=previous,comparisons=comparisons,
+        publication_available=evidence is not None and session['user_id'] in evidence.get('certifier_ids',()),
+        blocker=certifications.PUBLICATION_BLOCKER,
+        revocable=row['state']=='SEALED' and not any(e['event_type'] in ('REVOKE','INVALIDATE','SUPERSEDE') for e in row['events']),
+        latest=certifications.list_certifications(row['payroll_period_id'])[0]['certification_id']==row['certification_id'])
+
+
+def _certification_scope_form(period_id,existing=None,predecessor=None):
+    period=get_payroll_period_by_id(period_id)
+    if not period:abort(404)
+    row=existing
+    exceptions=existing['calendar_configuration']['exceptions'] if existing else []
+    values=dict(employee_ids=existing['roster_scope']['employee_ids'] if existing else [],
+        roster_reference=existing['roster_source_reference'] if existing else '',
+        calendar_reference=existing['calendar_source_reference'] if existing else '',
+        token=certifications.revision_token(existing or predecessor) if existing or predecessor else '',
+        predecessor_id=str(predecessor['certification_id']) if predecessor else '',
+        correction_reason=existing.get('correction_reason') or '' if existing else '',
+        correction_reference=existing.get('correction_reference') or '' if existing else '')
+    if request.method=='POST':
+        values.update({key:request.form.get(key,'') for key in values if key!='employee_ids'})
+        values['employee_ids']=request.form.getlist('employee_ids')
+        try:
+            _certification_fields((*values,'exception_date','exception_kind','exception_reference'),('employee_ids','exception_date','exception_kind','exception_reference'))
+            exceptions=_certification_exceptions(request.form)
+            if existing:
+                row=certifications.update_scope(existing['certification_id'],values['token'],values['employee_ids'],values['roster_reference'],values['calendar_reference'],values['correction_reason'],values['correction_reference'],exceptions)
+            else:
+                row=certifications.prepare(period_id,values['employee_ids'],values['roster_reference'],values['calendar_reference'],session['user_id'],
+                    predecessor_id=values['predecessor_id'] or None,predecessor_token=values['token'],correction_reason=values['correction_reason'],correction_reference=values['correction_reference'],calendar_exceptions=exceptions)
+            flash('Unsealed certification prepared. Sources and eligibility still require authoritative verification.','success')
+            return redirect(url_for('certification_detail',certification_id=row['certification_id']))
+        except ValueError as error:flash(str(error),'danger')
+        except Exception:
+            app.logger.exception('Certification preparation failed')
+            flash('Unable to save preparation. Reload and check existing revisions before retrying.','danger')
+    return render_template('payroll/certifications/prepare.html',period=period,row=existing,previous=predecessor,
+        values=values,employees=get_all_employees(),blocker=certifications.PUBLICATION_BLOCKER,
+        exceptions=exceptions)
+
+
+@app.route('/payroll/periods/<int:payroll_period_id>/certifications/prepare',methods=['GET','POST'])
+@permission_required('payroll.process')
+def certification_prepare(payroll_period_id):
+    return _certification_scope_form(payroll_period_id)
+
+
+@app.route('/payroll/certifications/<int:certification_id>/edit',methods=['GET','POST'])
+@permission_required('payroll.process')
+def certification_edit(certification_id):
+    try:row=certifications.get_certification(certification_id)
+    except ValueError as error:
+        flash(str(error),'danger');return redirect(url_for('payroll_periods'))
+    if row['state']!='ASSEMBLY':return redirect(url_for('certification_detail',certification_id=certification_id))
+    return _certification_scope_form(row['payroll_period_id'],existing=row)
+
+
+@app.route('/payroll/certifications/<int:certification_id>/correct',methods=['GET','POST'])
+@permission_required('payroll.process')
+def certification_correct(certification_id):
+    try:row=certifications.get_certification(certification_id)
+    except ValueError as error:
+        flash(str(error),'danger');return redirect(url_for('payroll_periods'))
+    return _certification_scope_form(row['payroll_period_id'],predecessor=row)
+
+
+@app.route('/payroll/certifications/<int:certification_id>/members/<int:employee_id>',methods=['GET','POST'])
+@permission_required('payroll.process')
+def certification_member(certification_id,employee_id):
+    try:row=certifications.get_certification(certification_id)
+    except ValueError as error:
+        flash(str(error),'danger');return redirect(url_for('payroll_periods'))
+    if employee_id not in row['roster_scope']['employee_ids']:abort(404)
+    if row['state']!='ASSEMBLY':return redirect(url_for('certification_detail',certification_id=certification_id))
+    member=next((m for m in row['members'] if m['employee_id']==employee_id),{})
+    exceptions=member.get('schedule_evidence',{}).get('exceptions',[])
+    values={key:member.get(key) or '' for key in certifications.MEMBER_FIELDS}
+    token=certifications.revision_token(row)
+    current_source=certifications.get_employee_source(employee_id)
+    source_token=certifications.digest(current_source)
+    if request.method=='POST':
+        values={key:request.form.get(key,'') for key in values};token=request.form.get('token','')
+        try:
+            source_token=request.form.get('source_token','')
+            _certification_fields((*certifications.MEMBER_FIELDS,'token','source_token','exception_date','exception_kind','exception_reference'),('exception_date','exception_kind','exception_reference'))
+            exceptions=_certification_exceptions(request.form)
+            certifications.save_member(certification_id,employee_id,token,values,source_token,exceptions)
+            flash('Prepared evidence saved. This does not certify its source authenticity.','success')
+            return redirect(url_for('certification_detail',certification_id=certification_id))
+        except ValueError as error:flash(str(error),'danger')
+        except Exception:
+            app.logger.exception('Certification member save failed')
+            flash('Unable to save evidence. Reload and review before retrying.','danger')
+    return render_template('payroll/certifications/member.html',row=row,employee_id=employee_id,values=values,token=token,source_token=source_token,current_source=current_source,
+        exceptions=exceptions)
+
+
+@app.route('/payroll/certifications/<int:certification_id>/publish',methods=['POST'])
+@permission_required('payroll.certification.certify')
+def certification_publish(certification_id):
+    try:
+        _certification_fields(('token',))
+        row=certifications.publish(certification_id,request.form.get('token'),session['user_id'])
+        _certification_audit('CERTIFY',row)
+        if row['predecessor_certification_id']:_certification_audit('SUPERSEDE',row)
+        flash('Certification published. Payroll calculation/payment behavior has not changed.','success')
+    except ValueError as error:flash(str(error),'danger')
+    except Exception:
+        app.logger.exception('Certification publication failed')
+        flash('Publication was not confirmed. Reload and check certification history before retrying.','danger')
+    return redirect(url_for('certification_detail',certification_id=certification_id))
+
+
+@app.route('/payroll/certifications/<int:certification_id>/revoke',methods=['POST'])
+@permission_required('payroll.certification.revoke')
+def certification_revoke(certification_id):
+    try:
+        _certification_fields(('token','reason','supporting_reference'))
+        row=certifications.revoke(certification_id,request.form.get('token'),session['user_id'],request.form.get('reason'),request.form.get('supporting_reference'))
+        _certification_audit('REVOKE',row)
+        flash('Certification revoked. No older revision was reactivated; payroll records were preserved.','success')
+    except ValueError as error:flash(str(error),'danger')
+    except Exception:
+        app.logger.exception('Certification revocation failed')
+        flash('Revocation was not confirmed. Reload and check certification history before retrying.','danger')
+    return redirect(url_for('certification_detail',certification_id=certification_id))
 
 
 def _policy_action_fields(allowed):

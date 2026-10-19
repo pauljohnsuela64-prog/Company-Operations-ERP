@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Cutoff Certifications{% endblock %}
+{% block content %}
+<h2>Certifications — {{ period.period_number }}</h2>
+<p>{{ period.start_date }} to {{ period.end_date }} · Policy {{ period.policy_version_id or 'Unpinned' }} · {{ period.status }}</p>
+<div class="alert alert-warning">{{ blocker }} Preparation records are not production eligibility approval.</div>
+{% if current %}<p>Latest published revision {{ current.revision }}: {{ current.terminal_events|join(', ') or ('STALE' if current.source_stale else 'Recorded; production authority unavailable') }}. Earlier revisions are not reactivated.</p>{% endif %}
+{% if has_permission('payroll.process') and period.status=='DRAFT' and period.policy_version_id and not revisions %}<a class="btn btn-primary mb-3" href="{{ url_for('certification_prepare',payroll_period_id=period.payroll_period_id) }}">Prepare Certification</a>{% endif %}
+<a class="btn btn-secondary mb-3" href="{{ url_for('view_payroll_period',payroll_period_id=period.payroll_period_id) }}">Back to Period</a>
+<table class="table"><thead><tr><th>Revision</th><th>State</th><th>Roster Source</th><th>Certified</th></tr></thead><tbody>
+{% for row in revisions %}<tr><td><a href="{{ url_for('certification_detail',certification_id=row.certification_id) }}">Revision {{ row.revision }}</a></td><td>{{ row.state }}</td><td>{{ row.roster_source_reference }}</td><td>{{ row.certified_at or 'Not published' }}</td></tr>{% else %}<tr><td colspan="4">No certifications prepared.</td></tr>{% endfor %}
+</tbody></table>
+{% endblock %}
