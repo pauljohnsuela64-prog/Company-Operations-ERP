@@ -74,7 +74,7 @@ def _load(cursor,cid,lock=False):
     if not row:raise ValueError('Certification not found.')
     cursor.execute('SELECT * FROM payroll_certification_members WHERE certification_id=%s ORDER BY employee_id'+(' FOR UPDATE' if lock else ''),(cid,))
     row['members']=[_decode(member) for member in cursor.fetchall()]
-    cursor.execute('SELECT * FROM payroll_certification_events WHERE certification_id=%s ORDER BY certification_event_id',(cid,))
+    cursor.execute('SELECT * FROM payroll_certification_events WHERE certification_id=%s ORDER BY certification_event_id'+(' FOR UPDATE' if lock else ''),(cid,))
     row['events']=cursor.fetchall()
     return row
 
@@ -123,7 +123,7 @@ def _period(cursor,pid,require_draft=True):
 
 def _sources(cursor,ids,lock=True):
     # Current reads after the shared guard. Names/contact details are not evidence inputs.
-    cursor.execute('SELECT employee_id FROM employees ORDER BY employee_id')
+    cursor.execute('SELECT employee_id FROM employees ORDER BY employee_id'+(' FOR SHARE' if lock else ''))
     population=[row['employee_id'] for row in cursor.fetchall()]
     rows=[]
     for eid in sorted(ids):
