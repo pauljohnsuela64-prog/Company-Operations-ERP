@@ -46,6 +46,7 @@ class ITAuthorizationTests(unittest.TestCase):
         self.stack = ExitStack()
         self.addCleanup(self.stack.close)
         self.stack.enter_context(patch.dict(self.erp.app.config, TESTING=True))
+        self.stack.enter_context(patch("database.ensure_ready"))  # Route unit test: schema integration tested separately.
         self.state = user_state(permissions=['it_assets.view', 'helpdesk.view'])
         self.loader = self.stack.enter_context(patch.object(self.erp, 'get_authorization_state', side_effect=lambda uid: self.state))
         self.client = self.erp.app.test_client()

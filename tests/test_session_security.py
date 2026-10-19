@@ -24,6 +24,7 @@ class SessionSecurityTests(unittest.TestCase):
         self.stack=ExitStack()
         self.addCleanup(self.stack.close)
         self.stack.enter_context(patch.dict(self.erp.app.config,TESTING=True,SESSION_IDLE_SECONDS=1800,SESSION_ABSOLUTE_SECONDS=28800))
+        self.stack.enter_context(patch("database.ensure_ready"))  # Route unit test: schema integration tested separately.
         self.state=user_state(permissions=['procurement.view','inventory.view'])
         self.loader=self.stack.enter_context(patch.object(self.erp,'get_authorization_state',side_effect=lambda _:self.state))
         self.stack.enter_context(patch.object(self.erp.app.logger,'exception'))

@@ -8,6 +8,7 @@ from finance_reporting import filters as finance_filters, report as finance_repo
 from finance_validation import calendar_year, identifier
 from inventory_reporting import report_filters, get_movement_page, get_reconciliation_page
 from procurement_validation import decimal_value, currency_amount
+from schema_gate import init_schema_gate
 from csrf_security import init_csrf
 from security import configure_security, init_security, begin_session, authenticated, has_permission
 import os
@@ -340,6 +341,7 @@ load_dotenv()
 app = Flask(__name__)
 
 configure_security(app)
+init_schema_gate(app)
 init_security(app, lambda user_id: get_authorization_state(user_id))
 init_csrf(app)
 app.jinja_env.filters["procurement_currency"] = lambda value: format(currency_amount(value), ",.2f")

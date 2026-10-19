@@ -1,5 +1,9 @@
 # Goods receipt duplicate protection
 
+See the [HR reliability deployment runbook](../../docs/deployment/hr-reliability-008.md)
+for schema diagnostics, compatibility admission, coordinated rollout and recovery.
+
+
 ## Standalone HR upgrade 008
 
 `008_hr_employee_department_revisions.py` is an independently invoked HR upgrade,

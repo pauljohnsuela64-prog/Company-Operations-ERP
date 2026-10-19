@@ -24,6 +24,7 @@ class AssetLifecycleTests(unittest.TestCase):
         self.state = user_state(permissions=['it_assets.view', 'it_assets.manage'])
         self.stack.enter_context(patch.object(self.erp, 'get_authorization_state', side_effect=lambda _: self.state))
         self.stack.enter_context(patch.dict(self.erp.app.config, TESTING=True))
+        self.stack.enter_context(patch("database.ensure_ready"))  # Route unit test: schema integration tested separately.
         self.audit = self.stack.enter_context(patch.object(self.erp, 'create_audit_log'))
         self.stack.enter_context(patch.object(self.erp, 'get_it_asset_by_id', return_value=dict(asset_id=42, asset_tag='IT-42')))
         self.client = self.erp.app.test_client()
