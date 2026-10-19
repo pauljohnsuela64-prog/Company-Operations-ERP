@@ -332,6 +332,8 @@ from employee_repository import (
 )
 
 from employee_repository import get_all_employees
+from employee_repository import get_employee_page
+from employee_listing import listing_query_args, EmployeeListingInputError
 
 load_dotenv()
 
@@ -598,7 +600,12 @@ def change_department_status(department_id):
 @app.route('/employees')
 @permission_required('employees.view')
 def employees():
-    return render_template('employees/index.html', employees=get_all_employees())
+    try:
+        search,page,page_size=listing_query_args(request.args)
+    except EmployeeListingInputError as error:
+        return render_template('employees/index.html', employees=[], search='',page=1,
+            page_size=25,total=0,pages=1,listing_error=str(error)),400
+    return render_template('employees/index.html',**get_employee_page(search,page,page_size))
 
 
 def _hr_conflict_response(error, reload_endpoint, **identifiers):
