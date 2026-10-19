@@ -1,0 +1,78 @@
+name: ERP CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: erp-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+  PYTHONUTF8: '1'
+
+jobs:
+  python:
+    name: Python unit tests and syntax
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+      - name: Install pinned application dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Check dependency consistency
+        run: python -m pip check
+      - name: Compile Python and parse Jinja templates
+        run: python -B scripts/ci_checks.py python
+      - name: Run complete unittest suite
+        run: python -m unittest discover -s tests -q
+
+  javascript:
+    name: JavaScript tests and syntax
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+      - name: Validate JavaScript syntax
+        run: python -B scripts/ci_checks.py javascript
+      - name: Run navigation tests without npm dependencies
+        run: node --test tests/horizontal_navigation.test.cjs
+
+  mysql:
+    name: Disposable MySQL integration
+    runs-on: windows-2025
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+      - name: Install pinned application dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Check dependency consistency
+        run: python -m pip check
+      - name: Run isolated synthetic MySQL suites sequentially
+        run: python -B scripts/ci_checks.py mysql

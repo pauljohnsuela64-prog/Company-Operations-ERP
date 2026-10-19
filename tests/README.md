@@ -1,4 +1,108 @@
-# Business audit regression tests
+# ERP testing and continuous integration
+
+## GitHub Actions CI
+
+[ERP CI](../.github/workflows/erp-ci.yml) runs on pull requests targeting `main`,
+pushes to `main`, and manual `workflow_dispatch`. Draft pull requests are included.
+Manual dispatch becomes available after the workflow exists on the default branch.
+The workflow has three independent jobs:
+
+| Job | Runner | Checks |
+| --- | --- | --- |
+| Python unit tests and syntax | Ubuntu 24.04, Python 3.14 | Install `requirements.txt`; `pip check`; compile tracked Python; parse Jinja templates; complete unittest discovery |
+| JavaScript tests and syntax | Ubuntu 24.04, Node 24 | `node --check` for tracked JS/CJS files; navigation tests; no npm install |
+| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 22 suites |
+
+Python, Node and runner labels select supported release lines, not immutable OS
+images. Official checkout/setup Actions are pinned to full commit SHAs with release
+comments. Review upstream releases before updating those pins. The hosted Windows
+image currently supplies MySQL 8.0.46, according to the
+[official image inventory](https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md).
+The [official installation script](https://github.com/actions/runner-images/blob/main/images/windows/scripts/build/Install-MysqlCli.ps1)
+installs the MySQL MSI under Program Files and adds its bin directory to PATH.
+The helper discovers `mysqld` through PATH or the ProgramFiles MySQL installation;
+there are no developer-specific absolute paths in the workflow. It checks the
+actual executable version and rejects MariaDB/versions below MySQL 8.0.16. Image
+changes or a missing/incompatible executable fail the job rather than skip tests.
+The first hosted run is still required to establish runner compatibility; a local
+pass is not a GitHub Actions result.
+
+### Reading results
+
+Open the pull request's Checks tab or the repository's Actions tab and inspect all
+three job results for the current commit. Each named step identifies its check;
+MySQL suites have separate log groups. Exceptions, nonzero child exit statuses and
+five-minute integration-suite timeouts fail the job. Job limits are 15 minutes
+for Python, 10 for JavaScript and 35 for MySQL. A failed integration run stops at
+the failing suite; later suites are not claimed as passed. Cancelled, skipped,
+missing or pending checks are not passes. New runs cancel superseded runs for the
+same ref. Required branch-protection checks need separate repository-owner setup;
+this workflow does not change repository settings or merge anything.
+
+### Isolation and security
+
+No workflow job uses company database settings, repository/environment secrets,
+production targets or deployment environments. Token permissions are only
+`contents: read`, checkout credentials are not persisted, and there are no artifact
+uploads or persisted Actions dependency caches. `.env` remains untracked; never add it or credentials
+to a commit. A checked-out `.env.example` is configuration documentation, not a
+company environment. Unit fixtures block/mock database access and disable dotenv.
+Compilation and Jinja parsing do not import the application.
+
+Each MySQL launcher retains its existing `--no-defaults`, fresh temporary datadir,
+dynamic loopback port, synthetic fixtures and datadir-verification assertions before
+business data creation and shutdown. It does not connect to an installed default
+service. Its empty-password root account exists only on the temporary loopback
+server; no company credentials or passwords are printed. Schema/migration tests
+operate solely on that disposable instance. The dedicated schema-gate suite runs
+the real inspector; existing scoped repository fixtures remain unchanged. Mocked
+unit coverage is not equivalent to these integration checks. Jobs run on ephemeral
+GitHub-hosted VMs, never on a company-connected self-hosted runner.
+
+### Equivalent manual commands
+
+Use a clean Python 3.14 virtual environment and Node 24 from the repository root:
+
+```powershell
+python -m pip install -r requirements.txt
+python -m pip check
+python -B scripts/ci_checks.py python
+python -m unittest discover -s tests -q
+python -B scripts/ci_checks.py javascript
+node --test tests/horizontal_navigation.test.cjs
+python -B scripts/ci_checks.py mysql
+```
+
+For an explicitly installed local server binary, use
+`python -B scripts/ci_checks.py mysql --mysqld "PATH_TO_MYSQLD"`.
+This accepts a binary path, never a database address or credentials. MySQL CI uses
+Windows to retain the native launchers. Linux/macOS MySQL launchers are not certified
+by this workflow. Missing prerequisites are failures. `openpyxl==3.1.5` is included
+in requirements because the application and Excel tests import it; an existing
+workstation installation is not sufficient for a fresh CI environment.
+
+### Browser and deployment boundaries
+
+Native Chrome workflows remain local-only in this initial CI release. Windows
+hosted images include Chrome, but browser startup/cleanup and the existing native
+executable assumptions need a separate hosted qualification; historical intermittent
+teardown timeouts remain a reason to avoid claiming browser coverage from unit or
+MySQL-only jobs. Run the existing launchers separately on an isolated local server:
+
+```powershell
+python -B tests/mysql_hr_validation_browser.py --mysqld "PATH_TO_MYSQLD"
+python -B tests/mysql_employee_listing_browser.py --mysqld "PATH_TO_MYSQLD"
+python -B tests/mysql_finance_functional_browser.py --mysqld "PATH_TO_MYSQLD"
+```
+
+Green CI does not approve production deployment, actual backup restoration,
+migration 008 execution, lifecycle publication, Payroll integration or permission
+grants. Those remain separate approval gates. Follow the
+[HR deployment runbook](../docs/deployment/hr-reliability-008.md) before proposing
+a company deployment. No workflow deploys, automatically migrates configured
+databases, merges pull requests or grants roles.
+
+## Business audit regression tests
 
 Run from the project root using the existing virtual environment:
 
