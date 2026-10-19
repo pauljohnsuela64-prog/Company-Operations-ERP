@@ -119,6 +119,7 @@ Departments
     class="d-inline"
 >
                     {% include 'partials/csrf_field.html' %}
+    <input type="hidden" name="is_active" value="{{ '0' if department.is_active else '1' }}">
 
     {% if department.is_active %}
 

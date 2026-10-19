@@ -61,24 +61,7 @@ Add Employee
                                 class="form-select"
                             >
 
-                                <option value="">
-                                    No Department
-                                </option>
-
-                                {% for department in departments %}
-
-                                    <option
-                                        value="{{ department.department_id }}"
-                                        {% if request.form.get('department_id') == department.department_id|string %}
-                                            selected
-                                        {% endif %}
-                                    >
-                                        {{ department.department_code }}
-                                        -
-                                        {{ department.department_name }}
-                                    </option>
-
-                                {% endfor %}
+                                {% include 'employees/department_options.html' %}
 
                             </select>
 
@@ -94,6 +77,7 @@ Add Employee
                             <input
                                 type="text"
                                 name="first_name"
+                                maxlength="100"
                                 class="form-control"
                                 value="{{ request.form.get('first_name', '') }}"
                                 required
@@ -111,6 +95,7 @@ Add Employee
                             <input
                                 type="text"
                                 name="middle_name"
+                                maxlength="100"
                                 class="form-control"
                                 value="{{ request.form.get('middle_name', '') }}"
                             >
@@ -127,6 +112,7 @@ Add Employee
                             <input
                                 type="text"
                                 name="last_name"
+                                maxlength="100"
                                 class="form-control"
                                 value="{{ request.form.get('last_name', '') }}"
                                 required
@@ -144,6 +130,7 @@ Add Employee
                             <input
                                 type="email"
                                 name="email"
+                                maxlength="150"
                                 class="form-control"
                                 value="{{ request.form.get('email', '') }}"
                             >
@@ -160,6 +147,7 @@ Add Employee
                             <input
                                 type="text"
                                 name="phone"
+                                maxlength="30"
                                 class="form-control"
                                 value="{{ request.form.get('phone', '') }}"
                             >
@@ -176,6 +164,7 @@ Add Employee
                             <input
                                 type="text"
                                 name="job_title"
+                                maxlength="100"
                                 class="form-control"
                                 value="{{ request.form.get('job_title', '') }}"
                             >
