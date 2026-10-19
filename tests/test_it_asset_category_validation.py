@@ -35,6 +35,7 @@ class CategoryRouteTests(unittest.TestCase):
 
     def setUp(self):
         self.stack=ExitStack();self.addCleanup(self.stack.close)
+        self.stack.enter_context(patch("database.ensure_ready"))  # Mock schema boundary for route unit tests.
         self.state=user_state(permissions=['it_assets.view','it_assets.manage'])
         self.stack.enter_context(patch.object(self.erp,'get_authorization_state',side_effect=lambda _:self.state))
         self.category=dict(category_id=3,category_code='OLD',category_name='Old name',description='Old description')

@@ -53,6 +53,7 @@ class FinanceFunctionalTests(unittest.TestCase):
         self.state = user_state(permissions=['finance.view', 'finance.expenses.manage'])
         self.mock('get_authorization_state', side_effect=lambda _: self.state)
         self.stack.enter_context(patch.dict(self.erp.app.config, TESTING=True))
+        self.stack.enter_context(patch("database.ensure_ready"))  # Route unit test: schema integration tested separately.
         self.audit = self.mock('create_audit_log')
         self.expense = dict(expense_id=41, expense_number='EXP-41', status='DRAFT',
                             expense_date=date(2026, 1, 1), category_id=1, department_id=1,

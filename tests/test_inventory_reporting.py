@@ -62,6 +62,7 @@ class ReportingRouteTests(unittest.TestCase):
     def setUp(self):
         self.stack=ExitStack();self.addCleanup(self.stack.close)
         self.stack.enter_context(patch.dict(self.erp.app.config,TESTING=True))
+        self.stack.enter_context(patch("database.ensure_ready"))  # Route unit test: schema integration tested separately.
         self.state=user_state(permissions=['inventory.view'])
         self.mock('get_authorization_state',side_effect=lambda _:self.state)
         self.audit=self.mock('create_audit_log')

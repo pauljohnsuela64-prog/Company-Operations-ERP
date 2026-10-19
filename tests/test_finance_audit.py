@@ -41,6 +41,7 @@ class FinanceAuditTests(unittest.TestCase):
         self.mock('get_authorization_state',side_effect=lambda _:self.state)
         self.mock('render_template',return_value='form')
         self.stack.enter_context(patch.dict(self.erp.app.config,TESTING=True))
+        self.stack.enter_context(patch("database.ensure_ready"))  # Route unit test: schema integration tested separately.
         self.stack.enter_context(patch.object(self.erp.app.logger,'exception'))
         self.audit=self.mock('create_audit_log')
         self.expense=dict(expense_id=41,expense_number='EXP-000041',status='DRAFT')

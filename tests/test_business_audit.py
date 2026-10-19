@@ -71,6 +71,7 @@ class BusinessAuditTests(unittest.TestCase):
         self.stack = ExitStack()
         self.addCleanup(self.stack.close)
         self.stack.enter_context(patch.dict(self.erp.app.config, TESTING=True))
+        self.stack.enter_context(patch("database.ensure_ready"))  # Route unit test: schema integration tested separately.
         self.stack.enter_context(patch.object(self.erp.app.logger, "exception"))
         self.stack.enter_context(patch.object(self.erp, "render_template", return_value="test page"))
         self.client = csrf_client(self.erp.app)

@@ -155,7 +155,7 @@ class HorizontalNavigationTests(unittest.TestCase):
 
     def test_every_get_route_has_one_active_navigation_destination(self):
         for rule in self.erp.app.url_map.iter_rules():
-            if "GET" not in rule.methods or rule.endpoint in {"static", "index", "login", "logout", "csrf_token_refresh"}:
+            if "GET" not in rule.methods or rule.endpoint in {"static", "index", "login", "logout", "csrf_token_refresh", "schema_liveness", "schema_readiness"}:
                 continue
             path = rule.rule
             for argument in rule.arguments:

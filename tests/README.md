@@ -165,3 +165,10 @@ recording can leave a committed action unaudited. A lost commit acknowledgment c
 also leave a committed action without an audit attempt: an exception is not proof
 of rollback. The disposable test explicitly commits then raises to demonstrate
 this case. There is no automatic retry, durable outbox, or exactly-once guarantee.
+
+## Schema compatibility admission
+
+Run `python -B tests/mysql_schema_compatibility_smoke.py` for the real gate on a
+verified disposable server. Run `python -m unittest discover -s tests -p test_schema_compatibility.py`
+for capability, cache, HTTP and failure-handling unit tests. See
+[deployment requirements](../docs/deployment/hr-reliability-008.md) for fixture boundaries.
