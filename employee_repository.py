@@ -2,8 +2,40 @@ from hr_revision import (revision, require_current, require_incrementable, HRWri
                          HRMissingRecordError)
 from database import get_connection
 from mysql.connector import Error
+from employee_listing import listing_inputs, literal_prefix
 from hr_validation import (EMPLOYEE_FIELDS, employee_values, identifier,
                            lock_department, translate_write_error)
+
+
+def get_employee_page(search='',page=1,page_size=25):
+    search,page,page_size=listing_inputs(search,page,page_size)
+    where=''
+    params=()
+    if search:
+        where=" WHERE (e.employee_number LIKE %s ESCAPE '!' OR e.first_name LIKE %s ESCAPE '!' OR e.middle_name LIKE %s ESCAPE '!' OR e.last_name LIKE %s ESCAPE '!')"
+        params=(literal_prefix(search),)*4
+    connection=get_connection()
+    cursor=None
+    try:
+        connection.start_transaction(isolation_level='REPEATABLE READ',readonly=True,consistent_snapshot=True)
+        cursor=connection.cursor(dictionary=True)
+        cursor.execute('SELECT COUNT(*) AS total FROM employees e'+where,params)
+        total=cursor.fetchone()['total']
+        pages=max(1,(total+page_size-1)//page_size)
+        page=min(page,pages)
+        cursor.execute('''SELECT e.employee_id,e.employee_number,e.first_name,e.middle_name,
+            e.last_name,e.email,e.job_title,e.employment_status,d.department_code,d.department_name
+            FROM employees e LEFT JOIN departments d ON e.department_id=d.department_id'''+where+
+            ' ORDER BY e.last_name,e.first_name,e.employee_id LIMIT %s OFFSET %s',
+            (*params,page_size,(page-1)*page_size))
+        return dict(employees=cursor.fetchall(),search=search,page=page,page_size=page_size,
+                    total=total,pages=pages)
+    finally:
+        try:
+            if cursor is not None:cursor.close()
+        finally:
+            try:connection.rollback()
+            finally:connection.close()
 
 
 def get_all_employees():
