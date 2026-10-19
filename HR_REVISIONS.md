@@ -62,8 +62,16 @@ do not reopen writes through old code while claiming stale-edit protection.
   requiring increments. Same-state status no-ops remain possible at exhaustion.
 - Signed BIGINT exhaustion is checked before arithmetic, with a conditional SQL
   upper bound too. Never wrap, clamp, reset or silently retry using a fresh token.
-- SQL, validation and commit failures roll back fields and revisions. Duplicate
-  identifiers retain ordinary validation behavior. Unknown errors are re-raised.
+- A confirmed transaction rollback before commit leaves neither field nor revision
+  changes from that transaction. A rollback attempt alone is not confirmation.
+- A commit failure with a confirmed noncommitted outcome can be treated as an
+  unsuccessful save. A commit exception by itself does not establish that outcome.
+- A lost acknowledgment or connection interruption during/after commit can leave
+  the outcome uncertain: the database may already have committed. A later rollback
+  attempt cannot undo a completed commit. Reconcile the persisted record/revision
+  and available transaction evidence before deciding whether to retry; never
+  blindly resubmit or invent a fresh revision. Duplicate identifiers retain
+  ordinary validation behavior. Unknown errors are re-raised.
 
 ## Forms and security
 
@@ -76,9 +84,10 @@ Status no-ops use an informational message, not a claim that a new change occurr
 Revisions are concurrency evidence, not authorization credentials. An authorized
 editor can deliberately load and submit a current revision; counters do not
 authenticate intent. Existing permissions, per-request authorization, disabled
-account checks and global CSRF remain the security boundary. No new HR business
-audit events, role grants, user deactivation or employment/Payroll policies are
-introduced.
+account checks and global CSRF remain the security boundary. The revision
+checkpoint itself introduced no business audit events, role grants, user
+deactivation or employment/Payroll policies. The stable branch's later HR audit
+integration is documented in [HR_AUDIT_VERIFICATION.md](tests/HR_AUDIT_VERIFICATION.md).
 
 ## External-writer limitations
 

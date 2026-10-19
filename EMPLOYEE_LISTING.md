@@ -1,6 +1,12 @@
 # Employee & HR Step 4A: server-side listing
 
-Starting checkpoint: `5cc28c6`, branch `fix/hr-employee-reliability`.
+Historical Step 4A starting checkpoint: `5cc28c6` on the original combined
+`fix/hr-employee-reliability` branch. That ancestry is provenance, not a lifecycle
+dependency. The stable review branch `fix/hr-reliability-pr` includes listing via
+`fe809a9` (original `efe3ee6`) and excludes the lifecycle foundation.
+
+Fresh Step 4D.1 results for the split branch are recorded separately in
+[HR_AUDIT_VERIFICATION.md](tests/HR_AUDIT_VERIFICATION.md).
 
 `GET /employees` retains `employees.view` and the existing fresh authorization,
 disabled-account checks and create/edit button permissions. Every Employee remains
@@ -59,11 +65,12 @@ on an unchanged dataset; separate HTTP pages do not share a snapshot, so concurr
 name edits/inserts/deletions can move rows between pages. A frozen export/keyset
 contract is outside this checkpoint.
 
-An initial disposable local run at 67/1,000/5,000 rows measured approximately
-8/11/14 ms for one connection + filtered count + page query, with at most 25 rows
-returned. These single samples are not production capacity, latency guarantees or
-representative concurrency benchmarks. Larger deployments need measured query plans
-and a separately reviewed indexing proposal.
+The original combined-branch disposable run at 67/1,000/5,000 rows measured
+approximately 8/11/14 ms for one connection + filtered count + page query, with at
+most 25 rows returned. These historical single samples are not fresh split-branch
+timings, production capacity, latency guarantees or representative concurrency
+benchmarks. Larger deployments need measured query plans and a separately reviewed
+indexing proposal.
 
 ## Verification
 
