@@ -58,8 +58,7 @@ def validate_eligibility(cursor,period_id,*,require_entries=True):
         raise ValueError('Certification calendar digest does not match.')
     # Verify original certifier authority, NOT authority of a future payer/caller.
     expected=certifications.validate_publication(cursor,cert,period,cert['certified_by'])
-    if not cert['certification_digest'] or not hmac.compare_digest(expected,cert['certification_digest']):
-        raise ValueError('Certification seal does not match. Authorized review is required.')
+    certifications.verify_publication_digest(period,cert,expected)
     cursor.execute('SELECT * FROM payroll_entries WHERE payroll_period_id=%s ORDER BY payroll_entry_id FOR UPDATE',(period_id,))
     entries=cursor.fetchall()
     included={m['employee_id']:m for m in cert['members'] if m['disposition']=='INCLUDE'}
@@ -152,6 +151,50 @@ def build_evidence(cursor,context,entry_id,outputs):
     return normalized
 
 
+def _require_owned_transaction(cursor):
+    """Never let INSERT and pointer UPDATE become separate autocommit writes."""
+    connection=getattr(cursor,'_connection',None)
+    # START TRANSACTION remains atomic even with SESSION autocommit=1. Test the
+    # active transaction, not its session default, to preserve public semantics.
+    if connection is None or not connection.in_transaction:
+        raise ValueError('An active caller-owned transaction is required.')
+
+
+def persist_proposed_in_transaction(cursor,period_id,entry_id,outputs,actor_id):
+    """Internal cursor primitive. Caller owns guard-first ordering and rollback.
+
+    No connection, commit, rollback or audit. Revalidate rather than accepting a
+    caller-supplied eligibility context. On ANY exception the caller must roll
+    back its entire transaction, including earlier entries.
+    """
+    _require_owned_transaction(cursor)
+    actor_id=positive_integer(actor_id,'Acting user',2147483647)
+    entry_id=positive_integer(entry_id,'Payroll entry',2147483647)
+    context=validate_eligibility(cursor,period_id)
+    if context['period']['status']!='DRAFT':raise ValueError('Evidence can only be written for Draft payroll.')
+    entry=next((e for e in context['entries'] if e['payroll_entry_id']==entry_id),None)
+    if not entry or entry['status'] not in ('DRAFT','CALCULATED'):raise ValueError('Entry is not editable Draft payroll.')
+    payload=build_evidence(cursor,context,entry_id,outputs)
+    encoded=canonical_evidence(payload);digest=evidence_digest(payload)
+    cursor.execute('SELECT calculation_sequence FROM payroll_calculation_evidence WHERE payroll_entry_id=%s ORDER BY calculation_sequence DESC LIMIT 1 FOR UPDATE',(entry_id,))
+    previous=cursor.fetchone();sequence=previous['calculation_sequence']+1 if previous else 1
+    stamp=datetime.now(timezone.utc).replace(tzinfo=None)
+    cursor.execute('''INSERT INTO payroll_calculation_evidence
+        (evidence_version,payroll_period_id,payroll_entry_id,employee_id,certification_id,
+         calculation_sequence,canonical_evidence,rounding_contract,evidence_digest,calculated_by,calculated_at)
+        VALUES(2,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',
+        (period_id,entry_id,entry['employee_id'],context['certification']['certification_id'],sequence,
+         encoded,ROUNDING_CONTRACT,digest,actor_id,stamp))
+    evidence_id=cursor.lastrowid
+    fields=MONEY_FIELDS+COUNT_FIELDS
+    cursor.execute('UPDATE payroll_entries SET '+','.join(k+'=%s' for k in fields)+''',
+        calculation_input_version=2,calculation_input_hash=%s,current_calculation_evidence_id=%s,
+        status='CALCULATED',calculated_by=%s,calculated_at=%s WHERE payroll_entry_id=%s''',
+        tuple(payload['outputs'][k] for k in fields)+(digest,evidence_id,actor_id,stamp,entry_id))
+    if cursor.rowcount!=1:raise ValueError('Evidence association failed. No calculation was saved.')
+    return evidence_id
+
+
 def persist_proposed(period_id,entry_id,outputs,actor_id):
     """Foundation only: no production caller; tests supply synthetic outputs/sources.
 
@@ -163,28 +206,7 @@ def persist_proposed(period_id,entry_id,outputs,actor_id):
     connection=get_connection();cursor=connection.cursor(dictionary=True)
     try:
         connection.start_transaction()
-        context=validate_eligibility(cursor,period_id)
-        if context['period']['status']!='DRAFT':raise ValueError('Evidence can only be written for Draft payroll.')
-        entry=next((e for e in context['entries'] if e['payroll_entry_id']==entry_id),None)
-        if not entry or entry['status'] not in ('DRAFT','CALCULATED'):raise ValueError('Entry is not editable Draft payroll.')
-        payload=build_evidence(cursor,context,entry_id,outputs)
-        encoded=canonical_evidence(payload);digest=evidence_digest(payload)
-        cursor.execute('SELECT calculation_sequence FROM payroll_calculation_evidence WHERE payroll_entry_id=%s ORDER BY calculation_sequence DESC LIMIT 1 FOR UPDATE',(entry_id,))
-        previous=cursor.fetchone();sequence=previous['calculation_sequence']+1 if previous else 1
-        stamp=datetime.now(timezone.utc).replace(tzinfo=None)
-        cursor.execute('''INSERT INTO payroll_calculation_evidence
-            (evidence_version,payroll_period_id,payroll_entry_id,employee_id,certification_id,
-             calculation_sequence,canonical_evidence,rounding_contract,evidence_digest,calculated_by,calculated_at)
-            VALUES(2,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',
-            (period_id,entry_id,entry['employee_id'],context['certification']['certification_id'],sequence,
-             encoded,ROUNDING_CONTRACT,digest,actor_id,stamp))
-        evidence_id=cursor.lastrowid
-        fields=MONEY_FIELDS+COUNT_FIELDS
-        cursor.execute('UPDATE payroll_entries SET '+','.join(k+'=%s' for k in fields)+''',
-            calculation_input_version=2,calculation_input_hash=%s,current_calculation_evidence_id=%s,
-            status='CALCULATED',calculated_by=%s,calculated_at=%s WHERE payroll_entry_id=%s''',
-            tuple(payload['outputs'][k] for k in fields)+(digest,evidence_id,actor_id,stamp,entry_id))
-        if cursor.rowcount!=1:raise ValueError('Evidence association failed. No calculation was saved.')
+        evidence_id=persist_proposed_in_transaction(cursor,period_id,entry_id,outputs,actor_id)
         connection.commit();return evidence_id
     except Exception as error:
         connection.rollback();raise_payroll_lock_error(error);raise
@@ -214,3 +236,45 @@ def verify_current(cursor,period_id,entry_id):
             or not hmac.compare_digest(digest,evidence_digest(current))):
         raise ValueError('Calculation evidence sources or saved outputs changed. Recalculation requires authorized review.')
     return evidence
+
+
+def invalidate_period_in_transaction(cursor,period_id):
+    """Future v2 invalidation only; not connected to production edit routes.
+
+    Withdraw current associations and cached outputs, never immutable history.
+    Stale/revoked source evidence may be invalidated without first certifying it
+    again. Caller must roll back the WHOLE transaction if this operation fails.
+    """
+    _require_owned_transaction(cursor)
+    period_id=positive_integer(period_id,'Payroll period',2147483647)
+    lock_payroll_inputs(cursor)
+    cursor.execute('SELECT status FROM payroll_periods WHERE payroll_period_id=%s FOR UPDATE',(period_id,))
+    period=cursor.fetchone()
+    if not period or period['status']!='DRAFT':raise ValueError('Only Draft payroll can be invalidated; approved/paid history is protected.')
+    cursor.execute('SELECT * FROM payroll_entries WHERE payroll_period_id=%s ORDER BY payroll_entry_id FOR UPDATE',(period_id,))
+    entries=cursor.fetchall()
+    for entry in entries:
+        if entry['status'] not in ('DRAFT','CALCULATED'):
+            raise ValueError('Approved/paid entry history cannot be invalidated.')
+        version=entry['calculation_input_version'];pointer=entry['current_calculation_evidence_id']
+        if version is None:
+            if pointer is not None or entry['calculation_input_hash'] is not None:
+                raise ValueError('Calculation pointer/version/hash is inconsistent.')
+        elif version==2:
+            if not pointer or not entry['calculation_input_hash']:raise ValueError('Current version-2 evidence is incomplete.')
+            cursor.execute('SELECT * FROM payroll_calculation_evidence WHERE calculation_evidence_id=%s FOR UPDATE',(pointer,))
+            saved=cursor.fetchone()
+            if not saved or saved['evidence_version']!=2 or any(saved[k]!=entry[k] for k in ('payroll_entry_id','payroll_period_id','employee_id')):
+                raise ValueError('Current evidence ownership is inconsistent.')
+            payload=saved['canonical_evidence']
+            if isinstance(payload,(str,bytes)):payload=json.loads(payload)
+            if (not hmac.compare_digest(evidence_digest(payload),saved['evidence_digest'])
+                    or not hmac.compare_digest(saved['evidence_digest'],entry['calculation_input_hash'])):
+                raise ValueError('Current evidence digest is inconsistent.')
+        else:
+            raise ValueError('Version-2 invalidation does not migrate version-1 or unknown evidence.')
+    fields=MONEY_FIELDS+COUNT_FIELDS
+    cursor.execute('UPDATE payroll_entries SET '+','.join(k+'=0' for k in fields)+''',
+        current_calculation_evidence_id=NULL,calculation_input_version=NULL,calculation_input_hash=NULL,
+        calculated_by=NULL,calculated_at=NULL,status='DRAFT' WHERE payroll_period_id=%s''',(period_id,))
+    return len(entries)

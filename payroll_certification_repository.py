@@ -265,9 +265,33 @@ def validate_publication(cursor,row,period,actor_id):
                   members=[{k:v for k,v in m.items() if k!='certification_id'} for m in members])
     if actor_id not in evidence.get('certifier_ids',()) or evidence.get('claims')!=expected:
         raise ValueError('Authoritative source population, evidence, calendar or certifier authority does not match this revision.')
+    return _publication_digest(period,row)
+
+
+def _publication_digest(period,row,*,legacy_006=False):
+    omitted={'members','events','certification_digest','state','certified_by','certified_at'}
+    if legacy_006:omitted.update(('correction_reason','correction_reference'))
     return digest(dict(period={key:period[key] for key in ('payroll_period_id','policy_version_id','cutoff_code','start_date','end_date')},
-                       header={k:v for k,v in row.items() if k not in ('members','events','certification_digest','state','certified_by','certified_at')},
-                       members=members))
+                       header={k:v for k,v in row.items() if k not in omitted},members=row['members']))
+
+
+def verify_publication_digest(period,row,current_digest):
+    """Content verification AFTER full authoritative validation, not entitlement.
+
+    Both actual format-1 projections are known: before 007 the two correction
+    columns did not exist. Only NULL extension fields can use that old projection.
+    Never rewrites/reseals anything or changes new publication serialization.
+    """
+    stored=row.get('certification_digest')
+    if type(row.get('evidence_format_version')) is not int or row['evidence_format_version']!=1 or not isinstance(stored,str):
+        raise ValueError('Unsupported certification evidence version or missing seal.')
+    extended='correction_reason' in row
+    if extended!=('correction_reference' in row):raise ValueError('Certification correction schema is incomplete.')
+    if hmac.compare_digest(stored,current_digest):return '007' if extended else '006'
+    if (row.get('correction_reason') is None and row.get('correction_reference') is None
+            and hmac.compare_digest(stored,_publication_digest(period,row,legacy_006=True))):
+        return '006'
+    raise ValueError('Certification seal does not match. Authorized review is required.')
 
 
 def publish(cid,token,actor_id):

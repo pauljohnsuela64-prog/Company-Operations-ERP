@@ -49,10 +49,13 @@ content consistency, not authenticity of an HR document. No environment flag or
 form payload can enable the adapter. The tests patch it with captured synthetic
 claims on explicitly disposable databases only.
 
-Existing 006 certifications sealed before the 007 fields existed may not match
-the extended certification digest projection. This foundation fails closed rather
-than resealing them. Any compatibility/correction procedure needs separate review;
-current production v1 workflows do not use this validator and are unaffected.
+Step 5B.5B verifies the two actual format-1 certification digest projections.
+Pre-007 seals may match the original projection excluding the two correction
+columns, only when both extension fields are NULL. Current seals retain the exact
+existing projection. Both require full authoritative validation first; unknown or
+incompatible formats fail closed. No stored seal is rewritten. A real synthetic
+006 publication upgraded through 007 exercises this compatibility. Production v1
+workflows remain disconnected from this validator and unchanged.
 
 ## Canonical version 2
 
@@ -105,6 +108,17 @@ failure, rolls back both insert and entry update. Per-entry sequences serialize
 under the guard and entry lock. It does not assert that proposed regular/net pay
 is a correct salary: that belongs to the future approved calculator. Do not expose
 this helper as a form/API that accepts user-proposed salary outputs.
+
+Step 5B.5B extracts `persist_proposed_in_transaction(cursor, ...)` without changing
+the public wrapper's connection/commit/rollback contract. The cursor primitive
+requires an active transaction, opens no connection and never commits or rolls
+back. Its caller must hold the guard first and roll back the entire transaction
+on any exception. `invalidate_period_in_transaction(cursor, period_id)` can clear
+Draft v2 pointers/fingerprints/cached outputs atomically while retaining evidence
+history, even if certification has become stale/revoked. It rejects protected
+entry/period states, inconsistent ownership/digests, v1 and unknown versions.
+Neither operation is connected to production calculation/edit/adjustment routes.
+See `PAYROLL_SYNTHETIC_PERIOD.md` for synthetic-only period orchestration/tests.
 
 `verify_current(cursor, period_id, entry_id)` revalidates eligibility and ownership,
 checks stored version/rounding/digest and the entry hash, rebuilds current evidence
