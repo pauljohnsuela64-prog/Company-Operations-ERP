@@ -1,4 +1,5 @@
 """Synthetic XLSX regressions; no company database connections."""
+import os
 from collections import defaultdict
 from copy import deepcopy
 from datetime import date, datetime
@@ -48,13 +49,15 @@ def workbooks(text):
 class HRExportSecurityTests(unittest.TestCase):
     def test_untrusted_text_is_never_an_xlsx_formula(self):
         for text in ['=1+1', '+SUM(1,2)', '-1+2', '@SUM(A1)', ' \t=1+1',
-                     '\r\n=1+1', '\ufeff=1+1', '\u200b=1+1', '\u00a0=1+1']:
+                     '\r\n=1+1', '\r=1+1', '\n=1+1', '\n\n=1+1', '\ufeff=1+1', '\u200b=1+1', '\u00a0=1+1']:
             with self.subTest(text=repr(text)):
+                # Text serialization expands LF to platform newlines; XML normalizes CRLF/CR.
+                expected = text.replace('\n', os.linesep).replace('\r\n', '\n').replace('\r', '\n')
                 for book in workbooks(text):
                     for sheet in book:
                         self.assertFalse(any(c.data_type == 'f' for row in sheet for c in row))
                     sheet, coordinate = ('Leave Records', 'B2') if 'Leave Records' in book.sheetnames else ('Ticket Register', 'C2')
-                    self.assertEqual(book[sheet][coordinate].value, text.replace("\r", "\n"))
+                    self.assertEqual(book[sheet][coordinate].value, expected)
                     self.assertEqual(book[sheet][coordinate].data_type, 's')
 
     def test_ordinary_empty_nullable_and_typed_values_survive_repeated_exports(self):
