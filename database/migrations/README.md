@@ -212,3 +212,17 @@ logic, fingerprints or legacy NULL handling. Policy-based enforcement requires a
 later coordinated code deployment; the presence of these tables does not approve
 the proposed development template or enable a new calculator. See
 `PAYROLL_POLICY_SCHEMA.md` for the contract, limits and test coverage.
+
+# Payroll certification evidence schema (006)
+
+`006_payroll_certification.py` is a database-only, explicit additive upgrade.
+It requires verified migrations 004/005 and adds four evidence tables, restrictive
+ownership constraints, immutable-history triggers and a nullable entry evidence
+reference. It seeds nothing, grants nothing and does not change salary formulas
+or version-1 approval/payment eligibility. No runtime code invokes it.
+
+See `PAYROLL_CERTIFICATION_SCHEMA.md` for the complete contract, required future
+repository checks, trigger-generated transactional business events, direct-SQL
+limits, controlled deployment, DDL recovery and disposable verification. Keep the
+unchanged 005 file alongside 006; its metadata comparison helpers are reused.
+Actual database upgrades require separate operational approval.
