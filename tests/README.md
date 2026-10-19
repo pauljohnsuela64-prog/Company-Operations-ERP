@@ -133,3 +133,35 @@ new POST form sources includes exactly one shared token partial. Dynamic tests
 reject missing/invalid tokens on all 87 POST-capable routes. A minimal test app
 also covers PUT/PATCH/DELETE and stable receipt-UUID recovery without importing or
 changing the separate procurement branch. No CSRF exemptions are permitted.
+
+## Employee and Department business auditing (Step 4B.2)
+
+Run the boundary tests and real database integration from the project root:
+
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -p test_hr_audit.py -v
+.venv\Scripts\python.exe -u tests/mysql_hr_audit_smoke.py
+.venv\Scripts\python.exe -u tests/mysql_hr_validation_browser.py
+```
+
+The MySQL runner uses the existing fresh-server harness, verifies its temporary
+`@@datadir`, and seeds only synthetic HR records. The Chrome runner uses the same
+disposable security-review server and additionally verifies persisted HR audit
+actions and revision metadata after native form submissions and stale-tab conflicts.
+Neither runner loads the configured company database connection.
+
+The route calls the existing central audit helper after the business repository
+returns from commit. CREATE uses the returned numeric identity and the schema's
+initial revision 1. UPDATE and changed Department status actions use the returned
+committed revision; the old revision is one less under the existing increment
+contract. Ordinary saves, including unchanged values or employment-status changes,
+emit one UPDATE attempt. Department status no-ops emit none. Descriptions contain
+only the numeric identity, action wording and revision numbers; no extra lookup is
+performed. Audit viewing permission is independent of HR write permissions.
+
+Delivery remains best effort. A separate audit transaction can fail after the
+business transaction succeeds. A process failure after commit and before audit
+recording can leave a committed action unaudited. A lost commit acknowledgment can
+also leave a committed action without an audit attempt: an exception is not proof
+of rollback. The disposable test explicitly commits then raises to demonstrate
+this case. There is no automatic retry, durable outbox, or exactly-once guarantee.

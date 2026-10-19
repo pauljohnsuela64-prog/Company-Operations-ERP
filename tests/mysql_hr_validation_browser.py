@@ -50,7 +50,18 @@ def main():
                     assert cur.fetchone()==('HR browser department current',5)
                     cur.execute("SELECT COUNT(*) FROM employees WHERE employee_number='FORGED-HR'")
                     assert cur.fetchone()==(0,)
+                    cur.execute("SELECT action,description FROM audit_logs WHERE module='HR' AND entity_type='EMPLOYEE' AND entity_id=(SELECT employee_id FROM employees WHERE employee_number='HR-BROWSER-EMP') ORDER BY audit_log_id")
+                    employee_events=cur.fetchall()
+                    assert [row[0] for row in employee_events]==['CREATE','UPDATE','UPDATE'],employee_events
+                    assert employee_events[-1][1].endswith('revision 2 to 3.')
+                    cur.execute("SELECT action,description FROM audit_logs WHERE module='HR' AND entity_type='DEPARTMENT' AND entity_id=(SELECT department_id FROM departments WHERE department_code='HR-BROWSER') ORDER BY audit_log_id")
+                    department_events=cur.fetchall()
+                    assert [row[0] for row in department_events]==['CREATE','UPDATE','DEACTIVATE','ACTIVATE','UPDATE'],department_events
+                    assert department_events[-1][1].endswith('revision 4 to 5.')
+                    for _,description in employee_events+department_events:
+                        assert 'HR-BROWSER' not in description and 'Corrected' not in description
                     cur.close()
+                print('PASS Chrome committed HR audit actions, revision metadata and confidential-content exclusion')
                 print('PASS Chrome persisted employee/department corrections and zero forged employee writes')
             return result
         with patch.object(subprocess,'run',side_effect=browser):

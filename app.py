@@ -538,10 +538,12 @@ def add_department():
     if request.method == 'POST':
         try:
             values = department_values(form_values(request.form, DEPARTMENT_FIELDS))
-            create_department(**values)
+            department_id = create_department(**values)
         except HRValidationError as error:
             flash(str(error), 'danger')
         else:
+            record_audit_event('HR', 'CREATE', 'DEPARTMENT', department_id,
+                               f'Department {department_id} created; revision 1.')
             flash('Department created successfully.', 'success')
             return redirect(url_for('departments'))
     return render_template('departments/add.html')
@@ -560,7 +562,7 @@ def edit_department(department_id):
         try:
             expected = form_revision(request.form)
             values = department_values(form_values(request.form, DEPARTMENT_FIELDS))
-            update_department(department_id, expected_revision=expected, **values)
+            result = update_department(department_id, expected_revision=expected, **values)
         except (HRConflictError, HRMissingRecordError, HRRevisionExhaustedError) as error:
             return _hr_conflict_response(error, 'edit_department', department_id=department_id)
         except HRRevisionInputError as error:
@@ -569,6 +571,8 @@ def edit_department(department_id):
         except HRValidationError as error:
             flash(str(error), 'danger')
         else:
+            record_audit_event('HR', 'UPDATE', 'DEPARTMENT', department_id,
+                               f'Department {department_id} detail save committed; revision {result.revision - 1} to {result.revision}.')
             flash('Department updated successfully.', 'success')
             return redirect(url_for('departments'))
     return render_template('departments/edit.html', department=department)
@@ -591,6 +595,10 @@ def change_department_status(department_id):
         flash(str(error), 'danger')
     else:
         if result.changed:
+            action = 'ACTIVATE' if desired == '1' else 'DEACTIVATE'
+            verb = 'activated' if desired == '1' else 'deactivated'
+            record_audit_event('HR', action, 'DEPARTMENT', department_id,
+                               f'Department {department_id} {verb}; revision {result.revision - 1} to {result.revision}.')
             flash('Department activated successfully.' if desired == '1' else 'Department deactivated successfully.', 'success')
         else:
             flash('Department is already in the requested state.', 'info')
@@ -639,10 +647,12 @@ def add_employee():
         try:
             # Creation remains Active; posted status cannot introduce a lifecycle action.
             values = employee_values(form_values(request.form, EMPLOYEE_FIELDS))
-            create_employee(**values)
+            employee_id = create_employee(**values)
         except HRValidationError as error:
             flash(str(error), 'danger')
         else:
+            record_audit_event('HR', 'CREATE', 'EMPLOYEE', employee_id,
+                               f'Employee {employee_id} created; revision 1.')
             flash('Employee created successfully.', 'success')
             return redirect(url_for('employees'))
     return _render_employee_form()
@@ -661,7 +671,7 @@ def edit_employee(employee_id):
         try:
             expected = form_revision(request.form)
             values = employee_values(form_values(request.form, (*EMPLOYEE_FIELDS, 'employment_status')), editing=True)
-            update_employee(employee_id, expected_revision=expected, **values)
+            result = update_employee(employee_id, expected_revision=expected, **values)
         except (HRConflictError, HRMissingRecordError, HRRevisionExhaustedError) as error:
             return _hr_conflict_response(error, 'edit_employee', employee_id=employee_id)
         except HRRevisionInputError as error:
@@ -670,6 +680,8 @@ def edit_employee(employee_id):
         except HRValidationError as error:
             flash(str(error), 'danger')
         else:
+            record_audit_event('HR', 'UPDATE', 'EMPLOYEE', employee_id,
+                               f'Employee {employee_id} profile save committed; revision {result.revision - 1} to {result.revision}.')
             flash('Employee updated successfully.', 'success')
             return redirect(url_for('employees'))
     return _render_employee_form(employee)

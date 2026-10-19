@@ -249,6 +249,7 @@ def run(port, data_dir):
         assert employees.update_employee(created,expected_revision=current_revision('employees',created),**employee_values(dict(fields(),employment_status='Resigned'),True))
         assert history==[sql('SELECT * FROM '+t,fetch=True) for t in tables]
         assert sql('SELECT is_active FROM users WHERE user_id=1',fetch=True)==[(1,)]
+        audit_before=sql('SELECT COUNT(*) FROM audit_logs',fetch=True)
         before=snapshot()
         for path in ['/employees/add',f'/employees/{created}/edit','/departments/add','/departments/1/edit','/departments/1/status']:
             assert client(2).post(path,data=fields()).location.endswith('/dashboard')
@@ -259,7 +260,7 @@ def run(port, data_dir):
         assert client().post('/departments/1/status',data={'is_active':'0'}).location.endswith('/dashboard')
         sql('UPDATE users SET is_active=0 WHERE user_id=1')
         assert client().get('/employees').location.endswith('/login')
-        assert sql('SELECT COUNT(*) FROM audit_logs',fetch=True)==[(0,)]
+        assert sql('SELECT COUNT(*) FROM audit_logs',fetch=True)==audit_before
         print('PASS SQL/commit rollback, historical references, unchanged user eligibility, permissions, CSRF, revocation and disabled accounts')
     print('SUCCESS: disposable-only HR validation and transaction tests')
 
