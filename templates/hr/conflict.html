@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Record not saved | Company Operations ERP{% endblock %}
+{% block page_title %}Record not saved{% endblock %}
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="alert alert-warning" role="alert">{{ message }}</div>
+        <p>Your submission has not changed this record. Reload current data before making another edit.</p>
+        {% if submitted %}
+        <h5>Your submitted values</h5>
+        <dl>
+            {% for label, value in submitted %}
+            <dt>{{ label }}</dt><dd style="white-space: pre-wrap">{{ value }}</dd>
+            {% endfor %}
+        </dl>
+        {% endif %}
+        <a class="btn btn-primary" href="{{ reload_url }}">Reload current data</a>
+    </div>
+</div>
+{% endblock %}

@@ -31,6 +31,7 @@ Edit Department
 
                 <form method="POST">
                     {% include 'partials/csrf_field.html' %}
+                    <input type="hidden" name="expected_revision" value="{{ request.form.get('expected_revision', '') if request.method == 'POST' else department.revision|string }}">
 
                     <div class="mb-3">
 

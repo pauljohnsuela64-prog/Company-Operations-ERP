@@ -13,7 +13,7 @@ Employees
 
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-4">
 
     <div>
         <h2 class="mb-1">Employees</h2>
@@ -38,6 +38,35 @@ Employees
 <div class="card shadow-sm border-0">
 
     <div class="card-body">
+
+        {% if listing_error %}<div class="alert alert-danger" role="alert">{{ listing_error }}</div>{% endif %}
+        <form method="GET" action="{{ url_for('employees') }}" class="row g-2 align-items-end mb-3">
+            <div class="col-12 col-md-6">
+                <label for="employee-search" class="form-label">Employee number or name starts with</label>
+                <input id="employee-search" name="search" type="search" maxlength="100" value="{{ search }}" class="form-control">
+            </div>
+            <div class="col-6 col-md-2">
+                <label for="employee-page-size" class="form-label">Per page</label>
+                <select id="employee-page-size" name="page_size" class="form-select">
+                    {% for size in ([page_size] if page_size not in [25,50,100] else []) + [25,50,100] %}
+                    <option value="{{ size }}" {% if size == page_size %}selected{% endif %}>{{ size }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-auto d-flex gap-2">
+                <button class="btn btn-primary" type="submit">Search</button>
+                <a class="btn btn-outline-secondary" href="{{ url_for('employees') }}">Clear</a>
+            </div>
+        </form>
+        {% if not listing_error %}
+        <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+            <p class="text-muted mb-0" aria-live="polite">{{ total }} matching employee{{ '' if total == 1 else 's' }}. Page {{ page }} of {{ pages }}.</p>
+            <nav aria-label="Employee pages" class="d-flex gap-2">
+                {% if page > 1 %}<a rel="prev" class="btn btn-sm btn-outline-primary" href="{{ url_for('employees',search=search,page_size=page_size,page=page-1) }}">Previous</a>{% else %}<span class="btn btn-sm btn-outline-secondary disabled" aria-disabled="true">Previous</span>{% endif %}
+                {% if page < pages %}<a rel="next" class="btn btn-sm btn-outline-primary" href="{{ url_for('employees',search=search,page_size=page_size,page=page+1) }}">Next</a>{% else %}<span class="btn btn-sm btn-outline-secondary disabled" aria-disabled="true">Next</span>{% endif %}
+            </nav>
+        </div>
+        {% endif %}
 
         <div class="table-responsive">
 
@@ -154,10 +183,10 @@ Employees
                         <tr>
 
                             <td
-                                colspan="7"
+                                colspan="{{ 7 if has_permission('employees.edit') else 6 }}"
                                 class="text-center text-muted py-4"
                             >
-                                No employees found.
+                                {% if not listing_error %}{{ 'No employees match your search.' if search else 'No employees found.' }}{% endif %}
                             </td>
 
                         </tr>

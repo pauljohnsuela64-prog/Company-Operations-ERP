@@ -28,6 +28,7 @@ Edit Employee
 
                 <form method="POST">
                     {% include 'partials/csrf_field.html' %}
+                    <input type="hidden" name="expected_revision" value="{{ request.form.get('expected_revision', '') if request.method == 'POST' else employee.revision|string }}">
 
                     <div class="row">
 
@@ -63,46 +64,7 @@ Edit Employee
                                 class="form-select"
                             >
 
-                                <option value="">
-                                    No Department
-                                </option>
-
-                                {% for department in departments %}
-
-                                    <option
-                                        value="{{ department.department_id }}"
-
-                                        {% if
-                                            request.form.get(
-                                                'department_id',
-                                                employee.department_id|string
-                                            )
-                                            ==
-                                            department.department_id|string
-                                        %}
-                                            selected
-                                        {% endif %}
-
-                                        {% if
-                                            not department.is_active
-                                            and department.department_id
-                                            != employee.department_id
-                                        %}
-                                            disabled
-                                        {% endif %}
-                                    >
-
-                                        {{ department.department_code }}
-                                        -
-                                        {{ department.department_name }}
-
-                                        {% if not department.is_active %}
-                                            (Inactive)
-                                        {% endif %}
-
-                                    </option>
-
-                                {% endfor %}
+                                {% include 'employees/department_options.html' %}
 
                             </select>
 
@@ -118,6 +80,7 @@ Edit Employee
                             <input
                                 type="text"
                                 name="first_name"
+                                maxlength="100"
                                 class="form-control"
                                 value="{{ request.form.get(
                                     'first_name',
@@ -138,6 +101,7 @@ Edit Employee
                             <input
                                 type="text"
                                 name="middle_name"
+                                maxlength="100"
                                 class="form-control"
                                 value="{{ request.form.get(
                                     'middle_name',
@@ -157,6 +121,7 @@ Edit Employee
                             <input
                                 type="text"
                                 name="last_name"
+                                maxlength="100"
                                 class="form-control"
                                 value="{{ request.form.get(
                                     'last_name',
@@ -177,6 +142,7 @@ Edit Employee
                             <input
                                 type="email"
                                 name="email"
+                                maxlength="150"
                                 class="form-control"
                                 value="{{ request.form.get(
                                     'email',
@@ -196,6 +162,7 @@ Edit Employee
                             <input
                                 type="text"
                                 name="phone"
+                                maxlength="30"
                                 class="form-control"
                                 value="{{ request.form.get(
                                     'phone',
@@ -215,6 +182,7 @@ Edit Employee
                             <input
                                 type="text"
                                 name="job_title"
+                                maxlength="100"
                                 class="form-control"
                                 value="{{ request.form.get(
                                     'job_title',
@@ -255,6 +223,10 @@ Edit Employee
                                 class="form-select"
                                 required
                             >
+
+                                {% if request.method == 'POST' and request.form.get('employment_status', '') not in allowed_statuses %}
+                                    <option value="{{ request.form.get('employment_status', '') }}" selected>Invalid status ? choose a supported value</option>
+                                {% endif %}
 
                                 {% for status in allowed_statuses %}
 

@@ -4,6 +4,8 @@
 
 from io import BytesIO
 
+from excel_text import append_text_row
+
 from openpyxl import Workbook
 
 from openpyxl.styles import (
@@ -141,51 +143,51 @@ def generate_helpdesk_report_excel(
     )
 
 
-    summary_sheet.append([])
+    append_text_row(summary_sheet, [])
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Status",
             "Ticket Count",
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Total Tickets",
             summary["total_tickets"],
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Open",
             summary["open_count"],
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "In Progress",
             summary["in_progress_count"],
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Resolved",
             summary["resolved_count"],
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Closed",
             summary["closed_count"],
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Cancelled",
             summary["cancelled_count"],
@@ -206,7 +208,7 @@ def generate_helpdesk_report_excel(
         "By Category"
     )
 
-    category_sheet.append(
+    append_text_row(category_sheet,
         [
             "Category Code",
             "Category",
@@ -221,7 +223,7 @@ def generate_helpdesk_report_excel(
 
     for category in category_summary:
 
-        category_sheet.append(
+        append_text_row(category_sheet,
             [
                 category[
                     "category_code"
@@ -264,7 +266,7 @@ def generate_helpdesk_report_excel(
         "By Technician"
     )
 
-    technician_sheet.append(
+    append_text_row(technician_sheet,
         [
             "Technician",
             "Total",
@@ -278,7 +280,7 @@ def generate_helpdesk_report_excel(
 
     for technician in technician_summary:
 
-        technician_sheet.append(
+        append_text_row(technician_sheet,
             [
                 technician[
                     "technician_name"
@@ -318,7 +320,7 @@ def generate_helpdesk_report_excel(
         "Ticket Register"
     )
 
-    ticket_sheet.append(
+    append_text_row(ticket_sheet,
         [
             "Ticket Number",
             "Employee",
@@ -341,7 +343,7 @@ def generate_helpdesk_report_excel(
 
     for ticket in tickets:
 
-        ticket_sheet.append(
+        append_text_row(ticket_sheet,
             [
                 ticket[
                     "ticket_number"
