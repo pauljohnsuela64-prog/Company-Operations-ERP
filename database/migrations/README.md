@@ -137,3 +137,13 @@ No new central audit events are introduced in Step 2.
 
 Run `tests/mysql_stock_smoke.py` for disposable migration/idempotency and mixed
 receiving tests. No development or production migration is applied by those tests.
+
+# HR employment lifecycle foundation (009)
+
+Migration `009_hr_employment_lifecycle.py` is an explicit development-only database
+foundation following compatible HR migration 008. It does not depend on Payroll
+004–007, publish events, synchronize Employee state, register permissions, or backfill
+history. Fresh installations also run it explicitly. Review
+[HR_LIFECYCLE_SCHEMA.md](../../HR_LIFECYCLE_SCHEMA.md) for the full schema, deferred
+policies, operator command, preflight/recovery behavior and DDL deployment risks.
+Do not apply this checkpoint to actual company databases without separate approval.
