@@ -1,3 +1,5 @@
+from hr_validation import (HRValidationError, EMPLOYEE_FIELDS, DEPARTMENT_FIELDS,
+                           EMPLOYMENT_STATUSES, employee_values, department_values, form_values)
 from it_asset_validation import ASSET_FIELDS as IT_ASSET_FIELDS, identifier as asset_identifier, category_values
 from budget_repository import get_department_budget_report
 from finance_reporting import filters as finance_filters, report as finance_report
@@ -523,527 +525,115 @@ def dashboard():
 @app.route("/departments")
 @permission_required("departments.view")
 def departments():
-    department_list = get_all_departments()
+    return render_template('departments/index.html', departments=get_all_departments())
 
-    return render_template(
-        "departments/index.html",
-        departments=department_list,
-    )
 
-@app.route("/departments/add", methods=["GET", "POST"])
-@permission_required("departments.manage")
+@app.route('/departments/add', methods=['GET', 'POST'])
+@permission_required('departments.manage')
 def add_department():
-    if request.method == "POST":
-        department_code = request.form.get(
-            "department_code",
-            "",
-        ).strip().upper()
-
-        department_name = request.form.get(
-            "department_name",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-        if not department_code or not department_name:
-            flash(
-                "Department code and name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "departments/add.html",
-            )
-
-        if len(department_code) > 20:
-            flash(
-                "Department code must not exceed 20 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "departments/add.html",
-            )
-
-        if len(department_name) > 100:
-            flash(
-                "Department name must not exceed 100 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "departments/add.html",
-            )
-
+    if request.method == 'POST':
         try:
-            create_department(
-                department_code,
-                department_name,
-                description or None,
-            )
+            values = department_values(form_values(request.form, DEPARTMENT_FIELDS))
+            create_department(**values)
+        except HRValidationError as error:
+            flash(str(error), 'danger')
+        else:
+            flash('Department created successfully.', 'success')
+            return redirect(url_for('departments'))
+    return render_template('departments/add.html')
 
-        except Exception as error:
-            if getattr(error, "errno", None) == 1062:
-                flash(
-                    "Department code or department name already exists.",
-                    "danger",
-                )
 
-                return render_template(
-                    "departments/add.html",
-                )
-
-            raise
-
-        flash(
-            "Department created successfully.",
-            "success",
-        )
-
-        return redirect(url_for("departments"))
-
-    return render_template(
-        "departments/add.html",
-    )
-
-        # ==============================================
-        # AUDIT - LOGIN
-        # ==============================================
-
-    record_audit_event(
-        module="AUTH",
-        action="LOGIN",
-        entity_type="USER",
-        entity_id=user["user_id"],
-        description=(
-            "User logged in successfully."
-            ),
-        )
-
-@app.route(
-    "/departments/<int:department_id>/edit",
-    methods=["GET", "POST"],
-)
-@permission_required("departments.manage")
+@app.route('/departments/<int:department_id>/edit', methods=['GET', 'POST'])
+@permission_required('departments.manage')
 def edit_department(department_id):
     department = get_department_by_id(department_id)
-
-    if not department:
-        flash("Department not found.", "danger")
-        return redirect(url_for("departments"))
-
-    if request.method == "POST":
-        department_code = request.form.get(
-            "department_code",
-            "",
-        ).strip().upper()
-
-        department_name = request.form.get(
-            "department_name",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-        if not department_code or not department_name:
-            flash(
-                "Department code and name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "departments/edit.html",
-                department=department,
-            )
-
-        if len(department_code) > 20:
-            flash(
-                "Department code must not exceed 20 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "departments/edit.html",
-                department=department,
-            )
-
-        if len(department_name) > 100:
-            flash(
-                "Department name must not exceed 100 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "departments/edit.html",
-                department=department,
-            )
-
+    if department is None:
+        flash('Department not found.', 'danger')
+        return redirect(url_for('departments'))
+    if request.method == 'POST':
         try:
-            update_department(
-                department_id,
-                department_code,
-                department_name,
-                description or None,
-            )
-
-        except Exception as error:
-            if getattr(error, "errno", None) == 1062:
-                flash(
-                    "Department code or department name already exists.",
-                    "danger",
-                )
-
-                return render_template(
-                    "departments/edit.html",
-                    department=department,
-                )
-
-            raise
-
-        flash(
-            "Department updated successfully.",
-            "success",
-        )
-
-        return redirect(url_for("departments"))
-
-    return render_template(
-        "departments/edit.html",
-        department=department,
-    )
+            values = department_values(form_values(request.form, DEPARTMENT_FIELDS))
+            if not update_department(department_id, **values):
+                raise HRValidationError('Department no longer exists. Reload the department list.')
+        except HRValidationError as error:
+            flash(str(error), 'danger')
+        else:
+            flash('Department updated successfully.', 'success')
+            return redirect(url_for('departments'))
+    return render_template('departments/edit.html', department=department)
 
 
-@app.route(
-    "/departments/<int:department_id>/status",
-    methods=["POST"],
-)
-@permission_required("departments.manage")
+@app.route('/departments/<int:department_id>/status', methods=['POST'])
+@permission_required('departments.manage')
 def change_department_status(department_id):
-    department = get_department_by_id(department_id)
-
-    if not department:
-        flash("Department not found.", "danger")
-        return redirect(url_for("departments"))
-
-    new_status = not bool(department["is_active"])
-
-    set_department_active_status(
-        department_id,
-        new_status,
-    )
-
-    if new_status:
-        flash(
-            "Department activated successfully.",
-            "success",
-        )
+    try:
+        desired = form_values(request.form, ('is_active',))['is_active']
+        if desired not in ('0', '1'):
+            raise HRValidationError('Choose an explicit active or inactive department status. Reload and try again.')
+        if not set_department_active_status(department_id, desired == '1'):
+            raise HRValidationError('Department not found.')
+    except HRValidationError as error:
+        flash(str(error), 'danger')
     else:
-        flash(
-            "Department deactivated successfully.",
-            "success",
-        )
+        flash('Department activated successfully.' if desired == '1' else 'Department deactivated successfully.', 'success')
+    return redirect(url_for('departments'))
 
-    return redirect(url_for("departments"))
 
-@app.route("/employees")
-@permission_required("employees.view")
+@app.route('/employees')
+@permission_required('employees.view')
 def employees():
-    employee_list = get_all_employees()
+    return render_template('employees/index.html', employees=get_all_employees())
 
-    return render_template(
-        "employees/index.html",
-        employees=employee_list,
-    )
 
-@app.route("/employees/add", methods=["GET", "POST"])
-@permission_required("employees.create")
+def _render_employee_form(employee=None):
+    if employee is None:
+        choices = get_active_departments()
+    else:
+        choices = [d for d in get_all_departments()
+                   if d['is_active'] or d['department_id'] == employee['department_id']]
+    selected = (request.form.get('department_id', '') if request.method == 'POST'
+                else str(employee['department_id'] or '') if employee else '')
+    return render_template('employees/edit.html' if employee else 'employees/add.html',
+        employee=employee, departments=choices, allowed_statuses=EMPLOYMENT_STATUSES,
+        selected_department=selected,
+        unavailable_department=bool(selected and selected not in {str(d['department_id']) for d in choices}))
+
+
+@app.route('/employees/add', methods=['GET', 'POST'])
+@permission_required('employees.create')
 def add_employee():
-    departments = get_active_departments()
-
-    if request.method == "POST":
-        employee_number = request.form.get(
-            "employee_number",
-            "",
-        ).strip().upper()
-
-        department_id = request.form.get(
-            "department_id",
-            "",
-        ).strip()
-
-        first_name = request.form.get(
-            "first_name",
-            "",
-        ).strip()
-
-        middle_name = request.form.get(
-            "middle_name",
-            "",
-        ).strip()
-
-        last_name = request.form.get(
-            "last_name",
-            "",
-        ).strip()
-
-        email = request.form.get(
-            "email",
-            "",
-        ).strip()
-
-        phone = request.form.get(
-            "phone",
-            "",
-        ).strip()
-
-        job_title = request.form.get(
-            "job_title",
-            "",
-        ).strip()
-
-        hire_date = request.form.get(
-            "hire_date",
-            "",
-        ).strip()
-
-        if not employee_number or not first_name or not last_name:
-            flash(
-                "Employee number, first name, and last name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "employees/add.html",
-                departments=departments,
-            )
-
+    if request.method == 'POST':
         try:
-            create_employee(
-                employee_number,
-                int(department_id) if department_id else None,
-                first_name,
-                middle_name or None,
-                last_name,
-                email or None,
-                phone or None,
-                job_title or None,
-                hire_date or None,
-            )
+            # Creation remains Active; posted status cannot introduce a lifecycle action.
+            values = employee_values(form_values(request.form, EMPLOYEE_FIELDS))
+            create_employee(**values)
+        except HRValidationError as error:
+            flash(str(error), 'danger')
+        else:
+            flash('Employee created successfully.', 'success')
+            return redirect(url_for('employees'))
+    return _render_employee_form()
 
-        except Exception as error:
-            if getattr(error, "errno", None) == 1062:
-                flash(
-                    "Employee number or email already exists.",
-                    "danger",
-                )
 
-                return render_template(
-                    "employees/add.html",
-                    departments=departments,
-                )
-
-            raise
-
-        flash(
-            "Employee created successfully.",
-            "success",
-        )
-
-        return redirect(url_for("employees"))
-
-    return render_template(
-        "employees/add.html",
-        departments=departments,
-    )
-
-@app.route(
-    "/employees/<int:employee_id>/edit",
-    methods=["GET", "POST"],
-)
-@permission_required("employees.edit")
+@app.route('/employees/<int:employee_id>/edit', methods=['GET', 'POST'])
+@permission_required('employees.edit')
 def edit_employee(employee_id):
     employee = get_employee_by_id(employee_id)
-
-    if not employee:
-        flash("Employee not found.", "danger")
-        return redirect(url_for("employees"))
-
-    departments = get_all_departments()
-
-    allowed_statuses = [
-        "Active",
-        "Inactive",
-        "On Leave",
-        "Resigned",
-        "Terminated",
-    ]
-
-    if request.method == "POST":
-        employee_number = request.form.get(
-            "employee_number",
-            "",
-        ).strip().upper()
-
-        department_id = request.form.get(
-            "department_id",
-            "",
-        ).strip()
-
-        first_name = request.form.get(
-            "first_name",
-            "",
-        ).strip()
-
-        middle_name = request.form.get(
-            "middle_name",
-            "",
-        ).strip()
-
-        last_name = request.form.get(
-            "last_name",
-            "",
-        ).strip()
-
-        email = request.form.get(
-            "email",
-            "",
-        ).strip()
-
-        phone = request.form.get(
-            "phone",
-            "",
-        ).strip()
-
-        job_title = request.form.get(
-            "job_title",
-            "",
-        ).strip()
-
-        hire_date = request.form.get(
-            "hire_date",
-            "",
-        ).strip()
-
-        employment_status = request.form.get(
-            "employment_status",
-            "",
-        ).strip()
-
-        if not employee_number or not first_name or not last_name:
-            flash(
-                "Employee number, first name, and last name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "employees/edit.html",
-                employee=employee,
-                departments=departments,
-                allowed_statuses=allowed_statuses,
-            )
-
-        if employment_status not in allowed_statuses:
-            flash(
-                "Invalid employment status.",
-                "danger",
-            )
-
-            return redirect(
-                url_for(
-                    "edit_employee",
-                    employee_id=employee_id,
-                )
-            )
-
-        selected_department_id = None
-
-        if department_id:
-            selected_department = get_department_by_id(
-                int(department_id)
-            )
-
-            if not selected_department:
-                flash(
-                    "Selected department does not exist.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for(
-                        "edit_employee",
-                        employee_id=employee_id,
-                    )
-                )
-
-            if (
-                not selected_department["is_active"]
-                and int(department_id) != employee["department_id"]
-            ):
-                flash(
-                    "You cannot assign an employee to an inactive department.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for(
-                        "edit_employee",
-                        employee_id=employee_id,
-                    )
-                )
-
-            selected_department_id = int(department_id)
-
+    if employee is None:
+        flash('Employee not found.', 'danger')
+        return redirect(url_for('employees'))
+    if request.method == 'POST':
         try:
-            update_employee(
-                employee_id,
-                employee_number,
-                selected_department_id,
-                first_name,
-                middle_name or None,
-                last_name,
-                email or None,
-                phone or None,
-                job_title or None,
-                hire_date or None,
-                employment_status,
-            )
+            values = employee_values(form_values(request.form, (*EMPLOYEE_FIELDS, 'employment_status')), editing=True)
+            if not update_employee(employee_id, **values):
+                raise HRValidationError('Employee no longer exists. Reload the employee list.')
+        except HRValidationError as error:
+            flash(str(error), 'danger')
+        else:
+            flash('Employee updated successfully.', 'success')
+            return redirect(url_for('employees'))
+    return _render_employee_form(employee)
 
-        except Exception as error:
-            if getattr(error, "errno", None) == 1062:
-                flash(
-                    "Employee number or email already exists.",
-                    "danger",
-                )
-
-                return redirect(
-                    url_for(
-                        "edit_employee",
-                        employee_id=employee_id,
-                    )
-                )
-
-            raise
-
-        flash(
-            "Employee updated successfully.",
-            "success",
-        )
-
-        return redirect(url_for("employees"))
-
-    return render_template(
-        "employees/edit.html",
-        employee=employee,
-        departments=departments,
-        allowed_statuses=allowed_statuses,
-    )
 
 @app.route("/inventory/categories")
 @permission_required("inventory.view")
