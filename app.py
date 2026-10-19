@@ -1,3 +1,5 @@
+from hr_revision import (form_revision, HRRevisionInputError, HRConflictError,
+                         HRMissingRecordError, HRRevisionExhaustedError)
 from hr_validation import (HRValidationError, EMPLOYEE_FIELDS, DEPARTMENT_FIELDS,
                            EMPLOYMENT_STATUSES, employee_values, department_values, form_values)
 from it_asset_validation import ASSET_FIELDS as IT_ASSET_FIELDS, identifier as asset_identifier, category_values
@@ -547,14 +549,21 @@ def add_department():
 @permission_required('departments.manage')
 def edit_department(department_id):
     department = get_department_by_id(department_id)
+    if department is None and request.method == 'POST':
+        return _hr_conflict_response(HRMissingRecordError('Department no longer exists.'), 'departments')
     if department is None:
         flash('Department not found.', 'danger')
         return redirect(url_for('departments'))
     if request.method == 'POST':
         try:
+            expected = form_revision(request.form)
             values = department_values(form_values(request.form, DEPARTMENT_FIELDS))
-            if not update_department(department_id, **values):
-                raise HRValidationError('Department no longer exists. Reload the department list.')
+            update_department(department_id, expected_revision=expected, **values)
+        except (HRConflictError, HRMissingRecordError, HRRevisionExhaustedError) as error:
+            return _hr_conflict_response(error, 'edit_department', department_id=department_id)
+        except HRRevisionInputError as error:
+            flash(str(error), 'danger')
+            return render_template('departments/edit.html', department=department), 400
         except HRValidationError as error:
             flash(str(error), 'danger')
         else:
@@ -567,15 +576,22 @@ def edit_department(department_id):
 @permission_required('departments.manage')
 def change_department_status(department_id):
     try:
+        expected = form_revision(request.form)
         desired = form_values(request.form, ('is_active',))['is_active']
         if desired not in ('0', '1'):
             raise HRValidationError('Choose an explicit active or inactive department status. Reload and try again.')
-        if not set_department_active_status(department_id, desired == '1'):
-            raise HRValidationError('Department not found.')
+        result = set_department_active_status(department_id, desired == '1', expected_revision=expected)
+    except (HRConflictError, HRMissingRecordError, HRRevisionExhaustedError) as error:
+        return _hr_conflict_response(error, 'departments')
+    except HRRevisionInputError as error:
+        return render_template('hr/conflict.html', message=str(error), reload_url=url_for('departments'), submitted=[]), 400
     except HRValidationError as error:
         flash(str(error), 'danger')
     else:
-        flash('Department activated successfully.' if desired == '1' else 'Department deactivated successfully.', 'success')
+        if result.changed:
+            flash('Department activated successfully.' if desired == '1' else 'Department deactivated successfully.', 'success')
+        else:
+            flash('Department is already in the requested state.', 'info')
     return redirect(url_for('departments'))
 
 
@@ -583,6 +599,16 @@ def change_department_status(department_id):
 @permission_required('employees.view')
 def employees():
     return render_template('employees/index.html', employees=get_all_employees())
+
+
+def _hr_conflict_response(error, reload_endpoint, **identifiers):
+    # Called only after the existing permission/account/CSRF checks. Never
+    # expose a fresh revision or turn the submitted values into a new save form.
+    allowed = (*EMPLOYEE_FIELDS, 'employment_status') if reload_endpoint == 'edit_employee' else DEPARTMENT_FIELDS if reload_endpoint == 'edit_department' else ()
+    submitted = [(field.replace('_', ' ').title(), request.form.get(field, '')) for field in allowed]
+    status = 404 if isinstance(error, HRMissingRecordError) else 503 if isinstance(error, HRRevisionExhaustedError) else 409
+    return render_template('hr/conflict.html', message=str(error),
+        reload_url=url_for(reload_endpoint, **identifiers), submitted=submitted), status
 
 
 def _render_employee_form(employee=None):
@@ -619,14 +645,21 @@ def add_employee():
 @permission_required('employees.edit')
 def edit_employee(employee_id):
     employee = get_employee_by_id(employee_id)
+    if employee is None and request.method == 'POST':
+        return _hr_conflict_response(HRMissingRecordError('Employee no longer exists.'), 'employees')
     if employee is None:
         flash('Employee not found.', 'danger')
         return redirect(url_for('employees'))
     if request.method == 'POST':
         try:
+            expected = form_revision(request.form)
             values = employee_values(form_values(request.form, (*EMPLOYEE_FIELDS, 'employment_status')), editing=True)
-            if not update_employee(employee_id, **values):
-                raise HRValidationError('Employee no longer exists. Reload the employee list.')
+            update_employee(employee_id, expected_revision=expected, **values)
+        except (HRConflictError, HRMissingRecordError, HRRevisionExhaustedError) as error:
+            return _hr_conflict_response(error, 'edit_employee', employee_id=employee_id)
+        except HRRevisionInputError as error:
+            flash(str(error), 'danger')
+            return _render_employee_form(employee), 400
         except HRValidationError as error:
             flash(str(error), 'danger')
         else:

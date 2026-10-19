@@ -43,11 +43,9 @@ is no fallback to toggling. Opposing explicit requests still use last commit win
 
 ## Deferred risks and Step 2C
 
-**Stale Employee and Department edit forms can still overwrite newer values.**
-Row locking makes each operation transactional; it does not detect an old form.
-Step 2C should review a revision-based conditional-update design and its migration,
-conflict UX, legacy handling and tests before implementation. No revision column
-or optimistic concurrency mechanism is introduced here.
+Step 2B alone did not protect stale Employee or Department forms. Step 2C.2 now
+adds the separately reviewed revision contract described in [HR_REVISIONS.md](HR_REVISIONS.md).
+Deploy that application change only after explicitly completing migration 008.
 
 Employment status remains independent of login account activation, Attendance and
 Leave eligibility, and IT Asset custody. Offboarding, employment history,

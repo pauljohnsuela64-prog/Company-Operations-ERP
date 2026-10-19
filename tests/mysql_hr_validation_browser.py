@@ -41,9 +41,13 @@ def main():
                 with database.get_connection() as connection:
                     cur=connection.cursor()
                     cur.execute("SELECT department_id,phone,employment_status FROM employees WHERE employee_number='HR-BROWSER-EMP'")
-                    assert cur.fetchall()==[(department,'Corrected phone','Active')]
+                    assert cur.fetchall()==[(department,'Corrected phone','Resigned')]
                     cur.execute("SELECT description,is_active FROM departments WHERE department_code='HR-BROWSER'")
                     assert cur.fetchall()==[('Corrected browser department',1)]
+                    cur.execute("SELECT revision FROM employees WHERE employee_number='HR-BROWSER-EMP'")
+                    assert cur.fetchone()==(3,)
+                    cur.execute("SELECT department_name,revision FROM departments WHERE department_code='HR-BROWSER'")
+                    assert cur.fetchone()==('HR browser department current',5)
                     cur.execute("SELECT COUNT(*) FROM employees WHERE employee_number='FORGED-HR'")
                     assert cur.fetchone()==(0,)
                     cur.close()

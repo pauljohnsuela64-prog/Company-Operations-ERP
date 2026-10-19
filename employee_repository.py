@@ -1,3 +1,5 @@
+from hr_revision import (revision, require_current, require_incrementable, HRWriteResult,
+                         HRMissingRecordError)
 from database import get_connection
 from mysql.connector import Error
 from hr_validation import (EMPLOYEE_FIELDS, employee_values, identifier,
@@ -13,6 +15,7 @@ def get_all_employees():
             """
             SELECT
                 e.employee_id,
+                e.revision,
                 e.employee_number,
                 e.department_id,
                 e.first_name,
@@ -48,6 +51,7 @@ def get_employee_by_id(employee_id):
             """
             SELECT
                 employee_id,
+                revision,
                 employee_number,
                 department_id,
                 first_name,
@@ -100,7 +104,8 @@ def create_employee(employee_number, department_id, first_name, middle_name, las
 
 
 def update_employee(employee_id, employee_number, department_id, first_name, middle_name,
-                    last_name, email, phone, job_title, hire_date, employment_status):
+                    last_name, email, phone, job_title, hire_date, employment_status, *, expected_revision):
+    expected_revision = revision(expected_revision)
     employee_id = identifier(employee_id, 'Employee')
     raw = dict(zip(EMPLOYEE_FIELDS, (employee_number, department_id, first_name,
         middle_name, last_name, email, phone, job_title, hire_date)))
@@ -112,20 +117,22 @@ def update_employee(employee_id, employee_number, department_id, first_name, mid
         connection.start_transaction()
         # Existing employee first, then department: agrees with IT Asset's
         # asset -> employee -> category -> department order. No asset locks here.
-        cursor.execute('SELECT department_id FROM employees WHERE employee_id=%s FOR UPDATE', (employee_id,))
+        cursor.execute('SELECT department_id, revision FROM employees WHERE employee_id=%s FOR UPDATE', (employee_id,))
         previous = cursor.fetchone()
         if previous is None:
-            connection.rollback()
-            return False
+            raise HRMissingRecordError('Employee no longer exists.')
+        require_current(previous['revision'], expected_revision)
+        require_incrementable(previous['revision'])
         lock_department(cursor, values['department_id'], previous['department_id'])
         cursor.execute("""UPDATE employees SET employee_number=%s, department_id=%s,
             first_name=%s, middle_name=%s, last_name=%s, email=%s, phone=%s,
-            job_title=%s, hire_date=%s, employment_status=%s WHERE employee_id=%s""",
-            (*values.values(), employee_id))
+            job_title=%s, hire_date=%s, employment_status=%s, revision=revision+1
+            WHERE employee_id=%s AND revision=%s AND revision<9223372036854775807""",
+            (*values.values(), employee_id, expected_revision))
+        if cursor.rowcount != 1:
+            raise RuntimeError('Employee conditional update failed after locking.')
         connection.commit()
-        # True includes a valid no-op update; existence was checked under lock.
-        # This is NOT optimistic concurrency protection against stale forms.
-        return True
+        return HRWriteResult(expected_revision + 1)
     except Error as error:
         connection.rollback()
         raise translate_write_error(error, 'Employee') from None

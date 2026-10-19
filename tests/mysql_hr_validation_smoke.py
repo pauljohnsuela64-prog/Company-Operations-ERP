@@ -11,6 +11,7 @@ from unittest.mock import patch
 import mysql.connector
 import mysql_audit_smoke as harness
 from hr_validation import HRValidationError, employee_values
+from hr_revision import HRMissingRecordError
 from security_helpers import csrf_client, stamp_session, user_state
 from test_hr_validation import EMPLOYEE, DEPARTMENT, LIMITS
 
@@ -61,10 +62,25 @@ def run(port, data_dir):
         departments = importlib.import_module('department_repository')
         stack.enter_context(patch.dict(erp.app.config, TESTING=True))
 
+        def current_revision(table, target):
+            pk = 'employee_id' if table == 'employees' else 'department_id'
+            rows = sql(f'SELECT revision FROM {table} WHERE {pk}=%s',(target,),True)
+            return rows[0][0] if rows else 1
+
         def client(uid=1):
             c = csrf_client(erp.app)
             with c.session_transaction() as session:
                 stamp_session(erp.app, session, user_state(user_id=uid,role_id=uid,username=f'hr-{uid}',password_hash='synthetic'))
+            # Existing validation tests open a fresh form for each attempt.
+            # Stale-token coverage uses explicit tokens in mysql_hr_revision_smoke.
+            original_post = c.post
+            def post(path, data=None, **kwargs):
+                data = dict(data or {})
+                match = re.fullmatch(r'/(employees|departments)/(\d+)/(edit|status)',path)
+                if match and 'expected_revision' not in data:
+                    data['expected_revision'] = str(current_revision(match[1],int(match[2])))
+                return original_post(path,data=data,**kwargs)
+            c.post = post
             return c
 
         def snapshot():
@@ -142,11 +158,15 @@ def run(port, data_dir):
             assert sql('SELECT description FROM departments WHERE department_id=%s',(did,),True)==[(None,)]
             print('PASS mode',mode or 'NON-STRICT',': exact/overlong fields, required values, dates, IDs, inactive references, duplicates, rollback, nullable values')
 
-        assert not employees.update_employee(99999,**employee_values(dict(fields(),employment_status='Active'),True))
-        assert not departments.update_department(99999,**DEPARTMENT)
-        assert not departments.set_department_active_status(99999,False)
+        for operation in [
+            lambda:employees.update_employee(99999,expected_revision=1,**employee_values(dict(fields(),employment_status='Active'),True)),
+            lambda:departments.update_department(99999,expected_revision=1,**DEPARTMENT),
+            lambda:departments.set_department_active_status(99999,False,expected_revision=1)]:
+            try: operation()
+            except HRMissingRecordError: pass
+            else: raise AssertionError('Missing HR target was accepted')
         for path in ['/employees/99999/edit','/departments/99999/edit']:
-            assert client().post(path,data=fields()).status_code == 302
+            assert client().post(path,data=fields()).status_code == 404
 
         def wait_for_lock():
             deadline = time.monotonic()+10
@@ -166,7 +186,7 @@ def run(port, data_dir):
                 with ThreadPoolExecutor(max_workers=1) as pool:
                     def write():
                         try:
-                            if editing: employees.update_employee(target,**employee_values(dict(form,employment_status='Active'),True))
+                            if editing: employees.update_employee(target,expected_revision=current_revision('employees',target),**employee_values(dict(form,employment_status='Active'),True))
                             else: employees.create_employee(**employee_values(form))
                         except HRValidationError: return 'rejected'
                         return 'unexpected success'
@@ -184,7 +204,7 @@ def run(port, data_dir):
             future=pool.submit(employees.create_employee,**employee_values(fields()))
             try:
                 assert acquired.wait(10)
-                deactivation=pool.submit(departments.set_department_active_status,1,False)
+                deactivation=pool.submit(departments.set_department_active_status,1,False,expected_revision=current_revision('departments',1))
                 wait_for_lock()
             finally:release.set()
             created=future.result(timeout=15);assert deactivation.result(timeout=15)
@@ -200,7 +220,7 @@ def run(port, data_dir):
         before=snapshot()
         sql("CREATE TRIGGER hr_reject_update BEFORE UPDATE ON employees FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic rollback'")
         try:
-            try:employees.update_employee(created,**employee_values(dict(fields(),employment_status='Active'),True))
+            try:employees.update_employee(created,expected_revision=current_revision('employees',created),**employee_values(dict(fields(),employment_status='Active'),True))
             except mysql.connector.Error:pass
             else:raise AssertionError('Expected SQL failure')
         finally:sql('DROP TRIGGER hr_reject_update')
@@ -210,7 +230,7 @@ def run(port, data_dir):
             def __getattr__(self,name):return getattr(self.inner,name)
             def commit(self):raise RuntimeError('synthetic commit failure')
         for repo,action in [(employees,lambda:employees.create_employee(**employee_values(fields()))),
-                            (departments,lambda:departments.update_department(1,**DEPARTMENT))]:
+                            (departments,lambda:departments.update_department(1,expected_revision=current_revision('departments',1),**DEPARTMENT))]:
             with patch.object(repo,'get_connection',side_effect=CommitFailure):
                 try:action()
                 except RuntimeError:pass
@@ -226,7 +246,7 @@ def run(port, data_dir):
         sql('INSERT INTO it_asset_assignments(asset_id,employee_id,department_id,assigned_by) VALUES(%s,%s,1,1)',(asset,created))
         tables=['attendance_records','leave_requests','it_assets','it_asset_assignments','users']
         history=[sql('SELECT * FROM '+t,fetch=True) for t in tables]
-        assert employees.update_employee(created,**employee_values(dict(fields(),employment_status='Resigned'),True))
+        assert employees.update_employee(created,expected_revision=current_revision('employees',created),**employee_values(dict(fields(),employment_status='Resigned'),True))
         assert history==[sql('SELECT * FROM '+t,fetch=True) for t in tables]
         assert sql('SELECT is_active FROM users WHERE user_id=1',fetch=True)==[(1,)]
         before=snapshot()
