@@ -1,0 +1,8 @@
+<div class="card shadow-sm border-0"><div class="card-body">
+<h3 class="h5">Activation History</h3>
+{% if company_timezone %}<p class="small text-muted">Company date timezone: {{ company_timezone }}. Effective-until dates are exclusive.</p>{% endif %}
+<div class="table-responsive"><table class="table"><thead><tr><th>Version</th><th>Effective from</th><th>Effective until</th><th>Schedule state</th><th>Scheduled by user</th><th>Recorded at</th></tr></thead><tbody>
+{% for row in history %}<tr><td><a href="{{ url_for('payroll_policy_detail',policy_id=row.policy_version_id) }}">{{ row.version_number }}</a></td>
+<td>{{ row.effective_from }}</td><td>{{ row.effective_to or 'Open-ended' }}</td><td>{{ row.schedule_state }}</td><td>{{ row.activated_by }}</td><td>{{ row.activated_at }}</td></tr>
+{% else %}<tr><td colspan="6">No policy activations have been scheduled.</td></tr>{% endfor %}
+</tbody></table></div></div></div>

@@ -6,7 +6,8 @@
         ('Departments', 'departments', '/departments', has_permission('departments.view')),
         ('Attendance', 'attendance', '/attendance', admin_visible and has_permission('attendance.view')),
         ('Leave Management', 'leave_requests', '/leave', admin_visible and has_permission('leave.view')),
-        ('Payroll', 'payroll_compensation', '/payroll', has_permission('payroll.view'))
+        ('Payroll', 'payroll_compensation', '/payroll', has_permission('payroll.view')),
+        ('Payroll Policies', 'payroll_policy_index', '/payroll/policies', has_permission('payroll.view'))
     ]),
     ('inventory', 'Inventory', 'box', [
         ('Categories', 'inventory_categories', '/inventory/categories', has_permission('inventory.view')),

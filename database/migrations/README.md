@@ -171,11 +171,16 @@ stages can resume after an interruption; incompatible definitions are never drop
 or automatically replaced.
 
 No approved or draft policy is seeded, no historical period is assigned a policy,
-and no permission or role grant is inserted. The proposed future permission names
+and no permission or role grant is inserted. The application permission names
 are `payroll.policy.manage`, `payroll.policy.approve`, `payroll.policy.activate`.
 The existing permissions table can hold these identifiers without schema changes;
-registration and reviewed grants belong to a later authorization checkpoint. There
-is no Super Admin bypass.
+registration is provided separately by `database/payroll_policy_permissions.sql`
+for the policy-management checkpoint. That repeatable script inserts catalog
+entries only, never role grants, and is not executed on application startup.
+An authorized operator must review the target and run it through a controlled
+upgrade after schema verification. Review and explicitly assign each role grant
+separately; no role, including Super Admin, receives a bypass. See
+`PAYROLL_POLICY_MANAGEMENT.md` for deployment and verification requirements.
 
 Only after explicit operational approval: verify the backup/restore procedure and
 target, pause Payroll/HR writes across all workers, use a fresh migration connection,

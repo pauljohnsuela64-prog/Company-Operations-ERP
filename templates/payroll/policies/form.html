@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if policy else 'Create' }} Draft Payroll Policy{% endblock %}
+{% block content %}
+<h2 class="mb-3">{{ 'Edit' if policy else 'Create' }} Draft Payroll Policy</h2>
+<p class="text-muted">This development template remains a draft until required company approvals are recorded. Select rules explicitly; unresolved rules prevent approval.</p>
+<div class="card shadow-sm border-0"><div class="card-body"><form method="POST">
+{% include 'partials/csrf_field.html' %}
+{% if policy %}<input type="hidden" name="revision" value="{{ data.revision }}"><p>Version {{ policy.version_number }} · Submitted revision {{ data.revision }}. If another edit has occurred, reload and review before resubmitting.</p>{% endif %}
+<div class="row"><div class="col-md-8 mb-3"><label for="policy-name" class="form-label">Policy Name</label>
+<input id="policy-name" name="policy_name" class="form-control" maxlength="100" required value="{{ data.policy_name }}"></div>
+<div class="col-md-4 mb-3"><label for="effective-from" class="form-label">Effective From</label>
+<input id="effective-from" type="date" name="effective_from" class="form-control" required value="{{ data.effective_from }}"><div class="form-text">The 1st or 16th. Scheduling later requires a future company-local date.</div></div></div>
+<div class="alert alert-secondary">Semi-monthly · 1st–15th / 16th–month-end · Monday–Friday · MONTHLY · PHP · Full-cutoff divisor 2 · HALF_UP to two decimal places · Explicit payment dates.</div>
+{% for name in ['calculator_key','calendar_key','frequency','working_week_mask','currency_code','full_cutoff_divisor','rounding_mode','rounding_scale','cutoff_rules','supported_pay_types','payment_rules'] %}
+<input type="hidden" name="{{ name }}" value="{{ data.get(name,'') }}">
+{% endfor %}
+{% for field,schema in rules.items() if field not in ['cutoff_rules','supported_pay_types','payment_rules'] %}
+<fieldset class="border rounded p-3 mb-3"><legend class="float-none w-auto px-2 fs-6">{{ field|replace('_',' ')|title }}</legend><div class="row">
+{% for key,definition in schema.properties.items() %}{% set input_name=field ~ '.' ~ key %}{% set selected=data.get(input_name,'') %}
+<div class="col-md-6 mb-3"><label class="form-label" for="{{ field }}-{{ key }}">{{ key|replace('_',' ')|title }}</label>
+<select id="{{ field }}-{{ key }}" name="{{ input_name }}" class="form-select" required>
+{% if selected not in definition.enum %}<option selected value="{{ selected }}">Invalid submitted value: {{ selected }}</option>{% endif %}
+{% for option in definition.enum %}<option value="{{ option }}" {% if selected==option %}selected{% endif %}>{{ option|replace('_',' ')|title }}</option>{% endfor %}
+</select></div>{% endfor %}</div></fieldset>{% endfor %}
+<p class="small text-muted">Block means the scenario is unsupported by the policy. These selections do not add statutory calculations or enable a new salary calculator.</p>
+<button class="btn btn-primary" type="submit">Save Draft</button>
+<a class="btn btn-outline-secondary" href="{{ url_for('payroll_policy_detail',policy_id=policy.policy_version_id) if policy else url_for('payroll_policy_index') }}">Cancel</a>
+</form></div></div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Payroll Policies{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div><h2>Payroll Policies</h2><p class="text-muted mb-0">Company-wide versions and scheduled effective dates.</p></div>
+  {% if has_permission('payroll.policy.manage') %}<a class="btn btn-primary" href="{{ url_for('payroll_policy_add') }}">Create Draft</a>{% endif %}
+</div>
+<div class="alert alert-info">Policy configuration is managed separately from salary calculation. Existing payroll calculations continue to use their current implementation.</div>
+{% if timezone_error %}<div class="alert alert-warning">{{ timezone_error }}</div>{% endif %}
+<div class="card shadow-sm border-0 mb-4"><div class="card-body table-responsive">
+<table class="table table-hover align-middle"><thead><tr><th>Version</th><th>Name</th><th>Effective from</th><th>Status</th><th>Revision</th><th></th></tr></thead><tbody>
+{% for policy in policies %}<tr>
+  <td>{{ policy.version_number }}</td><td>{{ policy.policy_name }}</td><td>{{ policy.effective_from }}</td>
+  <td>{{ policy.status }}{% if policy.policy_version_id in activations %} · {{ activations[policy.policy_version_id].schedule_state }}{% elif policy.status == 'APPROVED' %} · Not scheduled{% endif %}</td>
+  <td>{{ policy.revision }}</td><td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('payroll_policy_detail',policy_id=policy.policy_version_id) }}">View</a></td>
+</tr>{% else %}<tr><td colspan="6">No payroll policy versions found.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% include 'payroll/policies/history.html' %}
+{% endblock %}

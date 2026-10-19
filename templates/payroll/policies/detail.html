@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Payroll Policy Version {{ policy.version_number }}{% endblock %}
+{% block content %}
+{% set approval_data=approval_data|default({}) %}
+<div class="d-flex justify-content-between align-items-center mb-3"><div><h2>{{ policy.policy_name }}</h2>
+<p>Version {{ policy.version_number }} · {{ policy.status }} · Revision {{ policy.revision }} · Effective {{ policy.effective_from }}
+{% if policy.policy_version_id in activations %} · {{ activations[policy.policy_version_id].schedule_state }}{% elif policy.status=='APPROVED' %} · Not scheduled{% endif %}</p></div>
+<a class="btn btn-outline-secondary" href="{{ url_for('payroll_policy_index') }}">All Policies</a></div>
+<div class="alert alert-info">Approval records a reviewed configuration. Scheduling activation is separate. This area does not generate payroll periods or change existing salary calculations.</div>
+{% if timezone_error %}<div class="alert alert-warning">{{ timezone_error }}</div>{% endif %}
+<div class="card shadow-sm border-0 mb-3"><div class="card-body">
+<h3 class="h5">Configuration</h3><p>Semi-monthly · 1st–15th / 16th–month-end · Monday–Friday · MONTHLY · {{ policy.currency_code }} · Divisor {{ policy.full_cutoff_divisor }} · {{ policy.rounding_mode }} ({{ policy.rounding_scale }} places)</p>
+{% for field in ['attendance_rules','leave_rules','eligibility_rules','deduction_rules','payment_rules'] %}
+<h4 class="h6 mt-3">{{ field|replace('_',' ')|title }}</h4><dl class="row mb-0">
+{% for key,value in policy[field].items() %}<dt class="col-md-5">{{ key|replace('_',' ')|title }}</dt><dd class="col-md-7">{{ value|replace('_',' ')|title }}</dd>{% endfor %}</dl>
+{% endfor %}
+<p class="small text-muted mt-3">Created by user {{ policy.created_by }} at {{ policy.created_at }}. Last updated by user {{ policy.updated_by }} at {{ policy.updated_at }}.</p>
+{% if policy.status=='DRAFT' and has_permission('payroll.policy.manage') %}<a class="btn btn-outline-primary" href="{{ url_for('payroll_policy_edit',policy_id=policy.policy_version_id) }}">Edit Draft</a>{% endif %}
+</div></div>
+{% if policy.status=='DRAFT' and has_permission('payroll.policy.approve') %}
+<div class="card shadow-sm border-0 mb-3"><div class="card-body"><h3 class="h5">Approve Policy</h3>
+<form method="POST" action="{{ url_for('payroll_policy_approve',policy_id=policy.policy_version_id) }}">
+{% include 'partials/csrf_field.html' %}<input type="hidden" name="revision" value="{{ approval_data.get('revision',policy.revision) }}">
+<label for="approval-reference" class="form-label">Business Approval Reference</label>
+<input id="approval-reference" class="form-control mb-3" name="approval_reference" maxlength="255" required value="{{ approval_data.get('approval_reference','') }}">
+<div class="form-check mb-3"><input id="confirm-approval" class="form-check-input" type="checkbox" name="confirm_approval" value="yes" required {% if approval_data.get('confirm_approval')=='yes' %}checked{% endif %}>
+<label class="form-check-label" for="confirm-approval">I confirm the required company approvals have been obtained and referenced, and the rules are resolved.</label></div>
+<p class="small text-muted">Approval seals this version. The reference records your confirmation; it does not independently verify legal compliance.</p>
+<button class="btn btn-primary" type="submit">Approve Policy</button></form></div></div>
+{% endif %}
+{% if policy.status=='APPROVED' %}
+<div class="card shadow-sm border-0 mb-3"><div class="card-body"><h3 class="h5">Approval</h3>
+<p>Approved by user {{ policy.approved_by }} at {{ policy.approved_at }}.</p><p>Reference: {{ policy.approval_reference or 'Not recorded' }}</p>
+{% if policy.policy_version_id not in activations and has_permission('payroll.policy.activate') %}
+<form method="POST" action="{{ url_for('payroll_policy_activate',policy_id=policy.policy_version_id) }}">
+{% include 'partials/csrf_field.html' %}
+<div class="form-check mb-3"><input id="confirm-activation" type="checkbox" name="confirm_activation" value="yes" class="form-check-input" required>
+<label for="confirm-activation" class="form-check-label">Schedule this version from {{ policy.effective_from }} using {{ company_timezone or 'the configured company timezone' }}.</label></div>
+<button class="btn btn-primary" type="submit" {% if timezone_error %}disabled{% endif %}>Schedule Activation</button></form>
+{% endif %}</div></div>{% endif %}
+{% include 'payroll/policies/history.html' %}
+{% endblock %}

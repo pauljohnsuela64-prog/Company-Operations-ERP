@@ -88,6 +88,17 @@ def run(port,data_dir):
         stack.enter_context(patch.object(database,'get_connection',side_effect=connect))
         erp=importlib.import_module('app')
         stack.enter_context(patch.dict(erp.app.config,TESTING=True))
+        from payroll_schema_helpers import upgrade_policy_foundation
+        upgrade_policy_foundation(connect)
+        for uid,role,name,permissions in (
+            (7,7,'policy-viewer',('payroll.view',)),
+            (8,8,'policy-manager',('payroll.view','payroll.policy.manage')),
+            (9,9,'policy-approver',('payroll.view','payroll.policy.approve')),
+            (10,10,'policy-activator',('payroll.view','payroll.policy.activate'))):
+            sql('INSERT INTO roles(role_id,role_name) VALUES(%s,%s)',(role,name))
+            sql('INSERT INTO users(user_id,role_id,username,password_hash) VALUES(%s,%s,%s,%s)',(uid,role,name,password_hash))
+            for code in permissions:
+                sql('INSERT INTO role_permissions SELECT %s,permission_id FROM permissions WHERE permission_code=%s',(role,code))
         # Test-only helpers are registered only on this disposable-server runner.
         from flask import jsonify,session,request
         from itsdangerous import URLSafeTimedSerializer
@@ -117,6 +128,20 @@ def run(port,data_dir):
         erp.app.add_url_rule('/__review/it-fixture','review_it_fixture',it_fixture)
         erp.app.add_url_rule('/__review/it-snapshot','review_it_snapshot',it_snapshot)
         erp.app.add_url_rule('/__review/it-control','review_it_control',it_control,methods=['POST'])
+        def policy_snapshot():
+            return jsonify(policies=sql('SELECT * FROM payroll_policy_versions ORDER BY policy_version_id',fetch=True),
+                activations=sql('SELECT * FROM payroll_policy_activations ORDER BY effective_from',fetch=True),
+                audits=sql("SELECT user_id,action,entity_id,description FROM audit_logs WHERE entity_type='PAYROLL_POLICY' ORDER BY audit_log_id",fetch=True))
+        def policy_control():
+            if request.headers.get('X-Review-Key')!=control_key:return 'Forbidden',403
+            action=request.form.get('action')
+            if action=='revoke_manage':
+                sql("DELETE rp FROM role_permissions rp JOIN permissions p USING(permission_id) WHERE role_id=8 AND permission_code='payroll.policy.manage'")
+            elif action=='disable_activate':sql('UPDATE users SET is_active=0 WHERE user_id=10')
+            else:return 'Invalid action',400
+            return jsonify(ok=True)
+        erp.app.add_url_rule('/__review/policy-snapshot','review_policy_snapshot',policy_snapshot)
+        erp.app.add_url_rule('/__review/policy-control','review_policy_control',policy_control,methods=['POST'])
         # Payroll smoke uses only this fresh schema and synthetic records.
         from importlib.util import spec_from_file_location,module_from_spec
         spec=spec_from_file_location('browser_payroll_upgrade',harness.ROOT/'database/migrations/004_payroll_freshness.py')

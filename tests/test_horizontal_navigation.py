@@ -72,7 +72,7 @@ class HorizontalNavigationTests(unittest.TestCase):
 
     def test_all_existing_destinations_appear_once_and_resolve(self):
         html, nav = self.render()
-        self.assertEqual(len(nav.links), 25)
+        self.assertEqual(len(nav.links), 26)
         hrefs = [a["href"] for a in nav.links]
         self.assertEqual(len(hrefs), len(set(hrefs)), "Duplicate navigation destination")
         adapter = self.erp.app.url_map.bind("localhost")
@@ -101,7 +101,7 @@ class HorizontalNavigationTests(unittest.TestCase):
                 expected = {"/dashboard"}
                 for permission, paths in {
                     "employees.view": ["/employees"], "departments.view": ["/departments"],
-                    "payroll.view": ["/payroll/compensation"],
+                    "payroll.view": ["/payroll/compensation", "/payroll/policies"],
                     "inventory.view": ["/inventory/categories", "/inventory/warehouses", "/inventory/items", "/inventory/stock", "/inventory/stock/movements"],
                     "it_assets.view": ["/it/assets"], "helpdesk.view": ["/it/help-desk"],
                     "finance.view": ["/finance", "/finance/expenses", "/finance/expense-categories", "/finance/reports", "/finance/budgets"],

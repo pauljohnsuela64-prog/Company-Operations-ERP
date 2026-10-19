@@ -1,4 +1,6 @@
 from payroll_validation import payroll_money
+import payroll_policy_repository as payroll_policies
+import payroll_policy_validation as policy_validation
 from it_asset_validation import ASSET_FIELDS as IT_ASSET_FIELDS, identifier as asset_identifier, category_values
 from budget_repository import get_department_budget_report
 from finance_reporting import filters as finance_filters, report as finance_report
@@ -335,6 +337,7 @@ load_dotenv()
 app = Flask(__name__)
 
 configure_security(app)
+app.config['ERP_PAYROLL_TIMEZONE'] = os.getenv('ERP_PAYROLL_TIMEZONE', 'Asia/Manila').strip()
 init_security(app, lambda user_id: get_authorization_state(user_id))
 init_csrf(app)
 app.jinja_env.filters["procurement_currency"] = lambda value: format(currency_amount(value), ",.2f")
@@ -4601,6 +4604,143 @@ def export_finance_report():
 # ==========================================================
     response.headers['Cache-Control'] = 'private, no-store'
     return response
+
+
+def _policy_context():
+    history = payroll_policies.activation_history()
+    try:
+        today = policy_validation.company_today(app.config.get('ERP_PAYROLL_TIMEZONE'))
+        timezone_error = None
+    except ValueError as error:
+        today, timezone_error = None, str(error)
+    by_policy = {}
+    for activation in history:
+        if today is None:
+            state = 'Scheduled (company date unavailable)'
+        elif activation['effective_from'] > today:
+            state = 'Scheduled'
+        elif activation['effective_to'] is None or today < activation['effective_to']:
+            state = 'Active'
+        else:
+            state = 'Superseded'
+        activation['schedule_state'] = state
+        by_policy[activation['policy_version_id']] = activation
+    return dict(history=history, activations=by_policy, timezone_error=timezone_error,
+                company_timezone=app.config.get('ERP_PAYROLL_TIMEZONE', ''))
+
+
+def _policy_audit(action, policy):
+    record_audit_event(module='PAYROLL', action=action, entity_type='PAYROLL_POLICY',
+        entity_id=policy['policy_version_id'],
+        description=f"Policy version {policy['version_number']} {action.lower()}; effective {policy['effective_from']:%Y-%m-%d}.")
+
+
+def _policy_action_fields(allowed):
+    if set(request.form)-set(allowed)-{'csrf_token'} or any(len(request.form.getlist(k))!=1 for k in request.form):
+        raise ValueError('Policy action has unsupported or repeated fields.')
+
+
+@app.route('/payroll/policies')
+@permission_required('payroll.view')
+def payroll_policy_index():
+    return render_template('payroll/policies/index.html', policies=payroll_policies.list_policies(), **_policy_context())
+
+
+@app.route('/payroll/policies/<int:policy_id>')
+@permission_required('payroll.view')
+def payroll_policy_detail(policy_id):
+    try:
+        policy = payroll_policies.get_policy(policy_id)
+    except ValueError as error:
+        flash(str(error), 'danger')
+        return redirect(url_for('payroll_policy_index'))
+    if not policy:
+        flash('Payroll policy was not found.', 'danger')
+        return redirect(url_for('payroll_policy_index'))
+    return render_template('payroll/policies/detail.html', policy=policy, **_policy_context())
+
+
+@app.route('/payroll/policies/add', methods=['GET','POST'])
+@permission_required('payroll.policy.manage')
+def payroll_policy_add():
+    data = policy_validation.form_values(policy_validation.initial_policy())
+    if request.method == 'POST':
+        data.update(request.form.to_dict())
+        try:
+            values = policy_validation.parse_form(request.form)
+            policy = payroll_policies.create_policy(values, session['user_id'])
+        except ValueError as error:
+            flash(str(error), 'danger')
+        else:
+            _policy_audit('CREATE', policy)
+            flash('Draft payroll policy created. It has not been approved or scheduled.', 'success')
+            return redirect(url_for('payroll_policy_detail', policy_id=policy['policy_version_id']))
+    return render_template('payroll/policies/form.html', data=data, policy=None, rules=policy_validation.JSON_RULES)
+
+
+@app.route('/payroll/policies/<int:policy_id>/edit', methods=['GET','POST'])
+@permission_required('payroll.policy.manage')
+def payroll_policy_edit(policy_id):
+    try:
+        policy = payroll_policies.get_policy(policy_id)
+    except ValueError as error:
+        flash(str(error), 'danger')
+        return redirect(url_for('payroll_policy_index'))
+    if not policy or policy['status'] != 'DRAFT':
+        flash('Only an existing DRAFT policy may be edited.', 'danger')
+        return redirect(url_for('payroll_policy_index'))
+    data = policy_validation.form_values(policy)
+    data['revision'] = str(policy['revision'])
+    if request.method == 'POST':
+        data.update(request.form.to_dict())
+        try:
+            values = policy_validation.parse_form(request.form, editing=True)
+            result = payroll_policies.update_policy(policy_id, request.form.get('revision'), values, session['user_id'])
+        except ValueError as error:
+            flash(str(error), 'danger')
+        else:
+            _policy_audit('UPDATE', result)
+            flash('Draft policy updated. Review and approval are still required.', 'success')
+            return redirect(url_for('payroll_policy_detail', policy_id=policy_id))
+    return render_template('payroll/policies/form.html', data=data, policy=policy, rules=policy_validation.JSON_RULES)
+
+
+@app.route('/payroll/policies/<int:policy_id>/approve', methods=['POST'])
+@permission_required('payroll.policy.approve')
+def payroll_policy_approve(policy_id):
+    try:
+        _policy_action_fields({'revision','approval_reference','confirm_approval'})
+        policy = payroll_policies.approve_policy(policy_id, request.form.get('revision'),
+            request.form.get('approval_reference',''), request.form.get('confirm_approval')=='yes', session['user_id'])
+    except ValueError as error:
+        flash(str(error), 'danger')
+        try:
+            policy = payroll_policies.get_policy(policy_id)
+        except ValueError:
+            policy = None
+        if policy:
+            return render_template('payroll/policies/detail.html', policy=policy,
+                approval_data=request.form.to_dict(), **_policy_context())
+    else:
+        _policy_audit('APPROVE', policy)
+        flash('Payroll policy approved and sealed. Activation must be scheduled separately.', 'success')
+    return redirect(url_for('payroll_policy_detail', policy_id=policy_id))
+
+
+@app.route('/payroll/policies/<int:policy_id>/activate', methods=['POST'])
+@permission_required('payroll.policy.activate')
+def payroll_policy_activate(policy_id):
+    try:
+        _policy_action_fields({'confirm_activation'})
+        if request.form.get('confirm_activation') != 'yes':
+            raise ValueError('Confirm the effective date before scheduling activation.')
+        policy = payroll_policies.activate_policy(policy_id, session['user_id'], app.config.get('ERP_PAYROLL_TIMEZONE'))
+    except ValueError as error:
+        flash(str(error), 'danger')
+    else:
+        _policy_audit('ACTIVATE', policy)
+        flash('Policy activation scheduled. Existing payroll references and salary formulas were preserved.', 'success')
+    return redirect(url_for('payroll_policy_detail', policy_id=policy_id))
 
 
 @app.route("/payroll/compensation")

@@ -73,7 +73,7 @@ class CSRFTests(unittest.TestCase):
                     data={} if token is None else {'csrf_token':token}
                     self.assertEqual(self.client.post(path,data=data).status_code,400)
             count+=1
-        self.assertEqual(count,87)
+        self.assertEqual(count,91)  # Includes four policy mutation endpoints.
         self.audit.assert_not_called()
         self.operation.assert_not_called()
         extension=self.erp.app.extensions['csrf']
@@ -189,7 +189,7 @@ class CSRFTests(unittest.TestCase):
                 if re.search(r'method\s*=\s*[\"\x27]POST',form,re.I):
                     self.assertEqual(form.count("include 'partials/csrf_field.html'"),1,str(path))
                     count+=1
-        self.assertEqual(count,89)  # Original 86 + navigation, logout confirmation, recovery.
+        self.assertEqual(count,92)  # Existing forms plus draft, approval and activation forms.
 
 
 class CSRFMethodAndReceivingCompatibilityTests(unittest.TestCase):
