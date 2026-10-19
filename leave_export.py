@@ -4,6 +4,8 @@
 
 from io import BytesIO
 
+from excel_text import append_text_row
+
 from openpyxl import Workbook
 
 from openpyxl.styles import (
@@ -144,42 +146,42 @@ def generate_leave_report_excel(
     )
 
 
-    summary_sheet.append([])
+    append_text_row(summary_sheet, [])
 
 
     # ======================================================
     # FILTER INFORMATION
     # ==========================================================
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Filter",
             "Value",
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Year",
             selected_year,
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Status",
             filter_labels["status"],
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Employee",
             filter_labels["employee"],
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Leave Type",
             filter_labels["leave_type"],
@@ -193,51 +195,51 @@ def generate_leave_report_excel(
     )
 
 
-    summary_sheet.append([])
+    append_text_row(summary_sheet, [])
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Metric",
             "Value",
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Total Requests",
             summary["total_requests"],
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Pending",
             summary["pending_count"],
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Approved",
             summary["approved_count"],
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Rejected",
             summary["rejected_count"],
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Cancelled",
             summary["cancelled_count"],
         ]
     )
 
-    summary_sheet.append(
+    append_text_row(summary_sheet,
         [
             "Approved Leave Days",
             summary["approved_days"],
@@ -260,7 +262,7 @@ def generate_leave_report_excel(
     )
 
 
-    type_sheet.append(
+    append_text_row(type_sheet,
         [
             "Code",
             "Leave Type",
@@ -276,7 +278,7 @@ def generate_leave_report_excel(
 
     for item in type_summary:
 
-        type_sheet.append(
+        append_text_row(type_sheet,
             [
                 item["leave_code"],
                 item["leave_name"],
@@ -305,7 +307,7 @@ def generate_leave_report_excel(
     )
 
 
-    record_sheet.append(
+    append_text_row(record_sheet,
         [
             "Request Number",
             "Employee Number",
@@ -334,7 +336,7 @@ def generate_leave_report_excel(
         )
 
 
-        record_sheet.append(
+        append_text_row(record_sheet,
             [
                 record[
                     "request_number"
