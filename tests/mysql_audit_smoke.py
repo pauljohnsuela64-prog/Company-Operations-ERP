@@ -151,7 +151,7 @@ def run(port, data_dir):
                 assert secret not in repr(row)
             expected.append(row)
             if case.module in {"PAYROLL", "LEAVE", "PROCUREMENT", "FINANCE"}:
-                assert client().post(path, data=form).status_code == 302
+                assert client().post(path, data=form).status_code == (409 if case.module == "LEAVE" else 302)
                 assert len(logs()) == before + 1, case.name + " repeated event"
             print("PASS persisted + unauthorized:", case.name)
 
@@ -174,7 +174,8 @@ def run(port, data_dir):
             before = len(logs())
             with ThreadPoolExecutor(max_workers=2) as pool:
                 futures = [pool.submit(submit) for _ in range(2)]
-                assert [f.result(timeout=20) for f in futures] == [302, 302]
+                expected_codes = [302, 409] if case.module == "LEAVE" else [302, 302]
+                assert sorted(f.result(timeout=20) for f in futures) == expected_codes
             assert len(logs()) == before + 1, name + " concurrent duplicate"
             print("PASS concurrent transition:", name)
 

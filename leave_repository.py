@@ -6,6 +6,10 @@ from datetime import (
     timedelta,
 )
 import uuid
+from contextlib import contextmanager
+import logging
+from mysql.connector import Error
+from leave_validation import LeaveError, identifier, request_values, text, type_values, listing_values
 
 from database import get_connection
 
@@ -101,6 +105,7 @@ def get_leave_type_by_id(
     leave_type_id,
 ):
 
+    leave_type_id = identifier(leave_type_id, 'Leave type')
     connection = get_connection()
 
     cursor = connection.cursor(
@@ -143,154 +148,41 @@ def get_leave_type_by_id(
 # CREATE LEAVE TYPE
 # ==========================================================
 
-def create_leave_type(
-    leave_code,
-    leave_name,
-    description,
-    annual_entitlement,
-    is_paid,
-):
-
-    connection = get_connection()
-
-    cursor = connection.cursor()
-
-    try:
-
-        cursor.execute(
-            """
-            INSERT INTO leave_types (
-                leave_code,
-                leave_name,
-                description,
-                annual_entitlement,
-                is_paid
-            )
-            VALUES (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s
-            )
-            """,
-            (
-                leave_code,
-                leave_name,
-                description,
-                annual_entitlement,
-                is_paid,
-            ),
-        )
-
-        connection.commit()
-
-        return cursor.lastrowid
-
-    except Exception:
-
-        connection.rollback()
-        raise
-
-    finally:
-
-        cursor.close()
-        connection.close()
+def create_leave_type(leave_code, leave_name, description, annual_entitlement, is_paid):
+    data = type_values(dict(leave_code=leave_code, leave_name=leave_name, description=description, annual_entitlement=annual_entitlement, is_paid=is_paid))
+    with _transaction() as cursor:
+        cursor.execute('INSERT INTO leave_types(leave_code,leave_name,description,annual_entitlement,is_paid) VALUES(%s,%s,%s,%s,%s)', tuple(data.values()))
+        identity = cursor.lastrowid
+    return identity
 
 
 # ==========================================================
 # UPDATE LEAVE TYPE
 # ==========================================================
 
-def update_leave_type(
-    leave_type_id,
-    leave_code,
-    leave_name,
-    description,
-    annual_entitlement,
-    is_paid,
-):
-
-    connection = get_connection()
-
-    cursor = connection.cursor()
-
-    try:
-
-        cursor.execute(
-            """
-            UPDATE leave_types
-
-            SET
-                leave_code = %s,
-                leave_name = %s,
-                description = %s,
-                annual_entitlement = %s,
-                is_paid = %s
-
-            WHERE leave_type_id = %s
-            """,
-            (
-                leave_code,
-                leave_name,
-                description,
-                annual_entitlement,
-                is_paid,
-                leave_type_id,
-            ),
-        )
-
-        connection.commit()
-
-    except Exception:
-
-        connection.rollback()
-        raise
-
-    finally:
-
-        cursor.close()
-        connection.close()
+def update_leave_type(leave_type_id, leave_code, leave_name, description, annual_entitlement, is_paid):
+    identity = identifier(leave_type_id, 'Leave type')
+    data = type_values(dict(leave_code=leave_code, leave_name=leave_name, description=description, annual_entitlement=annual_entitlement, is_paid=is_paid))
+    with _transaction() as cursor:
+        cursor.execute('SELECT leave_type_id FROM leave_types WHERE leave_type_id=%s FOR UPDATE', (identity,))
+        if cursor.fetchone() is None:
+            raise LeaveError('Leave type not found.', 404)
+        cursor.execute('UPDATE leave_types SET leave_code=%s,leave_name=%s,description=%s,annual_entitlement=%s,is_paid=%s WHERE leave_type_id=%s', (*data.values(), identity))
 
 
 # ==========================================================
 # CHANGE LEAVE TYPE STATUS
 # ==========================================================
 
-def set_leave_type_active_status(
-    leave_type_id,
-    is_active,
-):
-
-    connection = get_connection()
-
-    cursor = connection.cursor()
-
-    try:
-
-        cursor.execute(
-            """
-            UPDATE leave_types
-            SET is_active = %s
-            WHERE leave_type_id = %s
-            """,
-            (
-                is_active,
-                leave_type_id,
-            ),
-        )
-
-        connection.commit()
-
-    except Exception:
-
-        connection.rollback()
-        raise
-
-    finally:
-
-        cursor.close()
-        connection.close()
+def set_leave_type_active_status(leave_type_id, is_active):
+    identity = identifier(leave_type_id, 'Leave type')
+    if type(is_active) is not bool:
+        raise LeaveError('Invalid leave type status.')
+    with _transaction() as cursor:
+        cursor.execute('SELECT leave_type_id FROM leave_types WHERE leave_type_id=%s FOR UPDATE', (identity,))
+        if cursor.fetchone() is None:
+            raise LeaveError('Leave type not found.', 404)
+        cursor.execute('UPDATE leave_types SET is_active=%s WHERE leave_type_id=%s', (is_active, identity))
 
 
 # ==========================================================
@@ -382,6 +274,7 @@ def get_leave_request_by_id(
     leave_request_id,
 ):
 
+    leave_request_id = identifier(leave_request_id, 'Leave request')
     connection = get_connection()
 
     cursor = connection.cursor(
@@ -513,604 +406,7 @@ def has_overlapping_leave_request(
 
 
 # ==========================================================
-# CREATE LEAVE REQUEST
-# ==========================================================
-
-def create_leave_request(
-    employee_id,
-    leave_type_id,
-    start_date,
-    end_date,
-    total_days,
-    reason,
-    requested_by,
-):
-
-    connection = get_connection()
-
-    cursor = connection.cursor()
-
-    try:
-
-        # ==================================================
-        # TEMPORARY UNIQUE NUMBER
-        # ==========================================================
-
-        temporary_number = (
-            f"TMP-{uuid.uuid4().hex}"
-        )
-
-
-        cursor.execute(
-            """
-            INSERT INTO leave_requests (
-                request_number,
-                employee_id,
-                leave_type_id,
-                start_date,
-                end_date,
-                total_days,
-                reason,
-                status,
-                requested_by
-            )
-            VALUES (
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                %s,
-                'PENDING',
-                %s
-            )
-            """,
-            (
-                temporary_number,
-                employee_id,
-                leave_type_id,
-                start_date,
-                end_date,
-                total_days,
-                reason,
-                requested_by,
-            ),
-        )
-
-
-        leave_request_id = (
-            cursor.lastrowid
-        )
-
-
-        # ==================================================
-        # FINAL REQUEST NUMBER
-        # ==========================================================
-
-        request_number = (
-            f"LR-{leave_request_id:06d}"
-        )
-
-
-        cursor.execute(
-            """
-            UPDATE leave_requests
-
-            SET request_number = %s
-
-            WHERE leave_request_id = %s
-            """,
-            (
-                request_number,
-                leave_request_id,
-            ),
-        )
-
-
-        connection.commit()
-
-
-        return (
-            leave_request_id,
-            request_number,
-        )
-
-
-    except Exception:
-
-        connection.rollback()
-        raise
-
-    finally:
-
-        cursor.close()
-        connection.close()
-
-# ==========================================================
-# LEAVE MANAGEMENT - APPROVE REQUEST
-#
-# Approval also creates ON_LEAVE attendance records.
-# Existing non-leave attendance is never overwritten.
-# ==========================================================
-
-def approve_leave_request(
-    leave_request_id,
-    reviewed_by,
-):
-
-    connection = get_connection()
-
-    cursor = connection.cursor(
-        dictionary=True
-    )
-
-    try:
-
-        connection.start_transaction()
-
-
-        # ==================================================
-        # LOCK AND GET REQUEST
-        # ==========================================================
-
-        cursor.execute(
-            """
-            SELECT
-                lr.leave_request_id,
-                lr.request_number,
-                lr.employee_id,
-                lr.start_date,
-                lr.end_date,
-                lr.status,
-
-                lt.leave_name
-
-            FROM leave_requests lr
-
-            INNER JOIN leave_types lt
-                ON lr.leave_type_id = lt.leave_type_id
-
-            WHERE lr.leave_request_id = %s
-
-            FOR UPDATE
-            """,
-            (
-                leave_request_id,
-            ),
-        )
-
-
-        leave_request = (
-            cursor.fetchone()
-        )
-
-
-        if not leave_request:
-
-            raise ValueError(
-                "Leave request not found."
-            )
-
-
-        if (
-            leave_request["status"]
-            != "PENDING"
-        ):
-
-            raise ValueError(
-                (
-                    "Only pending leave requests "
-                    "can be approved."
-                )
-            )
-
-
-        # ==================================================
-        # CHECK ALL ATTENDANCE DATES FIRST
-        #
-        # We validate everything before writing anything.
-        # ==========================================================
-
-        current_date = (
-            leave_request["start_date"]
-        )
-
-        end_date = (
-            leave_request["end_date"]
-        )
-
-
-        while current_date <= end_date:
-
-            cursor.execute(
-                """
-                SELECT
-                    attendance_id,
-                    status
-
-                FROM attendance_records
-
-                WHERE
-                    employee_id = %s
-                    AND attendance_date = %s
-
-                FOR UPDATE
-                """,
-                (
-                    leave_request[
-                        "employee_id"
-                    ],
-                    current_date,
-                ),
-            )
-
-
-            attendance = (
-                cursor.fetchone()
-            )
-
-
-            if (
-                attendance
-                and attendance["status"]
-                != "ON_LEAVE"
-            ):
-
-                raise ValueError(
-                    (
-                        "Approval blocked. The employee "
-                        "already has an attendance record "
-                        f"for {current_date} with status "
-                        f"{attendance['status']}."
-                    )
-                )
-
-
-            current_date += timedelta(
-                days=1
-            )
-
-
-        # ==================================================
-        # CREATE ON_LEAVE ATTENDANCE
-        # ==========================================================
-
-        current_date = (
-            leave_request["start_date"]
-        )
-
-
-        while current_date <= end_date:
-
-            cursor.execute(
-                """
-                SELECT
-                    attendance_id
-
-                FROM attendance_records
-
-                WHERE
-                    employee_id = %s
-                    AND attendance_date = %s
-
-                FOR UPDATE
-                """,
-                (
-                    leave_request[
-                        "employee_id"
-                    ],
-                    current_date,
-                ),
-            )
-
-
-            attendance = (
-                cursor.fetchone()
-            )
-
-
-            # ==============================================
-            # ONLY CREATE IF NONE EXISTS
-            # ==============================================
-
-            if not attendance:
-
-                notes = (
-                    f"Approved leave "
-                    f"{leave_request['request_number']} "
-                    f"- {leave_request['leave_name']}"
-                )
-
-
-                cursor.execute(
-                    """
-                    INSERT INTO attendance_records (
-                        employee_id,
-                        attendance_date,
-                        time_in,
-                        time_out,
-                        status,
-                        notes,
-                        created_by
-                    )
-                    VALUES (
-                        %s,
-                        %s,
-                        NULL,
-                        NULL,
-                        'ON_LEAVE',
-                        %s,
-                        %s
-                    )
-                    """,
-                    (
-                        leave_request[
-                            "employee_id"
-                        ],
-                        current_date,
-                        notes,
-                        reviewed_by,
-                    ),
-                )
-
-
-            current_date += timedelta(
-                days=1
-            )
-
-
-        # ==================================================
-        # APPROVE LEAVE REQUEST
-        # ==========================================================
-
-        cursor.execute(
-            """
-            UPDATE leave_requests
-
-            SET
-                status = 'APPROVED',
-                reviewed_by = %s,
-                reviewed_at = NOW(),
-                rejection_reason = NULL
-
-            WHERE leave_request_id = %s
-            """,
-            (
-                reviewed_by,
-                leave_request_id,
-            ),
-        )
-
-
-        connection.commit()
-
-
-    except Exception:
-
-        connection.rollback()
-        raise
-
-
-    finally:
-
-        cursor.close()
-        connection.close()
-
-
-# ==========================================================
-# LEAVE MANAGEMENT - REJECT REQUEST
-# ==========================================================
-
-def reject_leave_request(
-    leave_request_id,
-    reviewed_by,
-    rejection_reason,
-):
-
-    connection = get_connection()
-
-    cursor = connection.cursor(
-        dictionary=True
-    )
-
-    try:
-
-        connection.start_transaction()
-
-
-        # ==================================================
-        # LOCK REQUEST
-        # ==========================================================
-
-        cursor.execute(
-            """
-            SELECT
-                leave_request_id,
-                status
-
-            FROM leave_requests
-
-            WHERE leave_request_id = %s
-
-            FOR UPDATE
-            """,
-            (
-                leave_request_id,
-            ),
-        )
-
-
-        leave_request = (
-            cursor.fetchone()
-        )
-
-
-        if not leave_request:
-
-            raise ValueError(
-                "Leave request not found."
-            )
-
-
-        if (
-            leave_request["status"]
-            != "PENDING"
-        ):
-
-            raise ValueError(
-                (
-                    "Only pending leave requests "
-                    "can be rejected."
-                )
-            )
-
-
-        # ==================================================
-        # DATABASE UPDATE
-        # ==========================================================
-
-        cursor.execute(
-            """
-            UPDATE leave_requests
-
-            SET
-                status = 'REJECTED',
-                reviewed_by = %s,
-                reviewed_at = NOW(),
-                rejection_reason = %s
-
-            WHERE leave_request_id = %s
-            """,
-            (
-                reviewed_by,
-                rejection_reason,
-                leave_request_id,
-            ),
-        )
-
-
-        connection.commit()
-
-
-    except Exception:
-
-        connection.rollback()
-        raise
-
-
-    finally:
-
-        cursor.close()
-        connection.close()
-
-
-# ==========================================================
-# LEAVE MANAGEMENT - CANCEL REQUEST
-# ==========================================================
-
-def cancel_leave_request(
-    leave_request_id,
-):
-
-    connection = get_connection()
-
-    cursor = connection.cursor(
-        dictionary=True
-    )
-
-    try:
-
-        connection.start_transaction()
-
-
-        # ==================================================
-        # LOCK REQUEST
-        # ==========================================================
-
-        cursor.execute(
-            """
-            SELECT
-                leave_request_id,
-                status
-
-            FROM leave_requests
-
-            WHERE leave_request_id = %s
-
-            FOR UPDATE
-            """,
-            (
-                leave_request_id,
-            ),
-        )
-
-
-        leave_request = (
-            cursor.fetchone()
-        )
-
-
-        if not leave_request:
-
-            raise ValueError(
-                "Leave request not found."
-            )
-
-
-        if (
-            leave_request["status"]
-            != "PENDING"
-        ):
-
-            raise ValueError(
-                (
-                    "Only pending leave requests "
-                    "can be cancelled."
-                )
-            )
-
-
-        # ==================================================
-        # DATABASE UPDATE
-        # ==========================================================
-
-        cursor.execute(
-            """
-            UPDATE leave_requests
-
-            SET status = 'CANCELLED'
-
-            WHERE leave_request_id = %s
-            """,
-            (
-                leave_request_id,
-            ),
-        )
-
-
-        connection.commit()
-
-
-    except Exception:
-
-        connection.rollback()
-        raise
-
-
-    finally:
-
-        cursor.close()
-        connection.close()
-
-# ==========================================================
-# LEAVE BALANCES - EMPLOYEE / YEAR
-#
-# Balances are calculated from:
-#
-# Leave Type Annual Entitlement
-# minus
-# Approved Leave Requests
+# LEAVE BALANCES - EXISTING EMPLOYEE / YEAR CALCULATION
 # ==========================================================
 
 def get_employee_leave_balances(
@@ -1267,472 +563,7 @@ def get_employee_leave_balances(
         connection.close()
 
 # ==========================================================
-# LEAVE MANAGEMENT - APPROVE REQUEST
-#
-# Approval:
-#
-# 1. Validates leave balance
-# 2. Protects existing attendance records
-# 3. Creates ON_LEAVE attendance
-# 4. Marks request APPROVED
-#
-# All inside one transaction.
-# ==========================================================
-
-def approve_leave_request(
-    leave_request_id,
-    reviewed_by,
-):
-
-    connection = get_connection()
-
-    cursor = connection.cursor(
-        dictionary=True
-    )
-
-    try:
-
-        connection.start_transaction()
-
-
-        # ==================================================
-        # LOCK AND GET REQUEST
-        # ==========================================================
-
-        cursor.execute(
-            """
-            SELECT
-                lr.leave_request_id,
-                lr.request_number,
-                lr.employee_id,
-                lr.leave_type_id,
-                lr.start_date,
-                lr.end_date,
-                lr.total_days,
-                lr.status,
-
-                lt.leave_name,
-                lt.annual_entitlement
-
-            FROM leave_requests lr
-
-            INNER JOIN leave_types lt
-                ON lr.leave_type_id = lt.leave_type_id
-
-            WHERE lr.leave_request_id = %s
-
-            FOR UPDATE
-            """,
-            (
-                leave_request_id,
-            ),
-        )
-
-
-        leave_request = (
-            cursor.fetchone()
-        )
-
-
-        if not leave_request:
-
-            raise ValueError(
-                "Leave request not found."
-            )
-
-
-        if (
-            leave_request["status"]
-            != "PENDING"
-        ):
-
-            raise ValueError(
-                (
-                    "Only pending leave requests "
-                    "can be approved."
-                )
-            )
-
-
-        # ==================================================
-        # LEAVE BALANCE PROTECTION
-        #
-        # NULL entitlement means the leave type currently
-        # has no fixed yearly limit.
-        # ==========================================================
-
-        annual_entitlement = (
-            leave_request[
-                "annual_entitlement"
-            ]
-        )
-
-
-        if annual_entitlement is not None:
-
-            request_start = (
-                leave_request[
-                    "start_date"
-                ]
-            )
-
-            request_end = (
-                leave_request[
-                    "end_date"
-                ]
-            )
-
-
-            # ==============================================
-            # CHECK EVERY CALENDAR YEAR TOUCHED BY REQUEST
-            # ==============================================
-
-            current_year = (
-                request_start.year
-            )
-
-
-            while (
-                current_year
-                <= request_end.year
-            ):
-
-                year_start = date(
-                    current_year,
-                    1,
-                    1,
-                )
-
-                year_end = date(
-                    current_year,
-                    12,
-                    31,
-                )
-
-
-                # ==========================================
-                # REQUESTED DAYS INSIDE THIS YEAR
-                # ==========================================
-
-                request_year_start = max(
-                    request_start,
-                    year_start,
-                )
-
-                request_year_end = min(
-                    request_end,
-                    year_end,
-                )
-
-
-                requested_days = (
-                    request_year_end
-                    - request_year_start
-                ).days + 1
-
-
-                # ==========================================
-                # LOCK EXISTING APPROVED REQUESTS
-                #
-                # This prevents two approvals from
-                # consuming the same remaining balance
-                # at the same time.
-                # ==========================================
-
-                cursor.execute(
-                    """
-                    SELECT
-                        leave_request_id,
-                        start_date,
-                        end_date
-
-                    FROM leave_requests
-
-                    WHERE
-                        employee_id = %s
-
-                        AND leave_type_id = %s
-
-                        AND status = 'APPROVED'
-
-                        AND leave_request_id <> %s
-
-                        AND start_date <= %s
-
-                        AND end_date >= %s
-
-                    FOR UPDATE
-                    """,
-                    (
-                        leave_request[
-                            "employee_id"
-                        ],
-                        leave_request[
-                            "leave_type_id"
-                        ],
-                        leave_request_id,
-                        year_end,
-                        year_start,
-                    ),
-                )
-
-
-                approved_requests = (
-                    cursor.fetchall()
-                )
-
-
-                # ==========================================
-                # CALCULATE USED DAYS
-                # ==========================================
-
-                used_days = 0
-
-
-                for approved in approved_requests:
-
-                    approved_start = max(
-                        approved[
-                            "start_date"
-                        ],
-                        year_start,
-                    )
-
-                    approved_end = min(
-                        approved[
-                            "end_date"
-                        ],
-                        year_end,
-                    )
-
-
-                    used_days += (
-                        approved_end
-                        - approved_start
-                    ).days + 1
-
-
-                remaining_days = (
-                    annual_entitlement
-                    - used_days
-                )
-
-
-                # ==========================================
-                # INSUFFICIENT BALANCE
-                # ==========================================
-
-                if (
-                    requested_days
-                    > remaining_days
-                ):
-
-                    raise ValueError(
-                        (
-                            f"Insufficient "
-                            f"{leave_request['leave_name']} "
-                            f"balance for {current_year}. "
-                            f"Entitlement: "
-                            f"{annual_entitlement} day(s), "
-                            f"Used: {used_days} day(s), "
-                            f"Remaining: "
-                            f"{remaining_days} day(s), "
-                            f"Requested: "
-                            f"{requested_days} day(s)."
-                        )
-                    )
-
-
-                current_year += 1
-
-
-        # ==================================================
-        # CHECK ATTENDANCE CONFLICTS
-        # ==========================================================
-
-        current_date = (
-            leave_request["start_date"]
-        )
-
-        end_date = (
-            leave_request["end_date"]
-        )
-
-
-        while current_date <= end_date:
-
-            cursor.execute(
-                """
-                SELECT
-                    attendance_id,
-                    status
-
-                FROM attendance_records
-
-                WHERE
-                    employee_id = %s
-                    AND attendance_date = %s
-
-                FOR UPDATE
-                """,
-                (
-                    leave_request[
-                        "employee_id"
-                    ],
-                    current_date,
-                ),
-            )
-
-
-            attendance = (
-                cursor.fetchone()
-            )
-
-
-            if (
-                attendance
-                and attendance["status"]
-                != "ON_LEAVE"
-            ):
-
-                raise ValueError(
-                    (
-                        "Approval blocked. The employee "
-                        "already has an attendance record "
-                        f"for {current_date} with status "
-                        f"{attendance['status']}."
-                    )
-                )
-
-
-            current_date += timedelta(
-                days=1
-            )
-
-
-        # ==================================================
-        # CREATE ON_LEAVE ATTENDANCE RECORDS
-        # ==========================================================
-
-        current_date = (
-            leave_request["start_date"]
-        )
-
-
-        while current_date <= end_date:
-
-            cursor.execute(
-                """
-                SELECT
-                    attendance_id
-
-                FROM attendance_records
-
-                WHERE
-                    employee_id = %s
-                    AND attendance_date = %s
-
-                FOR UPDATE
-                """,
-                (
-                    leave_request[
-                        "employee_id"
-                    ],
-                    current_date,
-                ),
-            )
-
-
-            attendance = (
-                cursor.fetchone()
-            )
-
-
-            if not attendance:
-
-                notes = (
-                    f"Approved leave "
-                    f"{leave_request['request_number']} "
-                    f"- {leave_request['leave_name']}"
-                )
-
-
-                cursor.execute(
-                    """
-                    INSERT INTO attendance_records (
-                        employee_id,
-                        attendance_date,
-                        time_in,
-                        time_out,
-                        status,
-                        notes,
-                        created_by
-                    )
-                    VALUES (
-                        %s,
-                        %s,
-                        NULL,
-                        NULL,
-                        'ON_LEAVE',
-                        %s,
-                        %s
-                    )
-                    """,
-                    (
-                        leave_request[
-                            "employee_id"
-                        ],
-                        current_date,
-                        notes,
-                        reviewed_by,
-                    ),
-                )
-
-
-            current_date += timedelta(
-                days=1
-            )
-
-
-        # ==================================================
-        # APPROVE REQUEST
-        # ==========================================================
-
-        cursor.execute(
-            """
-            UPDATE leave_requests
-
-            SET
-                status = 'APPROVED',
-                reviewed_by = %s,
-                reviewed_at = NOW(),
-                rejection_reason = NULL
-
-            WHERE leave_request_id = %s
-            """,
-            (
-                reviewed_by,
-                leave_request_id,
-            ),
-        )
-
-
-        connection.commit()
-
-
-    except Exception:
-
-        connection.rollback()
-        raise
-
-
-    finally:
-
-        cursor.close()
-        connection.close()
-
-# ==========================================================
-# LEAVE REPORTS - SUMMARY
+# LEAVE REPORTS - EXISTING SUMMARY
 # ==========================================================
 
 def get_leave_report_summary(
@@ -2205,3 +1036,200 @@ def get_leave_report_records(
 
         cursor.close()
         connection.close()
+
+@contextmanager
+def _transaction(attendance=False):
+    connection = get_connection()  # Existing global schema admission remains active.
+    cursor = None
+    try:
+        connection.start_transaction()
+        cursor = connection.cursor(dictionary=True)
+        _check_storage(cursor, attendance)
+        yield cursor
+        connection.commit()
+    except Error as error:
+        _rollback(connection)
+        if error.errno == 1062:
+            raise LeaveError('A conflicting record already exists. Reload and verify before retrying.', 409) from None
+        if error.errno == 1452:
+            raise LeaveError('A referenced employee, leave type or acting user is no longer available.', 409) from None
+        if error.errno in (1205, 1213):
+            raise LeaveError('Leave records were busy. Reload and verify before retrying.', 409) from None
+        raise LeaveError('Could not confirm the save. Reload and verify before retrying.', 503) from error
+    except Exception:
+        _rollback(connection)
+        raise
+    finally:
+        failed = False
+        try:
+            if cursor is not None:
+                cursor.close()
+        except Error:
+            failed = True
+        try:
+            connection.close()
+        except Error:
+            failed = True
+        if failed:
+            raise LeaveError('Could not confirm the save. Reload and verify before retrying.', 503) from None
+
+
+def _rollback(connection):
+    try:
+        connection.rollback()
+    except Error:
+        pass  # Lost COMMIT acknowledgment is uncertain, never automatically replayed.
+
+
+def _check_storage(cursor, attendance=False):
+    tables = ['employees', 'leave_types', 'leave_requests']
+    if attendance:
+        tables.append('attendance_records')
+    cursor.execute('SELECT TABLE_NAME, ENGINE FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN (' + ','.join(['%s'] * len(tables)) + ')', tuple(tables))
+    engines = {row['TABLE_NAME']: row['ENGINE'] for row in cursor.fetchall()}
+    if any(engines.get(table) != 'InnoDB' for table in tables):
+        logging.getLogger(__name__).error('Leave storage incompatible: required InnoDB tables missing or unsupported.')
+        raise LeaveError('Leave is temporarily unavailable. Contact an administrator.', 503)
+    if attendance:
+        from attendance_repository import _check_storage as check_attendance_storage
+        from attendance_validation import AttendanceError
+        try:
+            check_attendance_storage(cursor)
+        except AttendanceError:
+            raise LeaveError('Leave is temporarily unavailable. Contact an administrator.', 503) from None
+
+
+def _lock_employee(cursor, employee_id):
+    cursor.execute('SELECT employee_id FROM employees WHERE employee_id=%s FOR UPDATE', (employee_id,))
+    if cursor.fetchone() is None:
+        raise LeaveError('Employee not found.')
+
+
+def create_leave_request(employee_id, leave_type_id, start_date, end_date, total_days, reason, requested_by):
+    data = request_values(dict(employee_id=employee_id, leave_type_id=leave_type_id, start_date=start_date, end_date=end_date, reason=reason))
+    if isinstance(total_days, bool) or total_days != data['total_days']:
+        raise LeaveError('Total days must match the inclusive calendar-date range.')
+    actor = identifier(requested_by, 'User')
+    with _transaction() as cursor:
+        # Every cooperating create/approval for this employee takes this lock
+        # first, including when no overlapping rows exist yet.
+        _lock_employee(cursor, data['employee_id'])
+        cursor.execute('SELECT is_active FROM leave_types WHERE leave_type_id=%s FOR SHARE', (data['leave_type_id'],))
+        leave_type = cursor.fetchone()
+        if not leave_type or not leave_type['is_active']:
+            raise LeaveError('Selected leave type is invalid or inactive.')
+        cursor.execute("SELECT leave_request_id FROM leave_requests WHERE employee_id=%s AND status IN ('PENDING','APPROVED') AND start_date<=%s AND end_date>=%s FOR UPDATE", (data['employee_id'], data['end_date'], data['start_date']))
+        if cursor.fetchall():
+            raise LeaveError('This employee already has a pending or approved leave request that overlaps the selected dates.', 409)
+        cursor.execute("INSERT INTO leave_requests(request_number,employee_id,leave_type_id,start_date,end_date,total_days,reason,status,requested_by) VALUES(%s,%s,%s,%s,%s,%s,%s,'PENDING',%s)", (f'TMP-{uuid.uuid4().hex}', *data.values(), actor))
+        identity = cursor.lastrowid
+        number = f'LR-{identity:06d}'
+        cursor.execute('UPDATE leave_requests SET request_number=%s WHERE leave_request_id=%s', (number, identity))
+    return identity, number
+
+
+def _pending(cursor, identity):
+    cursor.execute('SELECT * FROM leave_requests WHERE leave_request_id=%s FOR UPDATE', (identity,))
+    row = cursor.fetchone()
+    if not row:
+        raise LeaveError('Leave request not found.', 404)
+    if row['status'] != 'PENDING':
+        raise LeaveError('Only pending leave requests can be changed.', 409)
+    return row
+
+
+def approve_leave_request(leave_request_id, reviewed_by):
+    """The single effective approval: existing yearly balance and Attendance rules."""
+    identity, actor = identifier(leave_request_id, 'Leave request'), identifier(reviewed_by, 'User')
+    with _transaction(attendance=True) as cursor:
+        cursor.execute('SELECT employee_id FROM leave_requests WHERE leave_request_id=%s', (identity,))
+        reference = cursor.fetchone()
+        if not reference:
+            raise LeaveError('Leave request not found.', 404)
+        _lock_employee(cursor, reference['employee_id'])
+        # Lock the referenced type/request in this transaction. The Employee
+        # lock serializes cooperating creates/approvals; re-read pending state
+        # to catch concurrent cancellation/rejection.
+        cursor.execute('SELECT lt.* FROM leave_types lt JOIN leave_requests lr ON lr.leave_type_id=lt.leave_type_id WHERE lr.leave_request_id=%s FOR UPDATE', (identity,))
+        leave_type = cursor.fetchone()
+        row = _pending(cursor, identity)
+        if row['employee_id'] != reference['employee_id'] or not leave_type or row['leave_type_id'] != leave_type['leave_type_id']:
+            raise LeaveError('Leave references changed. Reload before retrying.', 409)
+        start, end = row['start_date'], row['end_date']
+        if (type(start) is not date or type(end) is not date or start.year < 1000
+                or end.year < 1000 or end < start or (end - start).days + 1 > 999):
+            raise LeaveError('Stored leave dates exceed valid storage limits. Contact an administrator.', 409)
+        annual = leave_type['annual_entitlement']
+        if annual is not None:
+            for year in range(start.year, end.year + 1):
+                lower, upper = date(year, 1, 1), date(year, 12, 31)
+                requested = (min(end, upper) - max(start, lower)).days + 1
+                cursor.execute("SELECT start_date,end_date FROM leave_requests WHERE employee_id=%s AND leave_type_id=%s AND status='APPROVED' AND leave_request_id<>%s AND start_date<=%s AND end_date>=%s FOR UPDATE", (row['employee_id'], row['leave_type_id'], identity, upper, lower))
+                used = sum((min(r['end_date'], upper) - max(r['start_date'], lower)).days + 1 for r in cursor.fetchall())
+                if requested > annual - used:
+                    raise LeaveError(f"Insufficient {leave_type['leave_name']} balance for {year}. Entitlement: {annual} day(s), Used: {used} day(s), Remaining: {annual-used} day(s), Requested: {requested} day(s).", 409)
+        # Inclusive offsets avoid incrementing beyond MySQL's maximum DATE.
+        missing = []
+        for offset in range((end - start).days + 1):
+            day = start + timedelta(days=offset)
+            cursor.execute('SELECT attendance_id,status FROM attendance_records WHERE employee_id=%s AND attendance_date=%s FOR UPDATE', (row['employee_id'], day))
+            attendance = cursor.fetchone()
+            if attendance and attendance['status'] != 'ON_LEAVE':
+                raise LeaveError(f"Approval blocked. The employee already has an attendance record for {day} with status {attendance['status']}.", 409)
+            if not attendance:
+                missing.append(day)
+        for day in missing:
+            cursor.execute("INSERT INTO attendance_records(employee_id,attendance_date,time_in,time_out,status,notes,created_by) VALUES(%s,%s,NULL,NULL,'ON_LEAVE',%s,%s)", (row['employee_id'], day, f"Approved leave {row['request_number']} - {leave_type['leave_name']}", actor))
+        cursor.execute("UPDATE leave_requests SET status='APPROVED',reviewed_by=%s,reviewed_at=NOW(),rejection_reason=NULL WHERE leave_request_id=%s", (actor, identity))
+
+
+def reject_leave_request(leave_request_id, reviewed_by, rejection_reason):
+    identity, actor = identifier(leave_request_id, 'Leave request'), identifier(reviewed_by, 'User')
+    reason = text(rejection_reason, 'Rejection reason', 500, True)
+    with _transaction() as cursor:
+        _pending(cursor, identity)
+        cursor.execute("UPDATE leave_requests SET status='REJECTED',reviewed_by=%s,reviewed_at=NOW(),rejection_reason=%s WHERE leave_request_id=%s", (actor, reason, identity))
+
+
+def cancel_leave_request(leave_request_id):
+    identity = identifier(leave_request_id, 'Leave request')
+    with _transaction() as cursor:
+        _pending(cursor, identity)
+        cursor.execute("UPDATE leave_requests SET status='CANCELLED' WHERE leave_request_id=%s", (identity,))
+
+
+def get_leave_request_page(filters):
+    selected = listing_values(filters)
+    where, params = ['1=1'], []
+    if selected['search']:
+        literal = '%' + selected['search'].replace('!', '!!').replace('%', '!%').replace('_', '!_') + '%'
+        columns = ('lr.request_number','e.employee_number','e.first_name','e.last_name',"CONCAT(e.first_name,' ',e.last_name)",'lt.leave_name')
+        where.append('(' + ' OR '.join(column + " LIKE %s ESCAPE '!'" for column in columns) + ')')
+        params.extend([literal] * len(columns))
+    for key, column in (('status','lr.status'),('leave_type_id','lr.leave_type_id'),('department_id','e.department_id')):
+        if selected[key]:
+            where.append(column + '=%s'); params.append(selected[key])
+    for key, comparison in (('date_from','lr.end_date>=%s'),('date_to','lr.start_date<=%s')):
+        if selected[key]:
+            where.append(comparison); params.append(selected[key])
+    joins = ' FROM leave_requests lr JOIN employees e ON e.employee_id=lr.employee_id JOIN leave_types lt ON lt.leave_type_id=lr.leave_type_id WHERE ' + ' AND '.join(where)
+    connection = get_connection()
+    cursor = None
+    try:
+        connection.start_transaction(isolation_level='REPEATABLE READ', readonly=True, consistent_snapshot=True)
+        cursor = connection.cursor(dictionary=True)
+        _check_storage(cursor)
+        cursor.execute('SELECT COUNT(*) AS total,' + ','.join("COALESCE(SUM(lr.status='" + status + "'),0) AS " + status.lower() for status in ('PENDING','APPROVED','REJECTED','CANCELLED')) + joins, tuple(params))
+        summary = cursor.fetchone()
+        pages = max(1, (summary['total'] + selected['page_size'] - 1) // selected['page_size'])
+        selected['page'] = min(selected['page'], pages)
+        cursor.execute('SELECT lr.*,e.employee_number,e.first_name,e.last_name,lt.leave_name' + joins + ' ORDER BY lr.created_at DESC,lr.leave_request_id DESC LIMIT %s OFFSET %s', (*params, selected['page_size'], (selected['page']-1)*selected['page_size']))
+        return dict(records=cursor.fetchall(), summary=summary, pages=pages, **selected)
+    finally:
+        try:
+            connection.rollback()
+        finally:
+            try:
+                if cursor is not None: cursor.close()
+            finally:
+                connection.close()

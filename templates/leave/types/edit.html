@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
 {% block title %}
-Add Leave Type
+Edit Leave Type
 {% endblock %}
 
 
 {% block content %}
 
 <h2 class="mb-4">
-    Add Leave Type
+    Edit Leave Type
 </h2>
 
 
@@ -28,6 +28,7 @@ Add Leave Type
                 <input
                     type="text"
                     name="leave_code"
+                    value="{{ form.leave_code if form.leave_code is not none else '' }}"
                     class="form-control"
                     maxlength="30"
                     required
@@ -45,6 +46,7 @@ Add Leave Type
                 <input
                     type="text"
                     name="leave_name"
+                    value="{{ form.leave_name if form.leave_name is not none else '' }}"
                     class="form-control"
                     maxlength="100"
                     required
@@ -62,6 +64,7 @@ Add Leave Type
                 <input
                     type="number"
                     name="annual_entitlement"
+                    value="{{ form.annual_entitlement if form.annual_entitlement is not none else '' }}"
                     class="form-control"
                     min="0"
                     step="0.5"
@@ -85,7 +88,7 @@ Add Leave Type
                     class="form-control"
                     maxlength="255"
                     rows="3"
-                ></textarea>
+                >{{ form.description or '' }}</textarea>
 
             </div>
 
@@ -98,7 +101,7 @@ Add Leave Type
                     value="1"
                     class="form-check-input"
                     id="is_paid"
-                    checked
+                    {% if form.is_paid %}checked{% endif %}
                 >
 
                 <label
@@ -116,7 +119,7 @@ Add Leave Type
                 <button
                     class="btn btn-primary"
                 >
-                    Save Leave Type
+                    Update Leave Type
                 </button>
 
                 <a

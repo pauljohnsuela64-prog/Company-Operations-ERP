@@ -202,7 +202,7 @@ class BusinessAuditTests(unittest.TestCase):
         row = {
             "status": before_status, "period_number": "PAY-0042", "request_number": "LV-0042",
             "start_date": date(2026, 1, 1), "end_date": date(2026, 1, 1),
-            "annual_entitlement": None, "employee_id": 9, "leave_name": "Annual",
+            "annual_entitlement": None, "employee_id": 9, "leave_type_id": 1, "leave_name": "Annual",
             "amount": 10, "department_id": None, "expense_date": date(2026, 1, 1),
         }
 
@@ -210,7 +210,7 @@ class BusinessAuditTests(unittest.TestCase):
             if case.name == "purchase_submit":
                 cursor.fetchone.side_effect = [("DRAFT",), (1,)]
             elif case.name == "leave_approve":
-                cursor.fetchone.side_effect = [row, None, None]
+                cursor.fetchone.side_effect = [row, row, row, row, None]  # Employee lookup/lock, type, pending request, attendance.
             elif case.name == "payroll_paid":
                 cursor.fetchone.side_effect = [row, {"total_entries": 1, "approved_entries": 1}]
             else:
@@ -218,6 +218,9 @@ class BusinessAuditTests(unittest.TestCase):
                 cursor.fetchone.return_value = row
 
         self.stack.enter_context(patch.object(repository, "get_connection", return_value=business))
+        if case.module == "LEAVE":
+            # Capability checks are exercised against real disposable MySQL.
+            self.stack.enter_context(patch.object(repository, "_check_storage"))
         if case.module == "PAYROLL":
             self.stack.enter_context(patch.object(repository, "_validate_payroll_ready", return_value={"total_entries": 1}))
         self.operation.side_effect = getattr(repository, case.operation)
@@ -271,7 +274,7 @@ class BusinessAuditTests(unittest.TestCase):
             cursor.rowcount = 0
             cursor.fetchone.side_effect = None
             cursor.fetchone.return_value = ("COMPLETED",) if case.name == "purchase_submit" else {**row, "status": "COMPLETED"}
-            self.assertEqual(self.client.post(case.path, data=self.form).status_code, 302)
+            self.assertEqual(self.client.post(case.path, data=self.form).status_code, 409 if case.module == "LEAVE" else 302)
             self.insert.assert_not_called()
             audit.cursor.assert_not_called()
 
@@ -308,7 +311,7 @@ class BusinessAuditTests(unittest.TestCase):
                     case = cases[name]
                     self.prepare(case)
                     self.form.update(overrides)
-                    self.assertIn(self.client.post(case.path, data=self.form).status_code, (200, 302))
+                    self.assertIn(self.client.post(case.path, data=self.form).status_code, (400,) if name == "leave_reject" else (200, 302))
                     self.operation.assert_not_called()
                     self.insert.assert_not_called()
                 finally:

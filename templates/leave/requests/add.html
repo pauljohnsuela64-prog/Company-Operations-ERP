@@ -36,10 +36,11 @@ New Leave Request
                         Select Employee
                     </option>
 
+                    {% if unavailable_employee %}<option value="{{ form.employee_id }}" selected>Unavailable Employee ({{ form.employee_id }})</option>{% endif %}
                     {% for employee in employees %}
 
                         <option
-                            value="{{ employee.employee_id }}"
+                            value="{{ employee.employee_id }}" {% if form.employee_id == employee.employee_id|string %}selected{% endif %}
                         >
                             {{ employee.employee_number }}
                             -
@@ -70,10 +71,11 @@ New Leave Request
                         Select Leave Type
                     </option>
 
+                    {% if unavailable_type %}<option value="{{ form.leave_type_id }}" selected>Unavailable Leave type ({{ form.leave_type_id }})</option>{% endif %}
                     {% for leave_type in leave_types %}
 
                         <option
-                            value="{{ leave_type.leave_type_id }}"
+                            value="{{ leave_type.leave_type_id }}" {% if form.leave_type_id == leave_type.leave_type_id|string %}selected{% endif %}
                         >
                             {{ leave_type.leave_name }}
                         </option>
@@ -96,6 +98,7 @@ New Leave Request
                     <input
                         type="date"
                         name="start_date"
+                        value="{{ form.start_date }}"
                         class="form-control"
                         required
                     >
@@ -112,6 +115,7 @@ New Leave Request
                     <input
                         type="date"
                         name="end_date"
+                        value="{{ form.end_date }}"
                         class="form-control"
                         required
                     >
@@ -133,7 +137,7 @@ New Leave Request
                     maxlength="500"
                     rows="4"
                     required
-                ></textarea>
+                >{{ form.reason }}</textarea>
 
             </div>
 
