@@ -6,13 +6,14 @@ Requires the local Windows MySQL server binary, overridable with --mysqld.
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from datetime import date, datetime, timedelta
 import importlib
 import os
 from pathlib import Path
 import re
 import socket
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -229,46 +230,147 @@ def run(port, data_dir):
         print("SUCCESS: disposable MySQL smoke checks completed; no configured ERP database accessed")
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mysqld", default=r"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe")
-    args = parser.parse_args()
-    with tempfile.TemporaryDirectory(prefix="erp_audit_smoke_") as folder:
-        data_dir = Path(folder) / "data"
-        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        initialized = subprocess.run([args.mysqld, "--no-defaults", "--initialize-insecure", f"--datadir={data_dir}"], capture_output=True, creationflags=flags)
+class IsolationError(RuntimeError):
+    """Never shut down an endpoint that is not our held disposable process."""
+
+
+def print_server_log(folder):
+    path = folder / 'server.log'
+    if path.exists():
+        with path.open('rb') as log:
+            log.seek(max(0, path.stat().st_size - 8000))
+            print(log.read().decode(errors='replace'), file=sys.stderr, flush=True)
+
+
+def verify_server(connection, data_dir, process):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT @@datadir, @@pid_file")
+        actual_dir, pid_file = cursor.fetchone()
+    if Path(actual_dir).resolve() != data_dir.resolve():
+        raise IsolationError("Disposable MySQL datadir mismatch; refusing shutdown/termination")
+    pid_path = Path(pid_file).resolve()
+    if pid_path.parent != data_dir.resolve() or int(pid_path.read_text().strip()) != process.pid:
+        raise IsolationError("Disposable MySQL PID mismatch; refusing shutdown/termination")
+
+
+def stop_server(process, port, data_dir, verified):
+    """Only the held, SQL/PID-verified child may be terminated; never kill by name."""
+    if process.poll() is not None:
+        if process.returncode:
+            raise RuntimeError(f"Disposable MySQL exited unexpectedly: {process.returncode}")
+        return
+    if not verified:
+        raise IsolationError("Disposable MySQL identity unverified; retaining server and files")
+    try:
+        with mysql.connector.connect(host="127.0.0.1", port=port, user="root", password="",
+                                     connection_timeout=2, read_timeout=3, write_timeout=3) as connection:
+            # Recheck immediately before SQL SHUTDOWN. An identity mismatch must
+            # propagate, never enter the fallback termination path.
+            verify_server(connection, data_dir, process)
+            with connection.cursor() as cursor:
+                cursor.execute("SHUTDOWN")
+    except mysql.connector.Error as error:
+        # The listener may already be gone during shutdown. The startup check
+        # still binds this Popen handle to this datadir/PID, even without SQL.
+        print(f"Disposable MySQL shutdown connection failed: {type(error).__name__}", file=sys.stderr, flush=True)
+    try:
+        process.wait(timeout=20)
+    except subprocess.TimeoutExpired:
+        print("Disposable MySQL graceful shutdown timed out; terminating verified child", file=sys.stderr, flush=True)
+        print_server_log(data_dir.parent)
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired as error:
+                raise RuntimeError("Disposable MySQL termination failed; files retained") from error
+        print(f"Disposable MySQL fallback exit status: {process.returncode}", flush=True)
+    else:
+        if process.returncode:
+            raise RuntimeError(f"Disposable MySQL shutdown exit status: {process.returncode}")
+        print("Disposable MySQL graceful shutdown complete (exit 0)", flush=True)
+    if process.poll() is None:
+        raise RuntimeError("Disposable MySQL still running; files retained")
+
+
+def remove_stopped_directory(folder):
+    """Called only after process exit; retry transient Windows handle release."""
+    deadline = time.monotonic() + 3
+    while True:
+        try:
+            shutil.rmtree(folder)
+            return
+        except OSError as error:
+            if (os.name != 'nt' or getattr(error, 'winerror', None) not in (5, 32, 145)
+                    or time.monotonic() >= deadline):
+                raise
+            time.sleep(0.1)
+
+
+@contextmanager
+def disposable_server(mysqld):
+    # No TemporaryDirectory finalizer: failed termination must NEVER delete live
+    # InnoDB files, including when the interpreter exits after an assertion.
+    folder = Path(tempfile.mkdtemp(prefix="erp_audit_smoke_"))
+    data_dir = folder / "data"
+    log_path = folder / "server.log"
+    process = None
+    stopped = False
+    verified = False
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        initialized = subprocess.run([mysqld, "--no-defaults", "--initialize-insecure", f"--datadir={data_dir}"], capture_output=True, creationflags=flags)
         if initialized.returncode:
             raise RuntimeError("Disposable MySQL initialization failed: " + initialized.stderr.decode(errors="replace"))
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", 0))
             port = sock.getsockname()[1]
-        process = subprocess.Popen([args.mysqld, "--no-defaults", f"--datadir={data_dir}", f"--port={port}", "--bind-address=127.0.0.1", "--mysqlx=OFF", "--skip-log-bin", "--console"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=flags)
-        try:
-            deadline = time.monotonic() + 25
-            while True:
-                if process.poll() is not None:
-                    raise RuntimeError("Disposable server exited before startup")
-                try:
-                    connection = mysql.connector.connect(host="127.0.0.1", port=port, user="root", password="", connection_timeout=1)
-                    connection.close()
-                    break
-                except mysql.connector.Error:
-                    if time.monotonic() >= deadline:
-                        raise
-                    time.sleep(0.2)
-            print("Isolated MySQL started on loopback with fresh temporary datadir")
-            run(port, data_dir)
-        finally:
-            if process.poll() is None:
-                # MySQL on Windows may use a supervisor/child process. Request a
-                # graceful shutdown of the verified instance before waiting.
-                connection = mysql.connector.connect(host="127.0.0.1", port=port, user="root", password="", connection_timeout=2)
-                cur = connection.cursor()
-                cur.execute("SELECT @@datadir")
-                assert Path(cur.fetchone()[0]).resolve() == data_dir.resolve()
-                cur.execute("SHUTDOWN")
-                connection.close()
-                process.wait(timeout=20)
+        with log_path.open('wb') as log:
+            command = [mysqld, "--no-defaults", f"--datadir={data_dir}", f"--pid-file={data_dir / 'disposable.pid'}",
+                       f"--port={port}", "--bind-address=127.0.0.1", "--mysqlx=OFF", "--skip-log-bin", "--console"]
+            if os.name == 'nt':
+                # MySQL >=8.0.12: keep Popen's held handle on the actual server,
+                # rather than a restart monitor with a separately living child.
+                command.append('--no-monitor')
+            process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, creationflags=flags)
+            try:
+                deadline = time.monotonic() + 25
+                while True:
+                    if process.poll() is not None:
+                        raise RuntimeError("Disposable server exited before startup")
+                    try:
+                        with mysql.connector.connect(host="127.0.0.1", port=port, user="root", password="",
+                                                     connection_timeout=1, read_timeout=3, write_timeout=3) as connection:
+                            verify_server(connection, data_dir, process)
+                        verified = True
+                        break
+                    except mysql.connector.Error:
+                        if time.monotonic() >= deadline:
+                            raise
+                        time.sleep(0.2)
+                print(f"Isolated MySQL started: verified loopback/datadir/PID {process.pid}", flush=True)
+                yield port, data_dir
+            finally:
+                stop_server(process, port, data_dir, verified)
+                stopped = True
+    finally:
+        if process is None or stopped:
+            remove_stopped_directory(folder)
+            print("Disposable MySQL temporary directory removed after process exit", flush=True)
+        else:
+            print(f"FAILED disposable MySQL cleanup; files retained at {folder}", file=sys.stderr, flush=True)
+            print_server_log(folder)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--mysqld", default=r"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe")
+    args = parser.parse_args()
+    with disposable_server(args.mysqld) as (port, data_dir):
+        run(port, data_dir)
 
 
 if __name__ == "__main__":
