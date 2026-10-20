@@ -193,15 +193,15 @@ def run(port, data_dir):
         print("PASS real audit SQL failure: business approval remains committed")
 
         # Real repository filtering and real Jinja HTML rendering over persisted rows.
-        from audit_log_repository import get_filtered_audit_logs
+        from audit_log_repository import get_filtered_audit_logs, get_audit_log_page
         all_rows = logs()
         selected = get_filtered_audit_logs(module="PAYROLL", action="APPROVE")
         assert len(selected) == 2 and all(r["module"] == "PAYROLL" and r["action"] == "APPROVE" for r in selected)
         assert len(get_filtered_audit_logs(search_text="new.smoke.user")) == 1
         today = sql("SELECT CURRENT_DATE AS today", fetch=True)[0]["today"]
-        assert len(get_filtered_audit_logs(start_date=today, end_date=today)) == len(all_rows)
+        assert len(get_filtered_audit_logs(start_date=today, end_date=today, page_size=100)) == len(all_rows)
         assert get_filtered_audit_logs(start_date=today + timedelta(days=1)) == []
-        ordered = get_filtered_audit_logs()
+        ordered = get_filtered_audit_logs(page_size=100)
         assert [(r["created_at"], r["audit_log_id"]) for r in ordered] == sorted(((r["created_at"], r["audit_log_id"]) for r in all_rows), reverse=True)
         html = client().get("/admin/audit-logs?module=PAYROLL&action=APPROVE").get_data(as_text=True)
         assert "PAY-SMOKE" in html and expected[10]["entity_id"] not in html
@@ -209,25 +209,29 @@ def run(port, data_dir):
         assert "new.smoke.user" in searched and "PAY-SMOKE" not in searched
         dated = client().get(f"/admin/audit-logs?start_date={today}&end_date={today}")
         assert dated.status_code == 200 and expected[0]["entity_id"] in dated.get_data(as_text=True)
-        html_all = client().get("/admin/audit-logs").get_data(as_text=True)
+        html_all = client().get("/admin/audit-logs?page_size=100").get_data(as_text=True)
         # Use distinct identifiers to check HTML order independent of same-target
         # rows, which may legitimately recur across separate actions.
         newest = all_rows[-1]["entity_id"]
         oldest = all_rows[0]["entity_id"]
         assert html_all.index(newest) < html_all.index(oldest)
-        assert "No audit log records found." in client().get("/admin/audit-logs?search=no-such-smoke-record").get_data(as_text=True)
+        assert "No audit log records match these filters." in client().get("/admin/audit-logs?search=no-such-smoke-record").get_data(as_text=True)
         assert client(False).get("/admin/audit-logs").status_code == 302
-        # Prove the existing 500-row cap and banner, not nonexistent pagination.
+        # Every matching record remains reachable beyond the former display cap.
         with connect() as connection:
             cur = connection.cursor()
             cur.executemany("INSERT INTO audit_logs(user_id,username,module,action,entity_type,entity_id) VALUES (7,'acting.user','SMOKE','CAP','TEST',%s)", [(str(i),) for i in range(501)])
             connection.commit()
             cur.close()
-        assert len(get_filtered_audit_logs(module="SMOKE")) == 500
-        response = client().get("/admin/audit-logs?module=SMOKE")
+        assert len(get_filtered_audit_logs(module="SMOKE")) == 25
+        pages = [get_audit_log_page(dict(module='SMOKE',page_size='100',page=str(number))) for number in range(1,7)]
+        assert all(page['total']==501 for page in pages)
+        identities = [row['audit_log_id'] for page in pages for row in page['records']]
+        assert len(identities)==len(set(identities))==501
+        response = client().get("/admin/audit-logs?module=SMOKE&page_size=100&page=6")
         assert response.status_code == 200
-        assert "Showing the latest 500 matching records." in response.get_data(as_text=True)
-        print("PASS persisted search/module/action/date filters, ordering, Jinja page, permissions, and 500-row cap (no pagination exists)")
+        assert "Showing 501-501 of 501 matching records" in response.get_data(as_text=True)
+        print("PASS persisted audit filters, ordering, permissions and all 501 records reachable through bounded pages")
         print("SUCCESS: disposable MySQL smoke checks completed; no configured ERP database accessed")
 
 
