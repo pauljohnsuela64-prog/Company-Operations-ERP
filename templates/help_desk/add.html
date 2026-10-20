@@ -57,9 +57,10 @@ Create Help Desk Ticket
                             Select Employee
                         </option>
 
+                        {% if unavailable_employee %}<option value="{{ form.employee_id }}" selected>Unavailable selection ({{ form.employee_id }})</option>{% endif %}
                         {% for employee in employees %}
 
-                            <option value="{{ employee.employee_id }}">
+                            <option value="{{ employee.employee_id }}" {% if form.employee_id == employee.employee_id|string %}selected{% endif %}>
 
                                 {{ employee.employee_number }}
                                 -
@@ -93,9 +94,10 @@ Create Help Desk Ticket
                             Select Category
                         </option>
 
+                        {% if unavailable_category %}<option value="{{ form.category_id }}" selected>Unavailable selection ({{ form.category_id }})</option>{% endif %}
                         {% for category in categories %}
 
-                            <option value="{{ category.category_id }}">
+                            <option value="{{ category.category_id }}" {% if form.category_id == category.category_id|string %}selected{% endif %}>
 
                                 {{ category.category_name }}
 
@@ -121,19 +123,20 @@ Create Help Desk Ticket
                         class="form-select"
                     >
 
-                        <option value="LOW">
+                        {% if form.priority not in ['LOW','MEDIUM','HIGH','URGENT'] %}<option value="{{ form.priority }}" selected>Invalid priority ({{ form.priority }})</option>{% endif %}
+                        <option value="LOW" {% if form.priority == 'LOW' %}selected{% endif %}>
                             Low
                         </option>
 
-                        <option value="MEDIUM" selected>
+                        <option value="MEDIUM" {% if form.priority == 'MEDIUM' %}selected{% endif %}>
                             Medium
                         </option>
 
-                        <option value="HIGH">
+                        <option value="HIGH" {% if form.priority == 'HIGH' %}selected{% endif %}>
                             High
                         </option>
 
-                        <option value="URGENT">
+                        <option value="URGENT" {% if form.priority == 'URGENT' %}selected{% endif %}>
                             Urgent
                         </option>
 
@@ -153,6 +156,7 @@ Create Help Desk Ticket
                     <input
                         type="text"
                         name="subject"
+                        value="{{ form.subject }}"
                         class="form-control"
                         maxlength="150"
                         placeholder="Cannot connect to Wi-Fi"
@@ -176,7 +180,7 @@ Create Help Desk Ticket
                         rows="5"
                         placeholder="Describe the issue..."
                         required
-                    ></textarea>
+                    >{{ form.description }}</textarea>
 
                 </div>
 

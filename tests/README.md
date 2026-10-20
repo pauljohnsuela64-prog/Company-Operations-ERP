@@ -323,3 +323,13 @@ The new smoke suite is automatically discovered by CI. The existing business-aud
 fixtures retain their exact audit/commit assertions and now expect explicit 409
 responses for finalized or losing concurrent Leave transitions. Native Chrome
 remains a separate local check and does not authorize company deployment.
+
+## IT Help Desk
+
+See [Help Desk reliability](../HELP_DESK_MANAGEMENT.md) for validation, retained
+forms, workflow/history transactions, filtered pagination, best-effort auditing and
+limitations. Run `python -m unittest discover -s tests -p test_help_desk.py -v`,
+`python -B tests/mysql_helpdesk_smoke.py` and
+`python -B tests/mysql_helpdesk_browser.py`. The smoke suite is automatically
+discovered by CI; Chrome remains a separate local check. All fixtures use only
+fresh verified disposable databases, never company connection settings.

@@ -125,7 +125,13 @@ from it_asset_export import (
     generate_it_asset_report_excel,
 )
 
+from mysql.connector import Error as HelpDeskDatabaseError
+from database import SchemaUnavailable as HelpDeskSchemaUnavailable
+from help_desk_validation import HelpDeskError, CREATE_FIELDS as HELPDESK_FIELDS, create_values as helpdesk_create_values, unique_values as helpdesk_unique_values, identifier as helpdesk_identifier, resolution_value as helpdesk_resolution_value, listing_values as helpdesk_listing_values
 from help_desk_repository import (
+    get_helpdesk_ticket_page,
+    get_all_helpdesk_categories,
+    get_helpdesk_filter_users,
     assign_helpdesk_ticket,
     close_helpdesk_ticket,
     create_helpdesk_ticket,
@@ -6924,110 +6930,51 @@ def export_it_asset_report():
 # IT MANAGEMENT - HELP DESK
 # ==========================================================
 
+def _audit_helpdesk(action, identity):
+    record_audit_event('HELP_DESK',action,'HELPDESK_TICKET',identity,
+        f'Help Desk ticket {identity}: {action.lower()} committed.')
+
+
+def _helpdesk_detail(ticket, assigned_to=None, resolution=''):
+    technicians=get_helpdesk_assignable_users()
+    selected=str(ticket['assigned_to'] or '') if assigned_to is None else assigned_to
+    return render_template('help_desk/view.html',ticket=ticket,technicians=technicians,
+        ticket_history=get_helpdesk_ticket_history(ticket['ticket_id']),selected_assigned_to=selected,
+        unavailable_technician=bool(selected) and selected not in {str(t['user_id']) for t in technicians},resolution_value=resolution)
+
+
+def _helpdesk_error(ticket_id,error,**values):
+    flash(str(error),'danger')
+    # Manage-only permission must not gain full ticket/history viewing through an
+    # invalid POST. Existing view/manage separation remains in force.
+    if not has_permission('helpdesk.view'):
+        return str(error),error.status_code
+    try:
+        ticket=get_helpdesk_ticket_by_id(ticket_id)
+        if ticket is None:
+            return 'Help desk ticket was not found.',404
+        return _helpdesk_detail(ticket,**values),error.status_code
+    except (HelpDeskDatabaseError,HelpDeskSchemaUnavailable):
+        return 'Help Desk is temporarily unavailable. Reload and verify before retrying.',503
+
+
 @app.route("/it/help-desk")
 @permission_required("helpdesk.view")
 def help_desk():
-
-    # ======================================================
-    # FILTER INPUT
-    # ======================================================
-
-    search_text = request.args.get(
-        "search",
-        "",
-    ).strip()
-
-    selected_status = request.args.get(
-        "status",
-        "",
-    ).strip().upper()
-
-    selected_priority = request.args.get(
-        "priority",
-        "",
-    ).strip().upper()
-
-    selected_category = request.args.get(
-        "category_id",
-        "",
-    ).strip()
-
-
-    # ======================================================
-    # VALIDATION
-    # ======================================================
-
-    allowed_statuses = {
-        "OPEN",
-        "IN_PROGRESS",
-        "RESOLVED",
-        "CLOSED",
-        "CANCELLED",
-    }
-
-    if (
-        selected_status
-        and selected_status not in allowed_statuses
-    ):
-        selected_status = ""
-
-    allowed_priorities = {
-        "LOW",
-        "MEDIUM",
-        "HIGH",
-        "URGENT",
-    }
-
-    if (
-        selected_priority
-        and selected_priority not in allowed_priorities
-    ):
-        selected_priority = ""
-
-
-    category_id_value = None
-
-    if selected_category:
-
-        try:
-
-            category_id_value = int(
-                selected_category
-            )
-
-        except ValueError:
-
-            selected_category = ""
-
-
-    # ======================================================
-    # DATA
-    # ======================================================
-
-    tickets = get_filtered_helpdesk_tickets(
-        search_text=search_text or None,
-        status=selected_status or None,
-        priority=selected_priority or None,
-        category_id=category_id_value,
-    )
-
-    summary = get_helpdesk_summary()
-
-    categories = (
-        get_active_helpdesk_categories()
-    )
-
-
-    return render_template(
-        "help_desk/index.html",
-        tickets=tickets,
-        summary=summary,
-        categories=categories,
-        search_text=search_text,
-        selected_status=selected_status,
-        selected_priority=selected_priority,
-        selected_category=selected_category,
-    )
+    try:
+        filters = helpdesk_listing_values(request.args)
+        page = get_helpdesk_ticket_page(filters)
+    except HelpDeskError as error:
+        flash(str(error),'danger')
+        return render_template('help_desk/index.html',tickets=[],summary=dict(total_tickets=0,open_count=0,in_progress_count=0,resolved_count=0,closed_count=0,cancelled_count=0),
+            categories=get_all_helpdesk_categories(),technicians=get_helpdesk_filter_users(),pagination=None,
+            search_text=request.args.get('search',''),selected_status=request.args.get('status',''),selected_priority=request.args.get('priority',''),
+            selected_category=request.args.get('category_id',''),selected_technician=request.args.get('assigned_to',''),page_size=request.args.get('page_size','25')),error.status_code
+    def page_url(number):
+        return url_for('help_desk',**dict(filters,page=number,category_id=filters['category_id'] or '',assigned_to=filters['assigned_to'] or ''))
+    return render_template('help_desk/index.html',tickets=page['records'],summary=page['summary'],pagination=page,helpdesk_page_url=page_url,
+        categories=get_all_helpdesk_categories(),technicians=get_helpdesk_filter_users(),search_text=filters['search'],selected_status=filters['status'],
+        selected_priority=filters['priority'],selected_category=str(filters['category_id'] or ''),selected_technician=str(filters['assigned_to'] or ''),page_size=filters['page_size'])
 
 # ==========================================================
 # IT MANAGEMENT - HELP DESK REPORTS
@@ -7148,184 +7095,22 @@ def export_help_desk_report():
 )
 @permission_required("helpdesk.manage")
 def add_helpdesk_ticket():
-
-    employees = get_all_employees()
-
-    categories = (
-        get_active_helpdesk_categories()
-    )
-
-
-    if request.method == "POST":
-
-        # ==================================================
-        # FORM INPUT
-        # ==========================================================
-
-        employee_id = request.form.get(
-            "employee_id",
-            "",
-        ).strip()
-
-        category_id = request.form.get(
-            "category_id",
-            "",
-        ).strip()
-
-        subject = request.form.get(
-            "subject",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-        priority = request.form.get(
-            "priority",
-            "MEDIUM",
-        ).strip().upper()
-
-
-        # ==================================================
-        # REQUIRED FIELDS
-        # ==========================================================
-
-        if (
-            not employee_id
-            or not category_id
-            or not subject
-            or not description
-        ):
-
-            flash(
-                "Employee, category, subject, "
-                "and description are required.",
-                "danger",
-            )
-
-            return render_template(
-                "help_desk/add.html",
-                employees=employees,
-                categories=categories,
-            )
-
-
-        # ==================================================
-        # ID VALIDATION
-        # ==========================================================
-
+    form={field:request.form.get(field,'MEDIUM' if field=='priority' else '') for field in HELPDESK_FIELDS}
+    code=200
+    if request.method=='POST':
         try:
-
-            employee_id_value = int(
-                employee_id
-            )
-
-            category_id_value = int(
-                category_id
-            )
-
-        except ValueError:
-
-            flash(
-                "Invalid employee or category.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_helpdesk_ticket")
-            )
-
-
-        # ==================================================
-        # PRIORITY VALIDATION
-        # ==========================================================
-
-        allowed_priorities = {
-            "LOW",
-            "MEDIUM",
-            "HIGH",
-            "URGENT",
-        }
-
-        if priority not in allowed_priorities:
-
-            flash(
-                "Invalid ticket priority.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_helpdesk_ticket")
-            )
-
-
-        # ==================================================
-        # EMPLOYEE VALIDATION
-        # ==========================================================
-
-        employee = get_employee_by_id(
-            employee_id_value
-        )
-
-        if not employee:
-
-            flash(
-                "Employee not found.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_helpdesk_ticket")
-            )
-
-
-        # ==================================================
-        # CREATE TICKET
-        # ==========================================================
-
-        ticket_id, ticket_number = (
-            create_helpdesk_ticket(
-                employee_id=employee_id_value,
-                department_id=employee[
-                    "department_id"
-                ],
-                category_id=category_id_value,
-                subject=subject,
-                description=description,
-                priority=priority,
-                created_by=session["user_id"],
-            )
-        )
-
-
-        # ==================================================
-        # SUCCESS
-        # ==========================================================
-
-        flash(
-            (
-                f"Ticket {ticket_number} "
-                "created successfully."
-            ),
-            "success",
-        )
-
-        return redirect(
-            url_for("help_desk")
-        )
-
-
-    # ======================================================
-    # SHOW FORM
-    # ======================================================
-
-    return render_template(
-        "help_desk/add.html",
-        employees=employees,
-        categories=categories,
-    )
+            values=helpdesk_create_values(helpdesk_unique_values(request.form,HELPDESK_FIELDS))
+            identity,number=create_helpdesk_ticket(**values,department_id=None,created_by=session['user_id'])
+        except HelpDeskError as error:
+            flash(str(error),'danger');code=error.status_code
+        else:
+            _audit_helpdesk('CREATE',identity)
+            flash(f'Ticket {number} created successfully.','success')
+            return redirect(url_for('help_desk'))
+    employees,categories=get_all_employees(),get_active_helpdesk_categories()
+    return render_template('help_desk/add.html',form=form,employees=employees,categories=categories,
+        unavailable_employee=bool(form['employee_id']) and form['employee_id'] not in {str(e['employee_id']) for e in employees},
+        unavailable_category=bool(form['category_id']) and form['category_id'] not in {str(c['category_id']) for c in categories}),code
 
 
 
@@ -7338,57 +7123,15 @@ def add_helpdesk_ticket():
 )
 @permission_required("helpdesk.view")
 def view_helpdesk_ticket(ticket_id):
-
-    # ======================================================
-    # GET TICKET
-    # ======================================================
-
-    ticket = get_helpdesk_ticket_by_id(
-        ticket_id
-    )
-
-    if not ticket:
-
-        flash(
-            "Help desk ticket not found.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("help_desk")
-        )
-
-
-    # ======================================================
-    # GET TECHNICIANS
-    # ======================================================
-
-    technicians = (
-        get_helpdesk_assignable_users()
-    )
-
-
-    # ======================================================
-    # GET TICKET HISTORY
-    # ======================================================
-
-    ticket_history = (
-        get_helpdesk_ticket_history(
-            ticket_id
-        )
-    )
-
-
-    # ======================================================
-    # SHOW TICKET DETAILS PAGE
-    # ======================================================
-
-    return render_template(
-        "help_desk/view.html",
-        ticket=ticket,
-        technicians=technicians,
-        ticket_history=ticket_history,
-    )
+    if not 1 <= ticket_id <= 2147483647:
+        return 'Help desk ticket was not found.',404
+    try:
+        ticket=get_helpdesk_ticket_by_id(ticket_id)
+        if not ticket:
+            return 'Help desk ticket was not found.',404
+        return _helpdesk_detail(ticket)
+    except (HelpDeskDatabaseError,HelpDeskSchemaUnavailable):
+        return 'Help Desk is temporarily unavailable. Reload and verify before retrying.',503
 
 # ==========================================================
 # IT MANAGEMENT - ASSIGN TICKET
@@ -7400,105 +7143,21 @@ def view_helpdesk_ticket(ticket_id):
 )
 @permission_required("helpdesk.manage")
 def assign_helpdesk_ticket_route(ticket_id):
-
-    assigned_to = request.form.get(
-        "assigned_to",
-        "",
-    ).strip()
-
-    if not assigned_to:
-
-        flash(
-            "Select a technician.",
-            "danger",
-        )
-
-        return redirect(
-            url_for(
-                "view_helpdesk_ticket",
-                ticket_id=ticket_id,
-            )
-        )
-
+    if not 1 <= ticket_id <= 2147483647:
+        return 'Help desk ticket was not found.',404
+    selected=request.form.get('assigned_to','')
     try:
-
-        assigned_to_value = int(
-            assigned_to
-        )
-
-    except ValueError:
-
-        flash(
-            "Invalid technician.",
-            "danger",
-        )
-
-        return redirect(
-            url_for(
-                "view_helpdesk_ticket",
-                ticket_id=ticket_id,
-            )
-        )
-
-
-    # ======================================================
-    # VERIFY TECHNICIAN
-    # ======================================================
-
-    technicians = (
-        get_helpdesk_assignable_users()
-    )
-
-    valid_user_ids = {
-        technician["user_id"]
-        for technician in technicians
-    }
-
-    if assigned_to_value not in valid_user_ids:
-
-        flash(
-            "Selected technician is invalid.",
-            "danger",
-        )
-
-        return redirect(
-            url_for(
-                "view_helpdesk_ticket",
-                ticket_id=ticket_id,
-            )
-        )
-
-
-    # ======================================================
-    # ASSIGN
-    # ======================================================
-
-    try:
-
-        assign_helpdesk_ticket(
-            ticket_id,
-            assigned_to_value,
-            session["user_id"],
-        )
-
-        flash(
-            "Technician assigned successfully.",
-            "success",
-        )
-
-    except ValueError as error:
-
-        flash(
-            str(error),
-            "danger",
-        )
-
-    return redirect(
-        url_for(
-            "view_helpdesk_ticket",
-            ticket_id=ticket_id,
-        )
-    )
+        helpdesk_unique_values(request.form,('assigned_to',))
+        technician=helpdesk_identifier(selected,'Technician')
+        changed=assign_helpdesk_ticket(ticket_id,technician,session['user_id'])
+    except HelpDeskError as error:
+        return _helpdesk_error(ticket_id,error,assigned_to=selected)
+    if changed is not False:
+        _audit_helpdesk('ASSIGN',ticket_id)
+        flash('Technician assigned successfully.','success')
+    else:
+        flash('This technician is already assigned.','info')
+    return redirect(url_for('view_helpdesk_ticket',ticket_id=ticket_id))
 
 # ==========================================================
 # IT MANAGEMENT - START TICKET
@@ -7510,32 +7169,15 @@ def assign_helpdesk_ticket_route(ticket_id):
 )
 @permission_required("helpdesk.manage")
 def start_helpdesk_ticket_route(ticket_id):
-
+    if not 1 <= ticket_id <= 2147483647:
+        return 'Help desk ticket was not found.',404
     try:
-
-        start_helpdesk_ticket(
-            ticket_id,
-            session["user_id"],
-        )
-
-        flash(
-            "Ticket is now in progress.",
-            "success",
-        )
-
-    except ValueError as error:
-
-        flash(
-            str(error),
-            "danger",
-        )
-
-    return redirect(
-        url_for(
-            "view_helpdesk_ticket",
-            ticket_id=ticket_id,
-        )
-    )
+        start_helpdesk_ticket(ticket_id,session['user_id'])
+    except HelpDeskError as error:
+        return _helpdesk_error(ticket_id,error)
+    _audit_helpdesk('START',ticket_id)
+    flash('Ticket is now in progress.','success')
+    return redirect(url_for('view_helpdesk_ticket',ticket_id=ticket_id))
 
 # ==========================================================
 # IT MANAGEMENT - RESOLVE TICKET
@@ -7547,52 +7189,18 @@ def start_helpdesk_ticket_route(ticket_id):
 )
 @permission_required("helpdesk.manage")
 def resolve_helpdesk_ticket_route(ticket_id):
-
-    resolution = request.form.get(
-        "resolution",
-        "",
-    ).strip()
-
-    if not resolution:
-
-        flash(
-            "Resolution details are required.",
-            "danger",
-        )
-
-        return redirect(
-            url_for(
-                "view_helpdesk_ticket",
-                ticket_id=ticket_id,
-            )
-        )
-
+    if not 1 <= ticket_id <= 2147483647:
+        return 'Help desk ticket was not found.',404
+    resolution=request.form.get('resolution','')
     try:
-
-        resolve_helpdesk_ticket(
-            ticket_id,
-            resolution,
-            session["user_id"],
-        )
-
-        flash(
-            "Ticket resolved successfully.",
-            "success",
-        )
-
-    except ValueError as error:
-
-        flash(
-            str(error),
-            "danger",
-        )
-
-    return redirect(
-        url_for(
-            "view_helpdesk_ticket",
-            ticket_id=ticket_id,
-        )
-    )
+        helpdesk_unique_values(request.form,('resolution',))
+        cleaned=helpdesk_resolution_value(resolution)
+        resolve_helpdesk_ticket(ticket_id,cleaned,session['user_id'])
+    except HelpDeskError as error:
+        return _helpdesk_error(ticket_id,error,resolution=resolution)
+    _audit_helpdesk('RESOLVE',ticket_id)
+    flash('Ticket resolved successfully.','success')
+    return redirect(url_for('view_helpdesk_ticket',ticket_id=ticket_id))
 
 # ==========================================================
 # IT MANAGEMENT - CLOSE TICKET
@@ -7604,32 +7212,15 @@ def resolve_helpdesk_ticket_route(ticket_id):
 )
 @permission_required("helpdesk.manage")
 def close_helpdesk_ticket_route(ticket_id):
-
+    if not 1 <= ticket_id <= 2147483647:
+        return 'Help desk ticket was not found.',404
     try:
-
-        close_helpdesk_ticket(
-            ticket_id,
-            session["user_id"],
-        )
-
-        flash(
-            "Ticket closed successfully.",
-            "success",
-        )
-
-    except ValueError as error:
-
-        flash(
-            str(error),
-            "danger",
-        )
-
-    return redirect(
-        url_for(
-            "view_helpdesk_ticket",
-            ticket_id=ticket_id,
-        )
-    )
+        close_helpdesk_ticket(ticket_id,session['user_id'])
+    except HelpDeskError as error:
+        return _helpdesk_error(ticket_id,error)
+    _audit_helpdesk('CLOSE',ticket_id)
+    flash('Ticket closed successfully.','success')
+    return redirect(url_for('view_helpdesk_ticket',ticket_id=ticket_id))
 
 # ==========================================================
 # ADMINISTRATION - USERS
