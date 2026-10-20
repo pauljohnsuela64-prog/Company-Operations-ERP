@@ -181,7 +181,10 @@ from it_asset_repository import (
     get_it_asset_report_data,
 )
 
+from budget_management import BudgetError, FIELDS as BUDGET_FIELDS, submitted_values as budget_submitted_values
+from mysql.connector import Error as BudgetDatabaseError
 from budget_repository import (
+    get_department_budget_page,
     create_department_budget,
     get_all_department_budgets,
     get_budget_summary,
@@ -3933,37 +3936,20 @@ def finance_summary():
 @app.route("/finance/budgets")
 @permission_required("finance.view")
 def department_budgets():
-
-    # ======================================================
-    # SELECTED YEAR
-    # ======================================================
-
-    current_year = date.today().year
-    selected = finance_filters(request.args, default_year=current_year)
-    if 'year' in request.args:
-        try:
-            calendar_year(request.args.get('year', '').strip())
-        except ValueError as error:
-            flash(f'Invalid reporting year. {error} Showing {current_year}.', 'danger')
-            return redirect(url_for('department_budgets', year=current_year,
-                                    department_id=selected['department_id']))
-    selected_year = selected['year']
-    budget_list = get_all_department_budgets(year=selected_year)
-    if selected['department_id'] is not None:
-        budget_list = [b for b in budget_list if b['department_id'] == selected['department_id']]
-    budget_summary = dict(department_count=len(budget_list),
-        total_budget=sum((b['budget_amount'] for b in budget_list), Decimal('0.00')),
-        total_spent=sum((b['spent_amount'] for b in budget_list), Decimal('0.00')),
-        total_remaining=sum((b['remaining_amount'] for b in budget_list), Decimal('0.00')))
-
-    return render_template(
-        "finance/budgets/index.html",
-        selected_filters=selected, filter_departments=get_all_departments(),
-        budgets=budget_list,
-        budget_summary=budget_summary,
-        selected_year=selected_year,
-        current_year=current_year,
-    )
+    current_year=date.today().year;page=None;code=200;departments=[]
+    selected={key:request.args.get(key,'') for key in ('search','year','department_id','page_size')}
+    try:
+        page=get_department_budget_page(request.args,default_year=current_year)
+        selected=page['filters'];departments=get_all_departments()
+    except ValueError as error:
+        flash(str(error),'danger');code=getattr(error,'status_code',400)
+    except BudgetDatabaseError:
+        flash('Budget information is temporarily unavailable. Please retry later.','danger');page=None;code=503
+    def page_url(number):return url_for('department_budgets',**dict(selected,page=number,department_id=selected['department_id'] or ''))
+    return render_template('finance/budgets/index.html',selected_filters=selected,filter_departments=departments,
+        budgets=page['records'] if page else [],budget_summary=page['summary'] if page else None,
+        selected_year=selected['year'] or current_year,current_year=current_year,pagination=page,
+        budget_page_url=page_url,load_error=page is None),code
 
 # ==========================================================
 # FINANCE - ADD DEPARTMENT BUDGET
@@ -3988,7 +3974,11 @@ def add_department_budget():
 )
 @permission_required("finance.expenses.manage")
 def edit_department_budget(budget_id):
-    budget = get_department_budget_by_id(budget_id)
+    try:budget = get_department_budget_by_id(budget_id)
+    except ValueError as error:
+        flash(str(error),'danger');return redirect(url_for('department_budgets'))
+    except BudgetDatabaseError:
+        return 'Budget information is temporarily unavailable. Please retry later.',503
     if not budget:
         flash('Department budget was not found.', 'danger')
         return redirect(url_for('department_budgets'))
@@ -9439,20 +9429,27 @@ def _finance_budget_form(budget=None):
         current = get_department_by_id(budget['department_id'])
         if current:
             departments.append(current)
-    context = dict(departments=departments)
+    values={name:request.form.get(name,'') if request.method=='POST' else str((budget or {}).get(name) or '') for name in BUDGET_FIELDS}
+    context = dict(departments=departments,budget_form=values,
+                   unlisted_department=values['department_id'] and not any(str(d['department_id'])==values['department_id'] for d in departments))
     if budget:
         context['budget'] = budget
     if request.method == 'POST':
-        fields = [request.form.get(name, '').strip() for name in ('department_id', 'budget_year', 'budget_amount', 'notes')]
         try:
+            fields=budget_submitted_values(request.form)
             if budget:
-                if update_department_budget(budget['budget_id'], *fields) is False:
-                    raise ValueError('Department budget was not updated.')
+                if not update_department_budget(budget['budget_id'], *fields):
+                    flash('No department budget changes were needed.','info')
+                    return redirect(url_for('department_budgets'))
                 budget_id = budget['budget_id']
             else:
                 budget_id = create_department_budget(*fields, session['user_id'])
         except ValueError as error:
             flash(str(error), 'danger')
+            return render_template('finance/budgets/edit.html' if budget else 'finance/budgets/add.html',**context),getattr(error,'status_code',200)
+        except BudgetDatabaseError:
+            flash('Budget write was not confirmed. Refresh and reconcile the record before retrying.','danger')
+            return render_template('finance/budgets/edit.html' if budget else 'finance/budgets/add.html',**context),503
         else:
             department_id, year = int(fields[0]), int(fields[1])
             code = next((d['department_code'] for d in departments if d['department_id'] == department_id),

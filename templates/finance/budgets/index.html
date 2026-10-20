@@ -12,7 +12,7 @@ Department Budgets
 <!-- # PAGE HEADER / YEAR FILTER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-end mb-4">
+<div class="d-flex flex-wrap gap-3 justify-content-between align-items-end mb-4">
 
     <div>
 
@@ -27,11 +27,11 @@ Department Budgets
     </div>
 
 
-    <div class="d-flex align-items-end gap-2">
+    <div class="d-flex flex-wrap align-items-end gap-2">
 
         <!-- # YEAR FILTER -->
 
-        <form method="GET" action="{{ url_for('department_budgets') }}" class="d-flex align-items-end gap-2">
+        <form method="GET" action="{{ url_for('department_budgets') }}" class="d-flex flex-wrap align-items-end gap-2">
 
             <div>
 
@@ -61,7 +61,9 @@ Department Budgets
             </div>
 
 
-            {% include 'finance/partials/department_filter.html' %}
+            <div><label class="form-label mb-1" for="budget-department">Department</label><select id="budget-department" name="department_id" class="form-select"><option value="">All departments</option><option value="none" {% if selected_filters.department_id=='none' %}selected{% endif %}>No department</option>{% set ids=filter_departments|map(attribute='department_id')|map('string')|list %}{% if selected_filters.department_id and selected_filters.department_id|string not in ids and selected_filters.department_id!='none' %}<option value="{{ selected_filters.department_id }}" selected>Selected Department (not in current list)</option>{% endif %}{% for department in filter_departments %}<option value="{{ department.department_id }}" {% if selected_filters.department_id|string == department.department_id|string %}selected{% endif %}>{{ department.department_name }}</option>{% endfor %}</select></div>
+            <div><label class="form-label mb-1" for="budget-search">Search</label><input id="budget-search" name="search" class="form-control" maxlength="100" value="{{ selected_filters.search }}" placeholder="Department code or name"></div>
+            <div><label class="form-label mb-1" for="budget-size">Rows per page</label><select id="budget-size" name="page_size" class="form-select">{% for size in [25,50,100] %}<option value="{{ size }}" {% if selected_filters.page_size|string==size|string %}selected{% endif %}>{{ size }}</option>{% endfor %}</select></div>
         <button type="submit" class="btn btn-outline-primary">
                 Apply
             </button>
@@ -86,6 +88,7 @@ Department Budgets
 <!-- # BUDGET SUMMARY CARDS -->
 <!-- # ========================================== -->
 
+{% if budget_summary %}
 <div class="row g-3 mb-4">
 
     <!-- # TOTAL BUDGET -->
@@ -101,7 +104,7 @@ Department Budgets
                 </div>
 
                 <h4 class="mb-0">
-                    ₱{{ "{:,.2f}".format(
+                    ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â±{{ "{:,.2f}".format(
                     budget_summary.total_budget
                     ) }}
                 </h4>
@@ -126,7 +129,7 @@ Department Budgets
                 </div>
 
                 <h4 class="mb-0">
-                    ₱{{ "{:,.2f}".format(
+                    ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â±{{ "{:,.2f}".format(
                     budget_summary.total_spent
                     ) }}
                 </h4>
@@ -151,7 +154,7 @@ Department Budgets
                 </div>
 
                 <h4 class="mb-0">
-                    ₱{{ "{:,.2f}".format(
+                    ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â±{{ "{:,.2f}".format(
                     budget_summary.total_remaining
                     ) }}
                 </h4>
@@ -186,6 +189,7 @@ Department Budgets
     </div>
 
 </div>
+{% endif %}
 
 
 <!-- # ========================================== -->
@@ -283,7 +287,7 @@ Department Budgets
                         <!-- # BUDGET -->
 
                         <td>
-                            ₱{{ "{:,.2f}".format(
+                            ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â±{{ "{:,.2f}".format(
                             budget.budget_amount
                             ) }}
                         </td>
@@ -292,7 +296,7 @@ Department Budgets
                         <!-- # SPENT -->
 
                         <td>
-                            ₱{{ "{:,.2f}".format(
+                            ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â±{{ "{:,.2f}".format(
                             budget.spent_amount
                             ) }}
                         </td>
@@ -301,7 +305,7 @@ Department Budgets
                         <!-- # REMAINING -->
 
                         <td>
-                            ₱{{ "{:,.2f}".format(
+                            ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â±{{ "{:,.2f}".format(
                             budget.remaining_amount
                             ) }}
                         </td>
@@ -412,7 +416,7 @@ Department Budgets
                     <tr>
 
                         <td colspan="8" class="text-center text-muted py-4">
-                            No department budgets found.
+                            {% if load_error %}Budgets were not loaded. Review the message above.{% else %}No department budgets match these filters.{% endif %}
                         </td>
 
                     </tr>
@@ -429,6 +433,8 @@ Department Budgets
 
 </div>
 
+
+{% if pagination %}<nav class="d-flex justify-content-between mt-3" aria-label="Budget pages"><span>Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }} budgets | Page {{ pagination.filters.page }} of {{ pagination.pages }}</span><div>{% if pagination.filters.page>1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ budget_page_url(pagination.filters.page-1) }}">Previous</a>{% endif %} {% if pagination.filters.page<pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ budget_page_url(pagination.filters.page+1) }}">Next</a>{% endif %}</div></nav>{% endif %}
 
 <!-- # ========================================== -->
 <!-- # BUDGET PROGRESS BAR SCRIPT -->

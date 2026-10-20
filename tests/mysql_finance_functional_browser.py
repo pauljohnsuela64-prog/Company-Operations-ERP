@@ -36,6 +36,11 @@ def main():
                     if year == 2025:
                         budget = cur.lastrowid
                     cur.execute("INSERT INTO expenses(expense_number,expense_date,category_id,department_id,description,amount,status,created_by) VALUES (%s,%s,%s,%s,'Synthetic exact boundary',%s,'PAID',1)", (f'BOUNDARY-{year}',f'{year}-01-01',category,department,amount))
+                cur.executemany("INSERT INTO departments(department_code,department_name,is_active) VALUES(%s,%s,0)",[(f'BUD-ARCH-{i:04d}',f'Archive {i:04d}') for i in range(121)])
+                cur.execute("SELECT department_id FROM departments WHERE department_code LIKE 'BUD-ARCH-%' ORDER BY department_id")
+                cur.executemany("INSERT INTO department_budgets(department_id,budget_year,budget_amount,notes,created_by) VALUES(%s,2011,10,'PRIVATE archived notes',1)",[(row[0],) for row in cur.fetchall()])
+                cur.execute("SELECT b.* FROM department_budgets b JOIN departments d ON d.department_id=b.department_id WHERE d.department_code LIKE 'BUD-ARCH-%' ORDER BY b.budget_id")
+                history=cur.fetchall()
                 connection.commit()
                 cur.close()
             fixture = dict(base=args[2], department=department, supplier=supplier, po=po, category=category, budget=budget)
@@ -48,7 +53,7 @@ def main():
             source = source.replace(marker, call+marker)
             script = Path(folder)/'browser_finance_functional.cjs'
             script.write_text(source, encoding='utf-8')
-            kwargs['timeout'] = 300
+            kwargs['timeout'] = 360
             result = original([args[0],str(script),*args[2:]], *positional, **kwargs)
             if result.returncode == 0:
                 with database.get_connection() as connection:
@@ -60,6 +65,15 @@ def main():
                     assert cur.fetchall() == [('CREATE',),('UPDATE',)]
                     cur.execute('SELECT COUNT(*) FROM department_budgets WHERE budget_year=2029')
                     assert cur.fetchone() == (0,)
+                    cur.execute("SELECT b.* FROM department_budgets b JOIN departments d ON d.department_id=b.department_id WHERE d.department_code LIKE 'BUD-ARCH-%' ORDER BY b.budget_id")
+                    assert cur.fetchall()==history
+                    cur.execute('SELECT budget_id,budget_amount,notes FROM department_budgets WHERE department_id=%s AND budget_year=2031',(department,))
+                    identity,amount,notes=cur.fetchone()
+                    assert amount==Decimal('101.00') and notes=='PRIVATE changed notes'
+                    cur.execute("SELECT action,description FROM audit_logs WHERE entity_type='DEPARTMENT_BUDGET' AND entity_id=%s ORDER BY audit_log_id",(str(identity),))
+                    events=cur.fetchall();assert [row[0] for row in events]==['CREATE','UPDATE'],events
+                    assert all('PRIVATE' not in row[1] and '101.00' not in row[1] and '100.00' not in row[1] for row in events)
+                    print('PASS Chrome Budget persisted one CREATE/UPDATE audit, no failed/no-op/denied audit, exact amount and unchanged historical budgets')
                     print('PASS Chrome persisted recovery: one intended linked expense, one CREATE/UPDATE audit, zero forged budget writes')
             return result
 

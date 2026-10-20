@@ -22,7 +22,7 @@ def cases():
         ('/finance/expense-categories/42/status', {}, 'set_expense_category_active_status', True,'DEACTIVATE','EXPENSE_CATEGORY',42,'CAT'),
         ('/finance/expense-categories/42/status', {}, 'set_expense_category_active_status', True,'ACTIVATE','EXPENSE_CATEGORY',42,'CAT'),
         ('/finance/budgets/add', budget, 'create_department_budget', 43,'CREATE','DEPARTMENT_BUDGET',43,'DPT'),
-        ('/finance/budgets/43/edit', budget, 'update_department_budget', None,'UPDATE','DEPARTMENT_BUDGET',43,'DPT'),
+        ('/finance/budgets/43/edit', budget, 'update_department_budget', True,'UPDATE','DEPARTMENT_BUDGET',43,'DPT'),
     ]
 
 

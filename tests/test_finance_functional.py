@@ -68,7 +68,12 @@ class FinanceFunctionalTests(unittest.TestCase):
         self.mock('get_all_purchase_orders', return_value=[dict(purchase_order_id=i, po_number=str(i), status='DRAFT') for i in [1, 2]])
         self.budget = dict(budget_id=1, department_id=1, department_name='1', budget_year=2026,
                            budget_amount=Decimal('1000000.00'), spent_amount=Decimal('0.00'), remaining_amount=Decimal('1000000.00'))
-        self.budgets = self.mock('get_all_department_budgets', return_value=[self.budget])
+        from budget_management import listing_values
+        def budget_page(args,default_year):
+            selected=listing_values(args,default_year)
+            summary=dict(department_count=1,total_budget=self.budget['budget_amount'],total_spent=self.budget['spent_amount'],total_remaining=self.budget['remaining_amount'])
+            return dict(records=[self.budget],summary=summary,total=1,pages=1,first=1,last=1,filters=selected)
+        self.budgets = self.mock('get_department_budget_page',side_effect=budget_page)
         self.client = csrf_client(self.erp.app)
         with self.client.session_transaction() as sess:
             stamp_session(self.erp.app, sess, self.state)
@@ -158,20 +163,17 @@ class FinanceFunctionalTests(unittest.TestCase):
             fields = FormValues(response.get_data(as_text=True))
             self.assertEqual(fields.selected('year'), str(year))
             self.assertEqual(fields.selected('department_id'), '1')
-            self.budgets.assert_called_with(year=year)
+            self.assertEqual(self.budgets.call_args.args[0]['year'],str(year))
 
-    def test_invalid_years_explicitly_report_fallback_and_keep_department(self):
+    def test_invalid_years_report_error_without_broadening_department_filter(self):
         for year in ['', 'NaN', '999', '10000', '2026.0', '-2026']:
-            self.budgets.reset_mock()
-            response = self.client.get('/finance/budgets', query_string=dict(year=year, department_id=2))
-            self.assertEqual(response.status_code, 302)
-            self.budgets.assert_not_called()
-            html = self.client.get(response.location).get_data(as_text=True)
-            self.assertIn('Invalid reporting year.', html)
-            self.assertIn(f'Showing {date.today().year}.', html)
-            fields = FormValues(html)
-            self.assertEqual(fields.selected('year'), str(date.today().year))
-            self.assertEqual(fields.selected('department_id'), '2')
+            response=self.client.get('/finance/budgets',query_string=dict(year=year,department_id=2))
+            self.assertEqual(response.status_code,400)
+            html=response.get_data(as_text=True)
+            self.assertIn('Budget year must be between',html)
+            self.assertNotIn('Total Budget',html)
+            fields=FormValues(html)
+            self.assertEqual(fields.selected('department_id'),'2')
 
     def test_budget_labels_use_exact_amounts_even_when_percent_rounds_to_100(self):
         for spent, label in [('700000.00', 'Normal'), ('999999.99', 'Warning'),
