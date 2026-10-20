@@ -360,6 +360,7 @@ def _create_goods_receipt_transaction(
             WHERE warehouse_id = %s
               AND is_active = TRUE
             LIMIT 1
+            FOR SHARE
             """,
             (warehouse_id,),
         )

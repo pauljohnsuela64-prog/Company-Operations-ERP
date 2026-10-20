@@ -281,7 +281,11 @@ from inventory_item_repository import (
     get_active_inventory_items,
 )
 
+from inventory_validation import warehouse_fields
+from mysql.connector import Error as WarehouseDatabaseError
+from warehouse_validation import WarehouseError
 from warehouse_repository import (
+    get_warehouse_page,
     create_warehouse,
     get_all_warehouses,
     get_warehouse_by_id,
@@ -929,223 +933,105 @@ def change_inventory_category_status(category_id):
 @app.route("/inventory/warehouses")
 @permission_required("inventory.view")
 def warehouses():
-    warehouse_list = get_all_warehouses()
+    code=200;page=None
+    selected={key:request.args.get(key,'') for key in ('search','status','page_size')}
+    try:
+        page=get_warehouse_page(request.args);selected=page['filters']
+    except WarehouseError as error:
+        flash(str(error),'danger');code=error.status_code
+    except WarehouseDatabaseError:
+        flash('Warehouses are temporarily unavailable. Please retry later.','danger');code=503
+    def page_url(number):return url_for('warehouses',**dict(selected,page=number))
+    return render_template('inventory/warehouses/index.html',warehouses=page['records'] if page else [],
+        pagination=page,filters=selected,warehouse_page_url=page_url,load_error=page is None),code
 
-    return render_template(
-        "inventory/warehouses/index.html",
-        warehouses=warehouse_list,
-    )
 
-@app.route(
-    "/inventory/warehouses/add",
-    methods=["GET", "POST"],
-)
-@permission_required("inventory.warehouses.manage")
+def _warehouse_form_values():
+    keys=('warehouse_code','warehouse_name','location')
+    if any(len(request.form.getlist(key))>1 for key in keys):
+        raise WarehouseError('Submit only one value for each warehouse field.')
+    return warehouse_fields(*(request.form.get(key,'') for key in keys))
+
+
+def _warehouse_write_feedback(error):
+    if isinstance(error,ValueError):
+        flash(str(error),'danger');return getattr(error,'status_code',200)
+    if getattr(error,'errno',None)==1062:
+        flash('Warehouse code or warehouse name already exists.','danger');return 200
+    flash('Warehouse write was not confirmed. Refresh and reconcile the record before retrying.','danger')
+    return 503
+
+
+@app.route('/inventory/warehouses/add',methods=['GET','POST'])
+@permission_required('inventory.warehouses.manage')
 def add_warehouse():
-    if request.method == "POST":
-        warehouse_code = request.form.get(
-            "warehouse_code",
-            "",
-        ).strip().upper()
-
-        warehouse_name = request.form.get(
-            "warehouse_name",
-            "",
-        ).strip()
-
-        location = request.form.get(
-            "location",
-            "",
-        ).strip()
-
-        if not warehouse_code or not warehouse_name:
-            flash(
-                "Warehouse code and name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "inventory/warehouses/add.html",
-            )
-
-        if len(warehouse_code) > 30:
-            flash(
-                "Warehouse code must not exceed 30 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "inventory/warehouses/add.html",
-            )
-
-        if len(warehouse_name) > 100:
-            flash(
-                "Warehouse name must not exceed 100 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "inventory/warehouses/add.html",
-            )
-
+    if request.method=='POST':
         try:
-            warehouse_id = create_warehouse(
-                warehouse_code,
-                warehouse_name,
-                location or None,
-            )
-
-        except ValueError as error:
-            flash(str(error), "danger")
-            return render_template("inventory/warehouses/add.html")
-
-        except Exception as error:
-            if getattr(error, "errno", None) == 1062:
-                flash(
-                    "Warehouse code or warehouse name already exists.",
-                    "danger",
-                )
-
-                return render_template(
-                    "inventory/warehouses/add.html",
-                )
-
-            raise
-
-        record_audit_event("INVENTORY", "CREATE", "WAREHOUSE", warehouse_id,
-                           f"Warehouse {warehouse_code} (ID {warehouse_id}) created.")
-
-        flash(
-            "Warehouse created successfully.",
-            "success",
-        )
-
-        return redirect(url_for("warehouses"))
-
-    return render_template(
-        "inventory/warehouses/add.html",
-    )
+            warehouse_code,warehouse_name,location=_warehouse_form_values()
+            warehouse_id=create_warehouse(warehouse_code,warehouse_name,location)
+        except (ValueError,WarehouseDatabaseError) as error:
+            code=_warehouse_write_feedback(error)
+            return render_template('inventory/warehouses/add.html'),code
+        record_audit_event('INVENTORY','CREATE','WAREHOUSE',warehouse_id,
+                           f'Warehouse {warehouse_code} (ID {warehouse_id}) created.')
+        flash('Warehouse created successfully.','success')
+        return redirect(url_for('warehouses'))
+    return render_template('inventory/warehouses/add.html')
 
 
-@app.route(
-    "/inventory/warehouses/<int:warehouse_id>/edit",
-    methods=["GET", "POST"],
-)
-@permission_required("inventory.warehouses.manage")
+@app.route('/inventory/warehouses/<int:warehouse_id>/edit',methods=['GET','POST'])
+@permission_required('inventory.warehouses.manage')
 def edit_warehouse(warehouse_id):
-    warehouse = get_warehouse_by_id(warehouse_id)
-
+    try:warehouse=get_warehouse_by_id(warehouse_id)
+    except WarehouseError as error:
+        flash(str(error),'danger');return redirect(url_for('warehouses'))
+    except WarehouseDatabaseError:
+        return 'Warehouses are temporarily unavailable. Please retry later.',503
     if not warehouse:
-        flash("Warehouse not found.", "danger")
-        return redirect(url_for("warehouses"))
-
-    if request.method == "POST":
-        warehouse_code = request.form.get(
-            "warehouse_code",
-            "",
-        ).strip().upper()
-
-        warehouse_name = request.form.get(
-            "warehouse_name",
-            "",
-        ).strip()
-
-        location = request.form.get(
-            "location",
-            "",
-        ).strip()
-
-        if not warehouse_code or not warehouse_name:
-            flash(
-                "Warehouse code and name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "inventory/warehouses/edit.html",
-                warehouse=warehouse,
-            )
-
+        flash('Warehouse not found.','danger');return redirect(url_for('warehouses'))
+    if request.method=='POST':
         try:
-            update_warehouse(
-                warehouse_id,
-                warehouse_code,
-                warehouse_name,
-                location or None,
-            )
-
-        except ValueError as error:
-            flash(str(error), "danger")
-            return render_template("inventory/warehouses/edit.html", warehouse=warehouse)
-
-        except Exception as error:
-            if getattr(error, "errno", None) == 1062:
-                flash(
-                    "Warehouse code or warehouse name already exists.",
-                    "danger",
-                )
-
-                return render_template(
-                    "inventory/warehouses/edit.html",
-                    warehouse=warehouse,
-                )
-
-            raise
-
-        record_audit_event("INVENTORY", "UPDATE", "WAREHOUSE", warehouse_id,
-                           f"Warehouse {warehouse_code} (ID {warehouse_id}) updated.")
-
-        flash(
-            "Warehouse updated successfully.",
-            "success",
-        )
-
-        return redirect(url_for("warehouses"))
-
-    return render_template(
-        "inventory/warehouses/edit.html",
-        warehouse=warehouse,
-    )
+            warehouse_code,warehouse_name,location=_warehouse_form_values()
+            changed=update_warehouse(warehouse_id,warehouse_code,warehouse_name,location)
+        except (ValueError,WarehouseDatabaseError) as error:
+            code=_warehouse_write_feedback(error)
+            return render_template('inventory/warehouses/edit.html',warehouse=warehouse),code
+        if changed:
+            record_audit_event('INVENTORY','UPDATE','WAREHOUSE',warehouse_id,
+                               f'Warehouse {warehouse_code} (ID {warehouse_id}) updated.')
+            flash('Warehouse updated successfully.','success')
+        else:flash('No warehouse changes were needed.','info')
+        return redirect(url_for('warehouses'))
+    return render_template('inventory/warehouses/edit.html',warehouse=warehouse)
 
 
-@app.route(
-    "/inventory/warehouses/<int:warehouse_id>/status",
-    methods=["POST"],
-)
-@permission_required("inventory.warehouses.manage")
+@app.route('/inventory/warehouses/<int:warehouse_id>/status',methods=['POST'])
+@permission_required('inventory.warehouses.manage')
 def change_warehouse_status(warehouse_id):
-    warehouse = get_warehouse_by_id(warehouse_id)
-
+    try:warehouse=get_warehouse_by_id(warehouse_id)
+    except WarehouseError as error:
+        flash(str(error),'danger');return redirect(url_for('warehouses'))
+    except WarehouseDatabaseError:
+        return 'Warehouses are temporarily unavailable. Please retry later.',503
     if not warehouse:
-        flash("Warehouse not found.", "danger")
-        return redirect(url_for("warehouses"))
-
-    new_status = not bool(warehouse["is_active"])
-
-    changed = set_warehouse_active_status(
-        warehouse_id,
-        new_status,
-    )
-
+        flash('Warehouse not found.','danger');return redirect(url_for('warehouses'))
+    try:
+        raw=request.form.get('is_active')
+        if len(request.form.getlist('is_active'))>1 or (raw is not None and raw not in ('0','1')):
+            raise WarehouseError('Select a valid warehouse status.')
+        # Older forms posted no target; retain that contract during rollout.
+        new_status=(raw=='1') if raw is not None else not bool(warehouse['is_active'])
+        changed=set_warehouse_active_status(warehouse_id,new_status)
+    except (ValueError,WarehouseDatabaseError) as error:
+        code=_warehouse_write_feedback(error)
+        return render_template('inventory/warehouses/edit.html',warehouse=warehouse),code
     if not changed:
-        flash("Warehouse status was not changed. Refresh the page before trying again.", "info")
-        return redirect(url_for("warehouses"))
-    record_audit_event("INVENTORY", "ACTIVATE" if new_status else "DEACTIVATE",
-                       "WAREHOUSE", warehouse_id,
-                       f"Warehouse {warehouse['warehouse_code']} (ID {warehouse_id}) {'activated' if new_status else 'deactivated'}.")
-
-    if new_status:
-        flash(
-            "Warehouse activated successfully.",
-            "success",
-        )
+        flash('Warehouse status was not changed. Refresh the page before trying again.','info')
     else:
-        flash(
-            "Warehouse deactivated successfully.",
-            "success",
-        )
-
-    return redirect(url_for("warehouses"))
+        record_audit_event('INVENTORY','ACTIVATE' if new_status else 'DEACTIVATE','WAREHOUSE',warehouse_id,
+                           f"Warehouse (ID {warehouse_id}) {'activated' if new_status else 'deactivated'}.")
+        flash('Warehouse activated successfully.' if new_status else 'Warehouse deactivated successfully.','success')
+    return redirect(url_for('warehouses'))
 
 
 @app.route("/inventory/items")

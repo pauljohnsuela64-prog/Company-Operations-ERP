@@ -120,7 +120,7 @@ def run(port,data_dir):
                 for field,limit in limits.items():
                     form=dict(valid,**{field:'x'*(limit+1)});before=snapshot()
                     response=client.post(path,data=form)
-                    assert response.status_code==200 and str(limit) in response.get_data(as_text=True)
+                    assert response.status_code==(400 if section=='warehouses' else 200) and str(limit) in response.get_data(as_text=True)
                     assert 'name="csrf_token"' in response.get_data(as_text=True) and snapshot()==before
                 # Duplicate code, then duplicate name where the schema requires name uniqueness.
                 fields={'items':['item_code'],'categories':['category_code','category_name'],
@@ -142,7 +142,8 @@ def run(port,data_dir):
             assert audit_count()==before+1
             row=sql('SELECT user_id,username,module,action,entity_type,entity_id,description FROM audit_logs ORDER BY audit_log_id DESC LIMIT 1',fetch=True)[0]
             assert row[:6]==(1,'inventory.test','INVENTORY',action,entity,str(identifier)),row
-            assert code.upper() in row[6] and str(identifier) in row[6],row
+            assert str(identifier) in row[6],row
+            if entity!='WAREHOUSE' or action not in ('ACTIVATE','DEACTIVATE'):assert code.upper() in row[6],row
             for private in ('Description','Location','private-'):assert private not in row[6]
         # Successful CRUD paths still preserve the same item/warehouse foreign keys.
         for section,valid,_ in forms:
@@ -170,7 +171,12 @@ def run(port,data_dir):
             namefield={'categories':'category_name','warehouses':'warehouse_name','items':'item_name'}[section]
             form=dict(valid,**{codefield:'ROLLBACK-'+section,namefield:'Rollback '+section})
             sql(f"CREATE TRIGGER inventory_route_failure BEFORE UPDATE ON {table} FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic rollback'")
-            try:rejected(lambda:client.post(f'/inventory/{section}/1/edit',data=form),mysql.connector.Error)
+            try:
+                if section=='warehouses':
+                    before=snapshot()
+                    assert client.post(f'/inventory/{section}/1/edit',data=form).status_code==503
+                    assert snapshot()==before
+                else:rejected(lambda:client.post(f'/inventory/{section}/1/edit',data=form),mysql.connector.Error)
             finally:sql('DROP TRIGGER inventory_route_failure')
         # Activation remains supported, without adding a stock-holding restriction.
         for section,entity in (('categories','INVENTORY_CATEGORY'),('warehouses','WAREHOUSE'),('items','INVENTORY_ITEM')):

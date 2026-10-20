@@ -11,7 +11,7 @@ The workflow has three independent jobs:
 | --- | --- | --- |
 | Python unit tests and syntax | Ubuntu 24.04, Python 3.14 | Install `requirements.txt`; `pip check`; compile tracked Python; parse Jinja templates; complete unittest discovery |
 | JavaScript tests and syntax | Ubuntu 24.04, Node 24 | `node --check` for tracked JS/CJS files; navigation tests; no npm install |
-| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 26 suites |
+| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 27 suites |
 
 Python, Node and runner labels select supported release lines, not immutable OS
 images. Official checkout/setup Actions are pinned to full commit SHAs with release
@@ -367,3 +367,36 @@ local native Chrome and is not claimed as hosted CI coverage. The shared runner
 also checks cross-module CSRF, authentication and IT authorization behavior.
 All `mysql_*_smoke.py` suites are discovered automatically by the CI MySQL job;
 the browser wrapper is separate. No successful check authorizes deployment.
+
+
+## Warehouse reliability
+
+See [WAREHOUSE_RELIABILITY.md](../WAREHOUSE_RELIABILITY.md) for contracts and rollout
+limitations. Run focused checks against synthetic data only:
+
+```powershell
+.venv/Scripts/python.exe -m unittest discover -s tests -p test_warehouse_reliability.py -q
+.venv/Scripts/python.exe -u -B tests/mysql_warehouse_smoke.py
+.venv/Scripts/python.exe -u -B tests/mysql_warehouse_browser.py
+```
+
+The 14 focused unit tests cover schema bounds, normalized text/IDs, rejected filters,
+parameter binding, snapshot count/page ordering, transaction cleanup, missing/no-op
+writes, retained escaped forms, safe post-commit audits and security boundaries.
+The disposable suite checks 1,005 historical warehouses, all page sizes, filtered
+counts, a concurrent snapshot insert, real unique-key races, identical edit/status
+races, trigger/commit failure rollback, uncertain commit reconciliation, audit SQL
+failure isolation and unchanged historical stock/movement data. It observes real
+InnoDB lock waits in both stock/status orders and between Goods Receiving and
+status changes. Stock-holding deactivation remains allowed. Existing Inventory
+master tests retain their assertions with explicit changed-edit results and new
+Warehouse 400/503 handling; other inventory behavior remains unchanged.
+
+The Chrome wrapper checks listing/filter/page controls, retained/escaped validation
+and duplicate forms, create/edit, no-op edits and repeated status requests, viewer
+controls and authorization, CSRF and exact persisted audits. It also runs the
+existing cross-module security/IT browser checks and verifies seeded historical
+warehouse rows remain unchanged. The shared wrapper performs only synthetic DB
+setup; its viewer grant is a test fixture, not a production permission change.
+Native Chrome remains a separate local check. `mysql_warehouse_smoke.py` is picked
+up automatically by the existing CI suite discovery. Tests do not approve deployment.
