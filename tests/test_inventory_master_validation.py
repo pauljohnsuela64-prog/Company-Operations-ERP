@@ -99,7 +99,7 @@ class InventoryMasterRouteTests(unittest.TestCase):
         for section,data,error in cases:
             for suffix in ('add','1/edit'):
                 response=self.client.post(f'/inventory/{section}/{suffix}',data=data)
-                self.assertEqual(response.status_code,200);html=response.get_data(as_text=True)
+                self.assertEqual(response.status_code,400 if section=='warehouses' else 200);html=response.get_data(as_text=True)
                 self.assertIn(error,html);self.assertIn('name="csrf_token"',html)
         self.audit.assert_not_called()
 

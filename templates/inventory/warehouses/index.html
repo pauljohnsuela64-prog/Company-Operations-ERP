@@ -35,6 +35,13 @@ Warehouses
 </div>
 
 
+<form method="GET" class="row g-3 mb-3" action="{{ url_for('warehouses') }}">
+    <div class="col-md-4"><label class="form-label" for="warehouse-search">Search</label><input class="form-control" id="warehouse-search" name="search" maxlength="100" value="{{ filters.search }}" placeholder="Code, name or location"></div>
+    <div class="col-md-3"><label class="form-label" for="warehouse-status">Status</label><select class="form-select" id="warehouse-status" name="status"><option value="">All statuses</option>{% for value,label in [('active','Active'),('inactive','Inactive')] %}<option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><label class="form-label" for="warehouse-size">Rows per page</label><select class="form-select" id="warehouse-size" name="page_size">{% for size in [25,50,100] %}<option value="{{ size }}" {% if filters.page_size|string == size|string %}selected{% endif %}>{{ size }}</option>{% endfor %}</select></div>
+    <div class="col-md-3 align-self-end"><button class="btn btn-primary" type="submit">Filter</button> <a href="{{ url_for('warehouses') }}" class="btn btn-outline-secondary">Clear</a></div>
+</form>
+
 <div class="card shadow-sm border-0">
 
     <div class="card-body">
@@ -119,6 +126,7 @@ Warehouses
     class="d-inline"
 >
                     {% include 'partials/csrf_field.html' %}
+    <input type="hidden" name="is_active" value="{{ '0' if warehouse.is_active else '1' }}">
 
     {% if warehouse.is_active %}
 
@@ -162,7 +170,7 @@ Warehouses
                                 colspan="{{ 5 if has_permission('inventory.warehouses.manage') else 4 }}"
                                 class="text-center text-muted py-4"
                             >
-                                No warehouses found.
+                                {% if load_error %}Warehouses were not loaded. Review the message above.{% elif filters.search or filters.status %}No warehouses match these filters.{% else %}No warehouses found.{% endif %}
                             </td>
 
                         </tr>
@@ -179,4 +187,5 @@ Warehouses
 
 </div>
 
+{% if pagination %}<nav class="d-flex justify-content-between mt-3" aria-label="Warehouse pages"><span>Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }} warehouses | Page {{ pagination.filters.page }} of {{ pagination.pages }}</span><div>{% if pagination.filters.page > 1 %}<a class="btn btn-outline-primary" rel="prev" href="{{ warehouse_page_url(pagination.filters.page-1) }}">Previous</a>{% endif %} {% if pagination.filters.page < pagination.pages %}<a class="btn btn-outline-primary" rel="next" href="{{ warehouse_page_url(pagination.filters.page+1) }}">Next</a>{% endif %}</div></nav>{% endif %}
 {% endblock %}

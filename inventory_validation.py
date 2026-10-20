@@ -32,9 +32,8 @@ def category_fields(code, name, description):
 
 
 def warehouse_fields(code, name, location):
-    return (text_field(code, 'Warehouse code', 30, True, True),
-            text_field(name, 'Warehouse name', 100, True),
-            text_field(location, 'Warehouse location', 255))
+    from warehouse_validation import fields
+    return fields(code, name, location)
 
 
 def item_fields(code, name, category, description, unit, reorder):
