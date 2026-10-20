@@ -277,13 +277,14 @@ Help Desk Ticket
                             Select Technician
                         </option>
 
+                        {% if unavailable_technician %}<option value="{{ selected_assigned_to }}" selected>Unavailable technician ({{ selected_assigned_to }})</option>{% endif %}
                         {% for technician in technicians %}
 
                             <option
                                 value="{{ technician.user_id }}"
                                 {% if
-                                    technician.user_id
-                                    == ticket.assigned_to
+                                    technician.user_id|string
+                                    == selected_assigned_to
                                 %}
                                     selected
                                 {% endif %}
@@ -401,7 +402,7 @@ Help Desk Ticket
                         rows="4"
                         placeholder="Describe how the issue was resolved..."
                         required
-                    ></textarea>
+                    >{{ resolution_value|default('') }}</textarea>
 
                 </div>
 

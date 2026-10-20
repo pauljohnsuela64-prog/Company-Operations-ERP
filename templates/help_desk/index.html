@@ -146,6 +146,7 @@ IT Help Desk
                     <input
                         type="text"
                         name="search"
+                        maxlength="100"
                         value="{{ search_text }}"
                         class="form-control"
                         placeholder="Ticket, employee, subject..."
@@ -257,7 +258,7 @@ IT Help Desk
                                     selected
                                 {% endif %}
                             >
-                                {{ category.category_name }}
+                                {{ category.category_name }}{% if not category.is_active %} (Inactive){% endif %}
                             </option>
 
                         {% endfor %}
@@ -267,6 +268,10 @@ IT Help Desk
                 </div>
 
 
+                <div class="col-md-3"><label class="form-label" for="helpdesk-technician">Technician</label>
+                    <select id="helpdesk-technician" name="assigned_to" class="form-select"><option value="">All technicians</option><option value="unassigned" {% if selected_technician == 'unassigned' %}selected{% endif %}>Unassigned</option>
+                    {% for technician in technicians %}<option value="{{ technician.user_id }}" {% if selected_technician == technician.user_id|string %}selected{% endif %}>{{ technician.username }}{% if not technician.is_active %} (Inactive){% endif %}</option>{% endfor %}</select></div>
+                <div class="col-md-2"><label class="form-label" for="helpdesk-page-size">Records per page</label><select id="helpdesk-page-size" name="page_size" class="form-select">{% for size in [25,50,100] %}<option value="{{ size }}" {% if page_size|string == size|string %}selected{% endif %}>{{ size }}</option>{% endfor %}</select></div>
                 <div class="col-md-3">
 
                     <button
@@ -494,4 +499,11 @@ IT Help Desk
 
 </div>
 
+{% if pagination %}
+<nav class="d-flex justify-content-between align-items-center mt-3" aria-label="Help Desk pages">
+    <span>Page {{ pagination.page }} of {{ pagination.pages }} | {{ pagination.summary.total_tickets }} tickets</span>
+    <div>{% if pagination.page > 1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ helpdesk_page_url(pagination.page - 1) }}">Previous</a>{% endif %}
+    {% if pagination.page < pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ helpdesk_page_url(pagination.page + 1) }}">Next</a>{% endif %}</div>
+</nav>
+{% endif %}
 {% endblock %}
