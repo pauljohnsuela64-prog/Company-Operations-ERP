@@ -79,7 +79,9 @@ from payroll_repository import (
 )
 
 
+from leave_validation import text as leave_text, LeaveError, REQUEST_FIELDS as LEAVE_REQUEST_FIELDS, TYPE_FIELDS as LEAVE_TYPE_FIELDS, request_values as leave_request_values, unique_values as leave_unique_values, listing_values as leave_listing_values, type_values as leave_type_values
 from leave_repository import (
+    get_leave_request_page,
     approve_leave_request,
     cancel_leave_request,
     create_leave_request,
@@ -8132,167 +8134,40 @@ def leave_balances():
 # LEAVE MANAGEMENT - ADD LEAVE TYPE
 # ==========================================================
 
+def _leave_type_form(leave_type_id=None):
+    if leave_type_id is not None and not 1 <= leave_type_id <= 2147483647:
+        return 'Leave type not found.', 404
+    existing = get_leave_type_by_id(leave_type_id) if leave_type_id is not None else None
+    if leave_type_id is not None and not existing:
+        return 'Leave type not found.', 404
+    form = dict(existing) if existing else dict(leave_code='', leave_name='', description='', annual_entitlement='', is_paid=True)
+    code = 200
+    if request.method == 'POST':
+        form = {field: request.form.get(field, '') for field in LEAVE_TYPE_FIELDS}
+        try:
+            values = leave_type_values(leave_unique_values(request.form, LEAVE_TYPE_FIELDS))
+            if existing:
+                update_leave_type(leave_type_id, **values)
+            else:
+                create_leave_type(**values)
+        except LeaveError as error:
+            flash(str(error), 'danger')
+            code = error.status_code
+        else:
+            flash('Leave type updated successfully.' if existing else 'Leave type created successfully.', 'success')
+            return redirect(url_for('leave_types'))
+    form['is_paid'] = form['is_paid'] in (True, 1, '1')
+    return render_template('leave/types/edit.html' if existing else 'leave/types/add.html',
+        form=form, leave_type=existing), code
+
+
 @app.route(
     "/leave/types/add",
     methods=["GET", "POST"],
 )
 @permission_required("leave.manage")
 def add_leave_type():
-
-    if request.method == "POST":
-
-        leave_code = request.form.get(
-            "leave_code",
-            "",
-        ).strip().upper()
-
-        leave_name = request.form.get(
-            "leave_name",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-        entitlement = request.form.get(
-            "annual_entitlement",
-            "",
-        ).strip()
-
-        is_paid = (
-            request.form.get("is_paid")
-            == "1"
-        )
-
-
-        if not leave_code or not leave_name:
-
-            flash(
-                "Leave code and name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "leave/types/add.html"
-            )
-
-
-        if len(leave_code) > 30:
-
-            flash(
-                "Leave code must not exceed 30 characters.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_leave_type")
-            )
-
-
-        if len(leave_name) > 100:
-
-            flash(
-                "Leave name must not exceed 100 characters.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_leave_type")
-            )
-
-
-        if len(description) > 255:
-
-            flash(
-                "Description must not exceed 255 characters.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_leave_type")
-            )
-
-
-        entitlement_value = None
-
-        if entitlement:
-
-            try:
-
-                entitlement_value = Decimal(
-                    entitlement
-                )
-
-                if entitlement_value < 0:
-
-                    raise ValueError
-
-            except (
-                InvalidOperation,
-                ValueError,
-            ):
-
-                flash(
-                    (
-                        "Annual entitlement must "
-                        "be zero or greater."
-                    ),
-                    "danger",
-                )
-
-                return redirect(
-                    url_for("add_leave_type")
-                )
-
-
-        try:
-
-            create_leave_type(
-                leave_code=leave_code,
-                leave_name=leave_name,
-                description=description or None,
-                annual_entitlement=entitlement_value,
-                is_paid=is_paid,
-            )
-
-        except Exception as error:
-
-            if getattr(
-                error,
-                "errno",
-                None,
-            ) == 1062:
-
-                flash(
-                    (
-                        "Leave code or leave name "
-                        "already exists."
-                    ),
-                    "danger",
-                )
-
-                return redirect(
-                    url_for("add_leave_type")
-                )
-
-            raise
-
-
-        flash(
-            "Leave type created successfully.",
-            "success",
-        )
-
-        return redirect(
-            url_for("leave_types")
-        )
-
-
-    return render_template(
-        "leave/types/add.html"
-    )
+    return _leave_type_form()
 
 
 # ==========================================================
@@ -8304,157 +8179,8 @@ def add_leave_type():
     methods=["GET", "POST"],
 )
 @permission_required("leave.manage")
-def edit_leave_type(
-    leave_type_id,
-):
-
-    leave_type = (
-        get_leave_type_by_id(
-            leave_type_id
-        )
-    )
-
-    if not leave_type:
-
-        flash(
-            "Leave type not found.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("leave_types")
-        )
-
-
-    if request.method == "POST":
-
-        leave_code = request.form.get(
-            "leave_code",
-            "",
-        ).strip().upper()
-
-        leave_name = request.form.get(
-            "leave_name",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-        entitlement = request.form.get(
-            "annual_entitlement",
-            "",
-        ).strip()
-
-        is_paid = (
-            request.form.get("is_paid")
-            == "1"
-        )
-
-
-        if not leave_code or not leave_name:
-
-            flash(
-                "Leave code and name are required.",
-                "danger",
-            )
-
-            return redirect(
-                url_for(
-                    "edit_leave_type",
-                    leave_type_id=leave_type_id,
-                )
-            )
-
-
-        entitlement_value = None
-
-        if entitlement:
-
-            try:
-
-                entitlement_value = Decimal(
-                    entitlement
-                )
-
-                if entitlement_value < 0:
-
-                    raise ValueError
-
-            except (
-                InvalidOperation,
-                ValueError,
-            ):
-
-                flash(
-                    (
-                        "Annual entitlement must "
-                        "be zero or greater."
-                    ),
-                    "danger",
-                )
-
-                return redirect(
-                    url_for(
-                        "edit_leave_type",
-                        leave_type_id=leave_type_id,
-                    )
-                )
-
-
-        try:
-
-            update_leave_type(
-                leave_type_id=leave_type_id,
-                leave_code=leave_code,
-                leave_name=leave_name,
-                description=description or None,
-                annual_entitlement=entitlement_value,
-                is_paid=is_paid,
-            )
-
-        except Exception as error:
-
-            if getattr(
-                error,
-                "errno",
-                None,
-            ) == 1062:
-
-                flash(
-                    (
-                        "Leave code or leave name "
-                        "already exists."
-                    ),
-                    "danger",
-                )
-
-                return redirect(
-                    url_for(
-                        "edit_leave_type",
-                        leave_type_id=leave_type_id,
-                    )
-                )
-
-            raise
-
-
-        flash(
-            "Leave type updated successfully.",
-            "success",
-        )
-
-        return redirect(
-            url_for("leave_types")
-        )
-
-
-    return render_template(
-        "leave/types/edit.html",
-        leave_type=leave_type,
-    )
+def edit_leave_type(leave_type_id):
+    return _leave_type_form(leave_type_id)
 
 
 # ==========================================================
@@ -8470,6 +8196,8 @@ def change_leave_type_status(
     leave_type_id,
 ):
 
+    if not 1 <= leave_type_id <= 2147483647:
+        return 'Leave record not found.', 404
     leave_type = (
         get_leave_type_by_id(
             leave_type_id
@@ -8493,10 +8221,11 @@ def change_leave_type_status(
     )
 
 
-    set_leave_type_active_status(
-        leave_type_id,
-        new_status,
-    )
+    try:
+        set_leave_type_active_status(leave_type_id, new_status)
+    except LeaveError as error:
+        flash(str(error), 'danger')
+        return render_template('leave/types/index.html', leave_types=get_all_leave_types()), error.status_code
 
 
     if new_status:
@@ -8519,6 +8248,7 @@ def change_leave_type_status(
     )
 
 
+
 # ==========================================================
 # LEAVE MANAGEMENT - REQUESTS
 # ==========================================================
@@ -8526,15 +8256,18 @@ def change_leave_type_status(
 @app.route("/leave/requests")
 @permission_required("leave.view")
 def leave_requests():
-
-    requests_list = (
-        get_all_leave_requests()
-    )
-
-    return render_template(
-        "leave/requests/index.html",
-        leave_requests=requests_list,
-    )
+    try:
+        selected = leave_listing_values(request.args)
+        page = get_leave_request_page(selected)
+    except LeaveError as error:
+        flash(str(error), 'danger')
+        return render_template('leave/requests/index.html', leave_requests=[], pagination=None,
+            filters=request.args, leave_types=get_all_leave_types(), departments=get_all_departments()), error.status_code
+    def page_url(number):
+        return url_for('leave_requests', **dict(selected, page=number, date_from=selected['date_from'] or '', date_to=selected['date_to'] or '',
+            leave_type_id=selected['leave_type_id'] or '', department_id=selected['department_id'] or ''))
+    return render_template('leave/requests/index.html', leave_requests=page['records'], pagination=page,
+        filters=selected, leave_types=get_all_leave_types(), departments=get_all_departments(), leave_page_url=page_url)
 
 
 # ==========================================================
@@ -8547,282 +8280,22 @@ def leave_requests():
 )
 @permission_required("leave.manage")
 def add_leave_request():
-
-    employees = get_all_employees()
-
-    leave_types = (
-        get_active_leave_types()
-    )
-
-
-    if request.method == "POST":
-
-        employee_id = request.form.get(
-            "employee_id",
-            "",
-        ).strip()
-
-        leave_type_id = request.form.get(
-            "leave_type_id",
-            "",
-        ).strip()
-
-        start_date = request.form.get(
-            "start_date",
-            "",
-        ).strip()
-
-        end_date = request.form.get(
-            "end_date",
-            "",
-        ).strip()
-
-        reason = request.form.get(
-            "reason",
-            "",
-        ).strip()
-
-
-        # ==================================================
-        # REQUIRED FIELDS
-        # ==========================================================
-
-        if (
-            not employee_id
-            or not leave_type_id
-            or not start_date
-            or not end_date
-            or not reason
-        ):
-
-            flash(
-                "All leave request fields are required.",
-                "danger",
-            )
-
-            return render_template(
-                "leave/requests/add.html",
-                employees=employees,
-                leave_types=leave_types,
-            )
-
-
-        # ==================================================
-        # EMPLOYEE
-        # ==========================================================
-
+    form = {field: request.form.get(field, '') for field in LEAVE_REQUEST_FIELDS}
+    code = 200
+    if request.method == 'POST':
         try:
-
-            employee_id_value = int(
-                employee_id
-            )
-
-        except ValueError:
-
-            flash(
-                "Invalid employee.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_leave_request")
-            )
-
-
-        employee = get_employee_by_id(
-            employee_id_value
-        )
-
-        if not employee:
-
-            flash(
-                "Employee not found.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_leave_request")
-            )
-
-
-        # ==================================================
-        # LEAVE TYPE
-        # ==========================================================
-
-        try:
-
-            leave_type_id_value = int(
-                leave_type_id
-            )
-
-        except ValueError:
-
-            flash(
-                "Invalid leave type.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_leave_request")
-            )
-
-
-        leave_type = (
-            get_leave_type_by_id(
-                leave_type_id_value
-            )
-        )
-
-        if (
-            not leave_type
-            or not leave_type["is_active"]
-        ):
-
-            flash(
-                "Selected leave type is invalid or inactive.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_leave_request")
-            )
-
-
-        # ==================================================
-        # DATE VALIDATION
-        # ==========================================================
-
-        try:
-
-            start_date_value = (
-                date.fromisoformat(
-                    start_date
-                )
-            )
-
-            end_date_value = (
-                date.fromisoformat(
-                    end_date
-                )
-            )
-
-        except ValueError:
-
-            flash(
-                "Invalid leave date.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_leave_request")
-            )
-
-
-        if end_date_value < start_date_value:
-
-            flash(
-                (
-                    "End date cannot be earlier "
-                    "than start date."
-                ),
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_leave_request")
-            )
-
-
-        # ==================================================
-        # TOTAL DAYS
-        # ==========================================================
-
-        total_days = (
-            end_date_value
-            - start_date_value
-        ).days + 1
-
-
-        # ==================================================
-        # OVERLAPPING REQUEST
-        # ==========================================================
-
-        if has_overlapping_leave_request(
-            employee_id=employee_id_value,
-            start_date=start_date_value,
-            end_date=end_date_value,
-        ):
-
-            flash(
-                (
-                    "This employee already has a pending "
-                    "or approved leave request that overlaps "
-                    "the selected dates."
-                ),
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_leave_request")
-            )
-
-
-        # ==================================================
-        # REASON VALIDATION
-        # ==========================================================
-
-        if len(reason) > 500:
-
-            flash(
-                "Reason must not exceed 500 characters.",
-                "danger",
-            )
-
-            return redirect(
-                url_for("add_leave_request")
-            )
-
-
-        # ==================================================
-        # CREATE REQUEST
-        # ==========================================================
-
-        (
-            leave_request_id,
-            request_number,
-        ) = create_leave_request(
-            employee_id=employee_id_value,
-            leave_type_id=leave_type_id_value,
-            start_date=start_date_value,
-            end_date=end_date_value,
-            total_days=total_days,
-            reason=reason,
-            requested_by=session["user_id"],
-        )
-
-
-        flash(
-            (
-                f"Leave request {request_number} "
-                "created successfully."
-            ),
-            "success",
-        )
-
-
-        return redirect(
-            url_for(
-                "view_leave_request",
-                leave_request_id=leave_request_id,
-            )
-        )
-
-
-    return render_template(
-        "leave/requests/add.html",
-        employees=employees,
-        leave_types=leave_types,
-    )
+            values = leave_request_values(leave_unique_values(request.form, LEAVE_REQUEST_FIELDS))
+            identity, number = create_leave_request(**values, requested_by=session['user_id'])
+        except LeaveError as error:
+            flash(str(error), 'danger')
+            code = error.status_code
+        else:
+            flash(f'Leave request {number} created successfully.', 'success')
+            return redirect(url_for('view_leave_request', leave_request_id=identity))
+    employees, types = get_all_employees(), get_active_leave_types()
+    return render_template('leave/requests/add.html', form=form, employees=employees, leave_types=types,
+        unavailable_employee=bool(form['employee_id']) and form['employee_id'] not in {str(e['employee_id']) for e in employees},
+        unavailable_type=bool(form['leave_type_id']) and form['leave_type_id'] not in {str(t['leave_type_id']) for t in types}), code
 
 
 # ==========================================================
@@ -8837,6 +8310,8 @@ def view_leave_request(
     leave_request_id,
 ):
 
+    if not 1 <= leave_request_id <= 2147483647:
+        return 'Leave record not found.', 404
     leave_request = (
         get_leave_request_by_id(
             leave_request_id
@@ -8875,6 +8350,8 @@ def approve_leave_request_route(
     leave_request_id,
 ):
 
+    if not 1 <= leave_request_id <= 2147483647:
+        return 'Leave record not found.', 404
     try:
 
         approve_leave_request(
@@ -8909,6 +8386,12 @@ def approve_leave_request_route(
             str(error),
             "danger",
         )
+        if isinstance(error, LeaveError):
+            record = get_leave_request_by_id(leave_request_id)
+            if record:
+                return render_template('leave/requests/view.html', leave_request=record), error.status_code
+            return 'Leave request not found.', error.status_code
+
 
 
     return redirect(
@@ -8917,6 +8400,7 @@ def approve_leave_request_route(
             leave_request_id=leave_request_id,
         )
     )
+
 
 
 
@@ -8933,51 +8417,12 @@ def reject_leave_request_route(
     leave_request_id,
 ):
 
-    # ======================================================
-    # REJECTION REASON
-    # ==========================================================
-
-    rejection_reason = request.form.get(
-        "rejection_reason",
-        "",
-    ).strip()
-
-
-    if not rejection_reason:
-
-        flash(
-            "Rejection reason is required.",
-            "danger",
-        )
-
-        return redirect(
-            url_for(
-                "view_leave_request",
-                leave_request_id=leave_request_id,
-            )
-        )
-
-
-    if len(rejection_reason) > 500:
-
-        flash(
-            (
-                "Rejection reason must not "
-                "exceed 500 characters."
-            ),
-            "danger",
-        )
-
-        return redirect(
-            url_for(
-                "view_leave_request",
-                leave_request_id=leave_request_id,
-            )
-        )
-
-
+    if not 1 <= leave_request_id <= 2147483647:
+        return 'Leave record not found.', 404
+    rejection_reason = request.form.get('rejection_reason', '')
     try:
-
+        leave_unique_values(request.form, ('rejection_reason',))
+        rejection_reason = leave_text(rejection_reason, 'Rejection reason', 500, True)
         reject_leave_request(
             leave_request_id=leave_request_id,
             reviewed_by=session["user_id"],
@@ -9008,6 +8453,12 @@ def reject_leave_request_route(
             str(error),
             "danger",
         )
+        if isinstance(error, LeaveError):
+            leave_record = get_leave_request_by_id(leave_request_id)
+            if leave_record:
+                return render_template('leave/requests/view.html', leave_request=leave_record,
+                    rejection_reason=rejection_reason), error.status_code
+
 
 
     return redirect(
@@ -9016,6 +8467,7 @@ def reject_leave_request_route(
             leave_request_id=leave_request_id,
         )
     )
+
 
     # ==========================================================
 # LEAVE MANAGEMENT - CANCEL REQUEST
@@ -9030,6 +8482,8 @@ def cancel_leave_request_route(
     leave_request_id,
 ):
 
+    if not 1 <= leave_request_id <= 2147483647:
+        return 'Leave record not found.', 404
     try:
 
         cancel_leave_request(
@@ -9060,6 +8514,12 @@ def cancel_leave_request_route(
             str(error),
             "danger",
         )
+        if isinstance(error, LeaveError):
+            record = get_leave_request_by_id(leave_request_id)
+            if record:
+                return render_template('leave/requests/view.html', leave_request=record), error.status_code
+            return 'Leave request not found.', error.status_code
+
 
 
     return redirect(
@@ -9068,6 +8528,7 @@ def cancel_leave_request_route(
             leave_request_id=leave_request_id,
         )
     )
+
 
 # ==========================================================
 # LEAVE MANAGEMENT - REPORTS

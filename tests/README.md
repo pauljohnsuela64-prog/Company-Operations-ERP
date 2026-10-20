@@ -311,3 +311,15 @@ termination failure and directory-retention checks. Native verification should
 repeat `python -B tests/mysql_inventory_reporting_smoke.py`, run the Attendance
 suite, and exercise teardown after an intentional assertion failure. Successful
 development/CI runs do not authorize company database deployment.
+
+## Leave Management
+
+See [Leave reliability](../LEAVE_MANAGEMENT.md) for the effective approval rules,
+transaction/overlap protection, listing filters and limitations. Run
+`python -m unittest discover -s tests -p test_leave.py -v`,
+`python -B tests/mysql_leave_smoke.py` and
+`python -B tests/mysql_leave_browser.py` with a verified local MySQL binary.
+The new smoke suite is automatically discovered by CI. The existing business-audit
+fixtures retain their exact audit/commit assertions and now expect explicit 409
+responses for finalized or losing concurrent Leave transitions. Native Chrome
+remains a separate local check and does not authorize company deployment.
