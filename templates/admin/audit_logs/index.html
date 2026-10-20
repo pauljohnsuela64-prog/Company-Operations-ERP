@@ -55,6 +55,7 @@ Audit Logs
                     <input
                         type="text"
                         name="search"
+                        maxlength="100"
                         class="form-control"
                         value="{{ search_text }}"
                         placeholder="User, action, target..."
@@ -78,6 +79,7 @@ Audit Logs
                             All Modules
                         </option>
 
+                        {% if selected_module and selected_module not in modules %}<option value="{{ selected_module }}" selected>{{ selected_module }}</option>{% endif %}
                         {% for module in modules %}
 
                             <option
@@ -111,6 +113,7 @@ Audit Logs
                             All Actions
                         </option>
 
+                        {% if selected_action and selected_action not in actions %}<option value="{{ selected_action }}" selected>{{ selected_action }}</option>{% endif %}
                         {% for action in actions %}
 
                             <option
@@ -160,6 +163,8 @@ Audit Logs
 
                 </div>
 
+
+                <div class="col-lg-2"><label for="audit-page-size" class="form-label">Records per page</label><select id="audit-page-size" name="page_size" class="form-select">{% for size in [25,50,100] %}<option value="{{ size }}" {% if page_size|string == size|string %}selected{% endif %}>{{ size }}</option>{% endfor %}</select></div>
 
                 <div class="col-lg-1 d-flex align-items-end">
 
@@ -303,7 +308,7 @@ Audit Logs
                                 colspan="6"
                                 class="text-center text-muted py-4"
                             >
-                                No audit log records found.
+                                {% if load_error %}Audit logs were not loaded. Review the message above.{% elif search_text or selected_module or selected_action or start_date or end_date %}No audit log records match these filters.{% else %}No audit log records found.{% endif %}
                             </td>
 
                         </tr>
@@ -317,14 +322,12 @@ Audit Logs
         </div>
 
 
-        {% if logs|length >= 500 %}
-
-            <div class="small text-muted mt-3">
-
-                Showing the latest 500 matching records.
-
-            </div>
-
+        {% if pagination %}
+        <nav class="d-flex justify-content-between align-items-center mt-3" aria-label="Audit log pages">
+            <span>Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }} matching records | Page {{ pagination.filters.page }} of {{ pagination.pages }}</span>
+            <div>{% if pagination.filters.page > 1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ audit_page_url(pagination.filters.page - 1) }}">Previous</a>{% endif %}
+            {% if pagination.filters.page < pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ audit_page_url(pagination.filters.page + 1) }}">Next</a>{% endif %}</div>
+        </nav>
         {% endif %}
 
     </div>

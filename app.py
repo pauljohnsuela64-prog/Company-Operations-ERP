@@ -23,7 +23,9 @@ from datetime import (
 from dotenv import load_dotenv
 from dashboard_repository import get_dashboard_summary
 
+from audit_log_validation import AuditLogError
 from audit_log_repository import (
+    get_audit_log_page,
     create_audit_log,
     get_audit_log_filter_options,
     get_filtered_audit_logs,
@@ -9425,131 +9427,27 @@ def payroll_payslip(
 @app.route("/admin/audit-logs")
 @permission_required("audit_logs.view")
 def audit_logs():
-
-    # ======================================================
-    # FILTER INPUT
-    # ==========================================================
-
-    search_text = request.args.get(
-        "search",
-        "",
-    ).strip()
-
-
-    selected_module = request.args.get(
-        "module",
-        "",
-    ).strip().upper()
-
-
-    selected_action = request.args.get(
-        "action",
-        "",
-    ).strip().upper()
-
-
-    start_date_text = request.args.get(
-        "start_date",
-        "",
-    ).strip()
-
-
-    end_date_text = request.args.get(
-        "end_date",
-        "",
-    ).strip()
-
-
-    # ======================================================
-    # DATE VALIDATION
-    # ==========================================================
-
-    start_date_value = None
-
-    end_date_value = None
-
-
-    if start_date_text:
-
-        try:
-
-            start_date_value = (
-                date.fromisoformat(
-                    start_date_text
-                )
-            )
-
-        except ValueError:
-
-            start_date_text = ""
-
-
-    if end_date_text:
-
-        try:
-
-            end_date_value = (
-                date.fromisoformat(
-                    end_date_text
-                )
-            )
-
-        except ValueError:
-
-            end_date_text = ""
-
-
-    if (
-        start_date_value
-        and end_date_value
-        and start_date_value
-        > end_date_value
-    ):
-
-        flash(
-            (
-                "Audit log start date cannot "
-                "be later than end date."
-            ),
-            "danger",
-        )
-
-        start_date_value = None
-        end_date_value = None
-
-        start_date_text = ""
-        end_date_text = ""
-
-
-    # ======================================================
-    # DATA
-    # ==========================================================
-
-    logs = get_filtered_audit_logs(
-        search_text=search_text or None,
-        module=selected_module or None,
-        action=selected_action or None,
-        start_date=start_date_value,
-        end_date=end_date_value,
-    )
-
-
-    filter_options = (
-        get_audit_log_filter_options()
-    )
-
-
-    return render_template(
-        "admin/audit_logs/index.html",
-        logs=logs,
-        modules=filter_options["modules"],
-        actions=filter_options["actions"],
-        search_text=search_text,
-        selected_module=selected_module,
-        selected_action=selected_action,
-        start_date=start_date_text,
-        end_date=end_date_text,
-    )
+    code=200
+    try:
+        page=get_audit_log_page(request.args)
+    except AuditLogError as error:
+        flash(str(error),'danger')
+        code=error.status_code
+        page=None
+        filters={field:request.args.get(field,'') for field in ('search','module','action','start_date','end_date','page_size')}
+        options=dict(modules=[],actions=[])
+    else:
+        filters=page['filters']
+        options={key:page[key] for key in ('modules','actions')}
+    def page_url(number):
+        return url_for('audit_logs',**dict(filters,page=number,start_date=filters['start_date'] or '',end_date=filters['end_date'] or ''))
+    response=app.make_response((render_template('admin/audit_logs/index.html',logs=page['records'] if page else [],
+        pagination=page,load_error=page is None,audit_page_url=page_url,modules=options['modules'],actions=options['actions'],
+        search_text=filters['search'],selected_module=filters['module'],selected_action=filters['action'],
+        start_date=filters['start_date'] or '',end_date=filters['end_date'] or '',page_size=filters['page_size']),code))
+    response.headers['Cache-Control']='private, no-store'
+    response.headers['Referrer-Policy']='no-referrer'
+    return response
 
 # ==========================================================
 # LOGOUT

@@ -11,7 +11,7 @@ The workflow has three independent jobs:
 | --- | --- | --- |
 | Python unit tests and syntax | Ubuntu 24.04, Python 3.14 | Install `requirements.txt`; `pip check`; compile tracked Python; parse Jinja templates; complete unittest discovery |
 | JavaScript tests and syntax | Ubuntu 24.04, Node 24 | `node --check` for tracked JS/CJS files; navigation tests; no npm install |
-| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 23 suites |
+| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 26 suites |
 
 Python, Node and runner labels select supported release lines, not immutable OS
 images. Official checkout/setup Actions are pinned to full commit SHAs with release
@@ -192,22 +192,25 @@ Passed against MySQL 8.0.46:
   committed and produces no audit row. The test trigger is removed afterward.
 - Persisted module/action/date filters, readable-ID search, inclusive end dates,
   newest-first ordering with ID tie-breaking, page permissions, empty results,
-  real HTML rendering, and the 500-row cap/banner pass.
+  real HTML rendering, and (originally) the 500-row cap/banner passed. The current
+  suite instead verifies bounded pages and traversal of all 501 fixture matches.
 
-The Audit Logs implementation has **no pagination**: it displays the latest 500
-matching records. The existing behavior was verified without adding pagination.
-No confirmed audit defects or application changes resulted from smoke testing.
+That initial smoke-testing checkpoint preceded Audit Logs pagination. The current
+reader uses 25/50/100-record pages without discarding older matches; see the
+[Audit Logs reading contract](../AUDIT_LOG_READING.md) and checks below.
 The server was stopped and temporary test data removed. Production/development
 records were never accessed or changed.
 
 ## Remaining manual browser checklist
 
-No interactive browser was used; Flask test-client checks validate rendered HTML.
-On a test instance:
+The initial checkpoint used Flask HTML checks. The dedicated disposable Chrome
+workflow below now checks navigation and permission denial. For visual review on
+a test instance:
 
 1. Open Audit Logs and visually check the table, actor, target, timestamps, and ordering.
 2. Combine search, module/action, and date filters; clear filters; check empty results.
-3. With over 500 matches, confirm the latest-500 notice and absence of pagination.
+3. With over 500 matches, select 25/50/100 rows and reach the oldest records;
+   check matching totals, empty states, and preserved filters across pages.
 4. Complete a representative action and confirm its row appears after refresh;
    verify an account without `audit_logs.view` cannot open the page.
 
@@ -333,3 +336,34 @@ limitations. Run `python -m unittest discover -s tests -p test_help_desk.py -v`,
 `python -B tests/mysql_helpdesk_browser.py`. The smoke suite is automatically
 discovered by CI; Chrome remains a separate local check. All fixtures use only
 fresh verified disposable databases, never company connection settings.
+
+
+## Audit Logs read-only search and pagination
+
+See [AUDIT_LOG_READING.md](../AUDIT_LOG_READING.md) for filter, snapshot, privacy
+and compatibility contracts. These checks never use configured company databases:
+
+```powershell
+.venv/Scripts/python.exe -m unittest discover -s tests -p test_audit_log_reading.py -q
+.venv/Scripts/python.exe -u -B tests/mysql_audit_log_reading_smoke.py
+.venv/Scripts/python.exe -u -B tests/mysql_audit_log_reading_browser.py
+```
+
+The 21 unit tests cover filter validation, parameter binding, read-only cleanup,
+HTTP errors, escaping, permissions and schema admission. The disposable MySQL
+suite traverses 5,005 timestamp-tied historical events, tests all page sizes,
+counts, inclusive dates, literal wildcard/injection searches, unknown/invalid
+filters, authorization revocation, missing/non-InnoDB storage, read failures and
+unchanged business/audit/grant snapshots. A deliberate concurrent synthetic
+insert proves count/rows/options share a snapshot and a fresh request sees it.
+The existing business-audit suite retains its write/commit checks and now
+traverses every one of its 501 matching events instead of asserting a display cap.
+
+The Chrome wrapper uses the existing isolated security runner, adds 1,005
+historical events, and checks filter-preserving links, page-size form submission,
+counts, oldest rows, invalid filters, escaped descriptions, privacy headers and
+denied access. It verifies those historical rows remain unchanged. It requires
+local native Chrome and is not claimed as hosted CI coverage. The shared runner
+also checks cross-module CSRF, authentication and IT authorization behavior.
+All `mysql_*_smoke.py` suites are discovered automatically by the CI MySQL job;
+the browser wrapper is separate. No successful check authorizes deployment.
