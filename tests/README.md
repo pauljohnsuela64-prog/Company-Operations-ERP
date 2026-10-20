@@ -11,7 +11,7 @@ The workflow has three independent jobs:
 | --- | --- | --- |
 | Python unit tests and syntax | Ubuntu 24.04, Python 3.14 | Install `requirements.txt`; `pip check`; compile tracked Python; parse Jinja templates; complete unittest discovery |
 | JavaScript tests and syntax | Ubuntu 24.04, Node 24 | `node --check` for tracked JS/CJS files; navigation tests; no npm install |
-| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 22 suites |
+| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 23 suites |
 
 Python, Node and runner labels select supported release lines, not immutable OS
 images. Official checkout/setup Actions are pinned to full commit SHAs with release
@@ -276,3 +276,38 @@ Run `python -B tests/mysql_schema_compatibility_smoke.py` for the real gate on a
 verified disposable server. Run `python -m unittest discover -s tests -p test_schema_compatibility.py`
 for capability, cache, HTTP and failure-handling unit tests. See
 [deployment requirements](../docs/deployment/hr-reliability-008.md) for fixture boundaries.
+
+## Attendance Management
+
+See [Attendance reliability](../ATTENDANCE_MANAGEMENT.md) for validation, pagination,
+manual business audits, transaction/storage requirements and remaining policy limits.
+Run `python -m unittest discover -s tests -p test_attendance.py -v`,
+`python -B tests/mysql_attendance_smoke.py` and
+`python -B tests/mysql_attendance_browser.py` with a verified local MySQL binary.
+The smoke suite is discovered automatically by the existing CI helper.
+Attendance Add/Edit share one CSRF-protected template; the source-form count test
+reflects that deduplication, and route/browser tests verify the actual tokens.
+
+## Disposable MySQL shutdown safety
+
+The shared `mysql_audit_smoke.py` launcher starts Windows MySQL with `--no-monitor`
+so the held subprocess handle belongs to the server, rather than its restart
+monitor. Before tests and again before SQL `SHUTDOWN`, it verifies `@@datadir`
+and the data-directory PID file against the owned subprocess. No configured
+company database or process-name-based termination is used.
+
+Graceful shutdown has a 20-second bound. A timeout prints server diagnostics and
+terminates only the previously verified subprocess, with bounded 5-second waits
+for terminate/kill. Successful fallback is explicitly logged. Failed termination,
+unverified identity, or unexpected process exit fails the suite and retains its
+directory and server log for investigation. Files are deleted only after confirmed
+process exit; transient Windows deletion errors get at most three seconds of
+retries and persistent failures remain failures. Assertion failures still propagate
+after teardown. There is no automatic temporary-directory finalizer that could
+delete files from a server left running.
+
+Run `python -m unittest discover -s tests -p test_mysql_cleanup.py -v` for isolation,
+termination failure and directory-retention checks. Native verification should
+repeat `python -B tests/mysql_inventory_reporting_smoke.py`, run the Attendance
+suite, and exercise teardown after an intentional assertion failure. Successful
+development/CI runs do not authorize company database deployment.

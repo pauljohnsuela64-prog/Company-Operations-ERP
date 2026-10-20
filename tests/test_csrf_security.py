@@ -190,7 +190,7 @@ class CSRFTests(unittest.TestCase):
                 if re.search(r'method\s*=\s*[\"\x27]POST',form,re.I):
                     self.assertEqual(form.count("include 'partials/csrf_field.html'"),1,str(path))
                     count+=1
-        self.assertEqual(count,89)  # Original 86 + navigation, logout confirmation, recovery.
+        self.assertEqual(count,88)  # Original 86 + 3 security forms; Attendance add/edit now share one form.
 
 
 class CSRFMethodAndReceivingCompatibilityTests(unittest.TestCase):
