@@ -259,7 +259,10 @@ from purchase_request_repository import (
     update_purchase_request_item,
 )
 
+from supplier_management import SupplierError, fields as supplier_fields, submitted_values as supplier_submitted_values
+from mysql.connector import Error as SupplierDatabaseError
 from supplier_repository import (
+    get_supplier_page,
     create_supplier,
     get_all_suppliers,
     get_supplier_by_id,
@@ -1245,237 +1248,88 @@ def _inventory_report(template, reader, *, movements):
 @app.route("/procurement/suppliers")
 @permission_required("procurement.view")
 def suppliers():
-    supplier_list = get_all_suppliers()
+    selected={key:request.args.get(key,'') for key in ('search','status','page_size')}
+    page=None;code=200
+    try:
+        page=get_supplier_page(request.args);selected=page['filters']
+    except ValueError as error:
+        flash(str(error),'danger');code=getattr(error,'status_code',400);page=None
+    except SupplierDatabaseError:
+        flash('Suppliers are temporarily unavailable. Please retry later.','danger');code=503;page=None
+    def page_url(number):return url_for('suppliers',**dict(selected,page=number))
+    return render_template('procurement/suppliers/index.html',suppliers=page['records'] if page else [],
+        selected_filters=selected,pagination=page,supplier_page_url=page_url,load_error=page is None),code
 
-    return render_template(
-        "procurement/suppliers/index.html",
-        suppliers=supplier_list,
-    )
 
-
-@app.route(
-    "/procurement/suppliers/add",
-    methods=["GET", "POST"],
-)
-@permission_required("procurement.suppliers.manage")
+@app.route('/procurement/suppliers/add',methods=['GET','POST'])
+@permission_required('procurement.suppliers.manage')
 def add_supplier():
-    if request.method == "POST":
-        supplier_code = request.form.get(
-            "supplier_code",
-            "",
-        ).strip().upper()
-
-        supplier_name = request.form.get(
-            "supplier_name",
-            "",
-        ).strip()
-
-        contact_person = request.form.get(
-            "contact_person",
-            "",
-        ).strip()
-
-        email = request.form.get(
-            "email",
-            "",
-        ).strip()
-
-        phone = request.form.get(
-            "phone",
-            "",
-        ).strip()
-
-        address = request.form.get(
-            "address",
-            "",
-        ).strip()
-
-        if not supplier_code or not supplier_name:
-            flash(
-                "Supplier code and supplier name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "procurement/suppliers/add.html",
-            )
-
-        try:
-            supplier_id = create_supplier(
-                supplier_code,
-                supplier_name,
-                contact_person or None,
-                email or None,
-                phone or None,
-                address or None,
-            )
-
-        except ValueError as error:
-            flash(str(error), "danger")
-            return render_template("procurement/suppliers/add.html")
-
-        except Exception as error:
-            if getattr(error, "errno", None) == 1062:
-                flash(
-                    "Supplier code already exists.",
-                    "danger",
-                )
-
-                return render_template(
-                    "procurement/suppliers/add.html",
-                )
-
-            raise
-
-        record_audit_event("PROCUREMENT", "CREATE", "SUPPLIER", supplier_id,
-                           f"Supplier {supplier_code} (ID {supplier_id}) created.")
-
-        flash(
-            "Supplier created successfully.",
-            "success",
-        )
-
-        return redirect(url_for("suppliers"))
-
-    return render_template(
-        "procurement/suppliers/add.html",
-    )
+    return _supplier_form()
 
 
-@app.route(
-    "/procurement/suppliers/<int:supplier_id>/edit",
-    methods=["GET", "POST"],
-)
-@permission_required("procurement.suppliers.manage")
+@app.route('/procurement/suppliers/<int:supplier_id>/edit',methods=['GET','POST'])
+@permission_required('procurement.suppliers.manage')
 def edit_supplier(supplier_id):
-    supplier = get_supplier_by_id(supplier_id)
-
+    try:supplier=get_supplier_by_id(supplier_id)
+    except ValueError as error:
+        flash(str(error),'danger');return str(error),getattr(error,'status_code',400)
+    except SupplierDatabaseError:
+        return 'Supplier could not be loaded. Refresh and retry.',503
     if not supplier:
-        flash("Supplier not found.", "danger")
-        return redirect(url_for("suppliers"))
+        flash('Supplier not found.','danger')
+        return redirect(url_for('suppliers'))
+    return _supplier_form(supplier)
 
-    if request.method == "POST":
-        supplier_code = request.form.get(
-            "supplier_code",
-            "",
-        ).strip().upper()
 
-        supplier_name = request.form.get(
-            "supplier_name",
-            "",
-        ).strip()
-
-        contact_person = request.form.get(
-            "contact_person",
-            "",
-        ).strip()
-
-        email = request.form.get(
-            "email",
-            "",
-        ).strip()
-
-        phone = request.form.get(
-            "phone",
-            "",
-        ).strip()
-
-        address = request.form.get(
-            "address",
-            "",
-        ).strip()
-
-        if not supplier_code or not supplier_name:
-            flash(
-                "Supplier code and supplier name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "procurement/suppliers/edit.html",
-                supplier=supplier,
-            )
-
+def _supplier_form(supplier=None):
+    context=dict(supplier=supplier)
+    template='procurement/suppliers/edit.html' if supplier else 'procurement/suppliers/add.html'
+    if request.method=='POST':
         try:
-            update_supplier(
-                supplier_id,
-                supplier_code,
-                supplier_name,
-                contact_person or None,
-                email or None,
-                phone or None,
-                address or None,
-            )
-
+            values=supplier_fields(*supplier_submitted_values(request.form))
+            if supplier:
+                if update_supplier(supplier['supplier_id'],*values) is False:
+                    flash('No supplier changes were needed.','info')
+                    return redirect(url_for('suppliers'))
+                supplier_id=supplier['supplier_id']
+            else:supplier_id=create_supplier(*values)
         except ValueError as error:
-            flash(str(error), "danger")
-            return render_template("procurement/suppliers/edit.html", supplier=supplier)
-
-        except Exception as error:
-            if getattr(error, "errno", None) == 1062:
-                flash(
-                    "Supplier code already exists.",
-                    "danger",
-                )
-
-                return render_template(
-                    "procurement/suppliers/edit.html",
-                    supplier=supplier,
-                )
-
-            raise
-
-        record_audit_event("PROCUREMENT", "UPDATE", "SUPPLIER", supplier_id,
-                           f"Supplier {supplier_code} (ID {supplier_id}) updated.")
-
-        flash(
-            "Supplier updated successfully.",
-            "success",
-        )
-
-        return redirect(url_for("suppliers"))
-
-    return render_template(
-        "procurement/suppliers/edit.html",
-        supplier=supplier,
-    )
+            flash(str(error),'danger')
+            return render_template(template,**context),getattr(error,'status_code',200)
+        except SupplierDatabaseError:
+            flash('Supplier write was not confirmed. Refresh and reconcile the record before retrying.','danger')
+            return render_template(template,**context),503
+        record_audit_event('PROCUREMENT','UPDATE' if supplier else 'CREATE','SUPPLIER',supplier_id,
+                           f"Supplier {values[0]} (ID {supplier_id}) {'updated' if supplier else 'created'}.")
+        flash('Supplier updated successfully.' if supplier else 'Supplier created successfully.','success')
+        return redirect(url_for('suppliers'))
+    return render_template(template,**context)
 
 
-@app.route(
-    "/procurement/suppliers/<int:supplier_id>/status",
-    methods=["POST"],
-)
-@permission_required("procurement.suppliers.manage")
+@app.route('/procurement/suppliers/<int:supplier_id>/status',methods=['POST'])
+@permission_required('procurement.suppliers.manage')
 def change_supplier_status(supplier_id):
-    supplier = get_supplier_by_id(supplier_id)
-
-    if not supplier:
-        flash("Supplier not found.", "danger")
-        return redirect(url_for("suppliers"))
-
-    new_status = not bool(supplier["is_active"])
-
-    set_supplier_active_status(
-        supplier_id,
-        new_status,
-    )
-
-    record_audit_event("PROCUREMENT", "ACTIVATE" if new_status else "DEACTIVATE",
-                       "SUPPLIER", supplier_id,
-                       f"Supplier {supplier['supplier_code']} (ID {supplier_id}) {'activated' if new_status else 'deactivated'}.")
-
-    if new_status:
-        flash(
-            "Supplier activated successfully.",
-            "success",
-        )
+    try:
+        supplier=get_supplier_by_id(supplier_id)
+        if not supplier:raise SupplierError('Supplier not found.',404)
+        # Rendered forms submit a target, so duplicate/stale requests cannot undo
+        # a completed operation. Preserve the legacy no-target caller interface.
+        if len(request.form.getlist('is_active'))>1:raise SupplierError('Submit only one supplier status.')
+        target=request.form.get('is_active')
+        if target not in (None,'0','1'):raise SupplierError('Select a valid supplier status.')
+        new_status=not bool(supplier['is_active']) if target is None else target=='1'
+        changed=set_supplier_active_status(supplier_id,new_status)
+    except ValueError as error:
+        flash(str(error),'danger');return str(error),getattr(error,'status_code',400)
+    except SupplierDatabaseError:
+        return 'Supplier status write was not confirmed. Refresh and reconcile before retrying.',503
+    if not changed:
+        flash('Supplier status was not changed. Refresh the page before trying again.','info')
     else:
-        flash(
-            "Supplier deactivated successfully.",
-            "success",
-        )
-
-    return redirect(url_for("suppliers"))
+        record_audit_event('PROCUREMENT','ACTIVATE' if new_status else 'DEACTIVATE','SUPPLIER',supplier_id,
+                           f"Supplier {supplier['supplier_code']} (ID {supplier_id}) {'activated' if new_status else 'deactivated'}.")
+        flash('Supplier activated successfully.' if new_status else 'Supplier deactivated successfully.','success')
+    return redirect(url_for('suppliers'))
 
 
 @app.route("/procurement/requests")

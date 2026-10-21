@@ -25,7 +25,7 @@ class ProcurementAuditTests(unittest.TestCase):
         self.mock('get_authorization_state',side_effect=lambda _:self.state)
         self.audit=self.mock('create_audit_log')
         self.mock('render_template',return_value='form')
-        self.mock('get_supplier_by_id',return_value=dict(supplier_code='SUP-1',is_active=True))
+        self.mock('get_supplier_by_id',return_value=dict(supplier_id=1,supplier_code='SUP-1',is_active=True))
         self.mock('get_purchase_request_by_id',return_value=dict(status='APPROVED'))
         self.mock('get_purchase_orders_by_request',return_value=[])
         self.mock('get_purchase_request_items',return_value=[{}])
@@ -43,8 +43,8 @@ class ProcurementAuditTests(unittest.TestCase):
     def cases(self):
         return [
           ('/procurement/suppliers/add',dict(supplier_code='SUP-1',supplier_name='private-name',address='private-address'),'create_supplier',1,'CREATE','SUPPLIER',1,'SUP-1'),
-          ('/procurement/suppliers/1/edit',dict(supplier_code='SUP-1',supplier_name='private-name'),'update_supplier',None,'UPDATE','SUPPLIER',1,'SUP-1'),
-          ('/procurement/suppliers/1/status',{},'set_supplier_active_status',None,'DEACTIVATE','SUPPLIER',1,'SUP-1'),
+          ('/procurement/suppliers/1/edit',dict(supplier_code='SUP-1',supplier_name='private-name'),'update_supplier',True,'UPDATE','SUPPLIER',1,'SUP-1'),
+          ('/procurement/suppliers/1/status',{},'set_supplier_active_status',True,'DEACTIVATE','SUPPLIER',1,'SUP-1'),
           ('/procurement/requests/7/create-order',dict(supplier_id='1',notes='private-notes'),'create_purchase_order_from_request',(42,'PO-42'),'CREATE','PURCHASE_ORDER',42,'PO-42'),
           ('/procurement/orders/42/items/5/edit-cost',dict(unit_cost='2.50'),'update_purchase_order_item_cost',None,'UPDATE_COST','PURCHASE_ORDER',42,'PO-42'),
           ('/procurement/orders/42/send',{},'send_purchase_order',True,'MARK_SENT','PURCHASE_ORDER',42,'PO-42'),
@@ -62,7 +62,7 @@ class ProcurementAuditTests(unittest.TestCase):
                 for key,value in dict(user_id=7,username='acting.user',module='PROCUREMENT',action=action,entity_type=entity,entity_id=identifier).items():self.assertEqual(event[key],value)
                 self.assertIn(readable,event['description']);self.assertIn(str(identifier),event['description'])
                 for secret in ('private-name','private-address','private-notes','opaque-uuid'):self.assertNotIn(secret,str(event))
-        self.mock('get_supplier_by_id',return_value=dict(supplier_code='SUP-1',is_active=False))
+        self.mock('get_supplier_by_id',return_value=dict(supplier_id=1,supplier_code='SUP-1',is_active=False))
         self.mock('set_supplier_active_status')
         self.audit.reset_mock();self.client.post('/procurement/suppliers/1/status')
         self.assertEqual(self.audit.call_args.kwargs['action'],'ACTIVATE')

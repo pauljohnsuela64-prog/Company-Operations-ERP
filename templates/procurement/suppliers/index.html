@@ -36,6 +36,14 @@ Suppliers
 </div>
 
 
+<form method="GET" action="{{ url_for('suppliers') }}" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+    <div><label for="supplier-search" class="form-label">Search</label><input id="supplier-search" name="search" class="form-control" maxlength="100" value="{{ selected_filters.search }}" placeholder="Supplier code or name"></div>
+    <div><label for="supplier-status" class="form-label">Status</label><select id="supplier-status" name="status" class="form-select"><option value="">All statuses</option><option value="active" {% if selected_filters.status=='active' %}selected{% endif %}>Active</option><option value="inactive" {% if selected_filters.status=='inactive' %}selected{% endif %}>Inactive</option></select></div>
+    <div><label for="supplier-size" class="form-label">Rows per page</label><select id="supplier-size" name="page_size" class="form-select">{% for size in [25,50,100] %}<option value="{{ size }}" {% if selected_filters.page_size|string==size|string %}selected{% endif %}>{{ size }}</option>{% endfor %}</select></div>
+    <button class="btn btn-outline-primary" type="submit">Apply</button><a class="btn btn-outline-secondary" href="{{ url_for('suppliers') }}">Clear</a>
+</form>
+{% if pagination %}<p>{{ pagination.total }} matching suppliers</p>{% endif %}
+
 <div class="card shadow-sm border-0">
 
     <div class="card-body">
@@ -130,6 +138,7 @@ Suppliers
     class="d-inline"
 >
                     {% include 'partials/csrf_field.html' %}
+    <input type="hidden" name="is_active" value="{{ '0' if supplier.is_active else '1' }}">
 
     {% if supplier.is_active %}
 
@@ -173,7 +182,7 @@ Suppliers
                                 colspan="{{ 7 if has_permission('procurement.suppliers.manage') else 6 }}"
                                 class="text-center text-muted py-4"
                             >
-                                No suppliers found.
+                                {% if load_error %}Suppliers were not loaded. Review the message above.{% else %}No suppliers match these filters.{% endif %}
                             </td>
 
                         </tr>
@@ -190,4 +199,5 @@ Suppliers
 
 </div>
 
+{% if pagination %}<nav class="d-flex justify-content-between mt-3" aria-label="Supplier pages"><span>Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }} suppliers | Page {{ pagination.filters.page }} of {{ pagination.pages }}</span><div>{% if pagination.filters.page>1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ supplier_page_url(pagination.filters.page-1) }}">Previous</a>{% endif %} {% if pagination.filters.page<pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ supplier_page_url(pagination.filters.page+1) }}">Next</a>{% endif %}</div></nav>{% endif %}
 {% endblock %}
