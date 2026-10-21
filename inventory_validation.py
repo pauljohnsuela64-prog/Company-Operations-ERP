@@ -26,6 +26,10 @@ def category_identifier(value):
 
 
 def category_fields(code, name, description):
+    from inventory_category_management import validate_text
+    validate_text(code,'Category code')
+    validate_text(name,'Category name')
+    validate_text(description,'Category description',multiline=True)
     return (text_field(code, 'Category code', 30, True, True),
             text_field(name, 'Category name', 100, True),
             text_field(description, 'Category description', 255))

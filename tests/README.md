@@ -11,7 +11,7 @@ The workflow has three independent jobs:
 | --- | --- | --- |
 | Python unit tests and syntax | Ubuntu 24.04, Python 3.14 | Install `requirements.txt`; `pip check`; compile tracked Python; parse Jinja templates; complete unittest discovery |
 | JavaScript tests and syntax | Ubuntu 24.04, Node 24 | `node --check` for tracked JS/CJS files; navigation tests; no npm install |
-| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 29 suites |
+| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 30 suites |
 
 Python, Node and runner labels select supported release lines, not immutable OS
 images. Official checkout/setup Actions are pinned to full commit SHAs with release
@@ -457,3 +457,26 @@ edits, explicit status replay and viewer/CSRF denial. Its wrapper verifies exact
 four committed Item audit actions and unchanged historical fixtures. The smoke
 suite is included by existing CI discovery; Chrome is local-only. No deployment,
 production grants or schema migration is performed by this feature.
+
+
+## Inventory Categories management
+
+See [INVENTORY_CATEGORIES_MANAGEMENT.md](../INVENTORY_CATEGORIES_MANAGEMENT.md) for
+filter, validation, audit, assignment and concurrency contracts and limitations.
+
+```powershell
+.venv/Scripts/python.exe -B -m unittest discover -s tests -p test_inventory_categories.py -q
+.venv/Scripts/python.exe -B tests/mysql_inventory_categories_smoke.py
+.venv/Scripts/python.exe -B tests/mysql_inventory_categories_browser.py
+```
+
+Focused unit fixtures block company DB access. Disposable MySQL checks 1,005
+categories, 25/50/100 traversal, consistent snapshots, unique code/name handling,
+edit/status no-ops and rollback, uncertain commits, audit failure isolation and
+observed item assignment/deactivation lock waits in both orders. Chrome checks
+retained escaped forms, filtered pagination, explicit status retries, viewer/CSRF
+rejection and four persisted audit actions without historical assignment changes.
+The existing master smoke expects generic 503 on category SQL failure, with its
+unchanged-data assertion preserved. New SQL smoke is discovered automatically by
+CI; Chrome remains local-only. Fixture grants/schema setup apply only to the fresh
+verified disposable server, never company databases.
