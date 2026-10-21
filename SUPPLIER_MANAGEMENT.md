@@ -1,7 +1,7 @@
 # Supplier management
 
 Based on main d9f2e8d. No migration, production grant, Payroll/HR Lifecycle change,
-financial formula, PO/expense workflow or historical transaction rewrite is added.
+financial formula, expense workflow or historical transaction rewrite is added.
 
 ## Listing and selectors
 
@@ -73,12 +73,15 @@ commits first, later deactivation preserves its reference. When deactivation
 commits first, a waiting new expense reference remains rejected as inactive. The
 existing active-only Finance edit/reference rules are unchanged.
 
-PO creation retains its existing route-level active-supplier check and existing
-repository behavior. The PO repository does not atomically recheck supplier active
-status inside its transaction: deactivation after the route's lookup can race with
-PO creation. Supplier row locks do not claim to close that existing policy window.
-An atomic PO eligibility change would require a separately reviewed integration
-change; it is not silently introduced here. Existing orders/receiving remain usable
+PO creation retains its route-level active-supplier check for early feedback.
+The repository validates a positive signed-INT supplier ID before connecting, then
+checks existence/active status with a current `FOR SHARE` read inside the PO
+transaction, after locking the approved PR and checking for an existing active PO.
+The supplier lock is held through commit/rollback and serializes with status writes.
+Deactivation committed first causes creation to reject; PO validation first permits
+that valid PO to commit before deactivation proceeds. Parent-before-supplier order
+matches Procurement/Finance reference locking; status writes acquire no PR/PO locks.
+Existing orders/receiving remain usable
 under their existing rules after supplier deactivation. Renaming a supplier still
 changes current master labels shown in joined historical views without converting
 amounts or rewriting transactions.
@@ -107,3 +110,19 @@ suites provide regressions. Fixture schemas/permissions exist only on disposable
 servers with verified datadirs and synthetic records. No company configuration or
 database is used. The smoke suite is discovered by existing CI; Chrome remains
 local-only. These checks do not authorize company deployment or database actions.
+
+## Atomic PO supplier eligibility regression
+
+`tests/test_po_supplier_eligibility.py` verifies malformed IDs fail before a
+connection, parent/duplicate guards remain first, and missing/inactive suppliers
+roll back without inserts. `tests/mysql_po_supplier_eligibility_smoke.py` uses the
+verified disposable harness and actual repositories, observing InnoDB lock waits
+for both status/creation orderings and duplicate PO conversion. It also checks
+missing/invalid/inactive IDs, late SQL and precommit rollback, empty-request
+rollback, numbering/copied lines, receiving after deactivation and preserved paid
+expense/stock/movement history. CI discovers the new smoke suite automatically.
+Routes/forms and postcommit audit calls are unchanged; existing Procurement,
+receiving, Supplier and Finance suites provide those regressions. No new Chrome
+check is needed for this repository-only behavior. External writers can still
+bypass these locks; deadlocks/timeouts involving other writers remain possible,
+and a lost commit acknowledgment still requires reconciliation before retrying.

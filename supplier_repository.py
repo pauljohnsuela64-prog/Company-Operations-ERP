@@ -193,7 +193,7 @@ def set_supplier_active_status(supplier_id, is_active):
         if current is None:raise SupplierError('Supplier no longer exists.',404)
         if bool(current[0])==is_active:
             connection.rollback();return False
-        # Serialize with Finance supplier reference locks. Do not rewrite PO,
+        # Serialize with PO creation and Finance reference locks. Do not rewrite PO,
         # expense, stock or historical records, or change their eligibility rules.
         cursor.execute('UPDATE suppliers SET is_active=%s WHERE supplier_id=%s',(is_active,supplier_id))
         connection.commit();return True
