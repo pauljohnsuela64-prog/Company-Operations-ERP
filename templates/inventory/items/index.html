@@ -34,6 +34,20 @@ Inventory Items
 </div>
 
 
+<form method="GET" action="{{ url_for('inventory_items') }}" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+    <div><label for="item-search" class="form-label">Search</label><input id="item-search" name="search" class="form-control" maxlength="100" value="{{ selected_filters.search }}" placeholder="Item code or name"></div>
+    <div><label for="item-category" class="form-label">Category</label><select id="item-category" name="category_id" class="form-select">
+        <option value="">All categories</option><option value="none" {% if selected_filters.category_id=='none' %}selected{% endif %}>No category</option>
+        {% set ids=categories|map(attribute='category_id')|map('string')|list %}
+        {% if selected_filters.category_id and selected_filters.category_id|string not in ids and selected_filters.category_id!='none' %}<option value="{{ selected_filters.category_id }}" selected>Selected category (not in current list)</option>{% endif %}
+        {% for category in categories %}<option value="{{ category.category_id }}" {% if selected_filters.category_id|string==category.category_id|string %}selected{% endif %}>{{ category.category_code }} - {{ category.category_name }}{% if not category.is_active %} (Inactive){% endif %}</option>{% endfor %}
+    </select></div>
+    <div><label for="item-status" class="form-label">Status</label><select id="item-status" name="status" class="form-select"><option value="">All statuses</option><option value="active" {% if selected_filters.status=='active' %}selected{% endif %}>Active</option><option value="inactive" {% if selected_filters.status=='inactive' %}selected{% endif %}>Inactive</option></select></div>
+    <div><label for="item-size" class="form-label">Rows per page</label><select id="item-size" name="page_size" class="form-select">{% for size in [25,50,100] %}<option value="{{ size }}" {% if selected_filters.page_size|string==size|string %}selected{% endif %}>{{ size }}</option>{% endfor %}</select></div>
+    <button class="btn btn-outline-primary" type="submit">Apply</button><a class="btn btn-outline-secondary" href="{{ url_for('inventory_items') }}">Clear</a>
+</form>
+{% if pagination %}<p>{{ pagination.total }} matching items</p>{% endif %}
+
 <div class="card shadow-sm border-0">
 
     <div class="card-body">
@@ -144,6 +158,7 @@ Inventory Items
     class="d-inline"
 >
                     {% include 'partials/csrf_field.html' %}
+    <input type="hidden" name="is_active" value="{{ '0' if item.is_active else '1' }}">
 
     {% if item.is_active %}
 
@@ -187,7 +202,7 @@ Inventory Items
                                 colspan="{{ 7 if has_permission('inventory.items.manage') else 6 }}"
                                 class="text-center text-muted py-4"
                             >
-                                No inventory items found.
+                                {% if load_error %}Inventory items were not loaded. Review the message above.{% else %}No inventory items match these filters.{% endif %}
                             </td>
 
                         </tr>
@@ -204,4 +219,5 @@ Inventory Items
 
 </div>
 
+{% if pagination %}<nav class="d-flex justify-content-between mt-3" aria-label="Inventory item pages"><span>Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }} items | Page {{ pagination.filters.page }} of {{ pagination.pages }}</span><div>{% if pagination.filters.page>1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ item_page_url(pagination.filters.page-1) }}">Previous</a>{% endif %} {% if pagination.filters.page<pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ item_page_url(pagination.filters.page+1) }}">Next</a>{% endif %}</div></nav>{% endif %}
 {% endblock %}

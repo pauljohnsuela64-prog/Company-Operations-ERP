@@ -11,7 +11,7 @@ The workflow has three independent jobs:
 | --- | --- | --- |
 | Python unit tests and syntax | Ubuntu 24.04, Python 3.14 | Install `requirements.txt`; `pip check`; compile tracked Python; parse Jinja templates; complete unittest discovery |
 | JavaScript tests and syntax | Ubuntu 24.04, Node 24 | `node --check` for tracked JS/CJS files; navigation tests; no npm install |
-| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 28 suites |
+| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 29 suites |
 
 Python, Node and runner labels select supported release lines, not immutable OS
 images. Official checkout/setup Actions are pinned to full commit SHAs with release
@@ -434,3 +434,26 @@ fixtures. Existing invalid-year tests now expect 400 with no broader result, rat
 than the previous redirect to the current year. This changes input handling, not
 financial formulas. Browser checks remain local-only. The new SQL suite is picked
 up automatically by existing CI discovery; no workflow/deployment changes are made.
+
+
+## Inventory Items management
+
+See [INVENTORY_ITEMS_MANAGEMENT.md](../INVENTORY_ITEMS_MANAGEMENT.md) for the listing,
+write/audit contract, unchanged integrations and unit-of-measure policy question.
+
+```powershell
+.venv/Scripts/python.exe -B -m unittest discover -s tests -p test_inventory_items.py -q
+.venv/Scripts/python.exe -B tests/mysql_inventory_items_smoke.py
+.venv/Scripts/python.exe -B tests/mysql_inventory_items_browser.py
+```
+
+The focused unit suite checks strict filters, SQL binding, counts, no-op/missing
+writes, cursor cleanup, retained/escaped values and security. Disposable MySQL
+covers 1,005 tied-name rows, 25/50/100 traversal, snapshot counts during a concurrent
+insert, observed duplicate/edit/status locks, rollback, uncertain commits, audit
+failure isolation and unchanged stock/movement history. Native Chrome verifies
+pagination/filter links, empty/invalid results, retained raw input, duplicate/no-op
+edits, explicit status replay and viewer/CSRF denial. Its wrapper verifies exactly
+four committed Item audit actions and unchanged historical fixtures. The smoke
+suite is included by existing CI discovery; Chrome is local-only. No deployment,
+production grants or schema migration is performed by this feature.

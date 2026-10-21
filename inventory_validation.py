@@ -37,6 +37,10 @@ def warehouse_fields(code, name, location):
 
 
 def item_fields(code, name, category, description, unit, reorder):
+    from inventory_item_management import validate_text
+    for value,label in ((code,'Item code'),(name,'Item name'),(unit,'Unit of measure')):
+        validate_text(value,label)
+    validate_text(description,'Item description',multiline=True)
     return (text_field(code, 'Item code', 50, True, True),
             text_field(name, 'Item name', 150, True), category_identifier(category),
             text_field(description, 'Item description', 255),

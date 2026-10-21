@@ -46,7 +46,7 @@ class InventoryAuditTests(unittest.TestCase):
                 ('warehouses','warehouse',2,'WH',dict(warehouse_code='WH',warehouse_name='private-name',location='private-location')),
                 ('items','inventory_item',3,'ITEM',dict(item_code='ITEM',item_name='private-name',category_id='1',unit_of_measure='pcs',reorder_level='0',description='private-description'))]:
             result.extend([(f'/inventory/{section}/add',data,'create_'+kind,identifier,'CREATE',kind.upper(),identifier,code),
-                           (f'/inventory/{section}/{identifier}/edit',data,'update_'+kind,True if kind=='warehouse' else None,'UPDATE',kind.upper(),identifier,code),
+                           (f'/inventory/{section}/{identifier}/edit',data,'update_'+kind,True if kind in ('warehouse','inventory_item') else None,'UPDATE',kind.upper(),identifier,code),
                            (f'/inventory/{section}/{identifier}/status',{},'set_'+kind+'_active_status',True,'DEACTIVATE',kind.upper(),identifier,code)])
         for direction in ('in','out'):
             result.append((f'/inventory/stock/{direction}',dict(item_id='3',warehouse_id='2',quantity='0.10',notes='private-notes',submission_id='private-uuid'),'stock_'+direction,StockResult(9,True),'STOCK_'+direction.upper(),'STOCK_MOVEMENT',9,'ITEM'))

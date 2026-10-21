@@ -172,7 +172,7 @@ def run(port,data_dir):
             form=dict(valid,**{codefield:'ROLLBACK-'+section,namefield:'Rollback '+section})
             sql(f"CREATE TRIGGER inventory_route_failure BEFORE UPDATE ON {table} FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic rollback'")
             try:
-                if section=='warehouses':
+                if section in ('warehouses','items'):
                     before=snapshot()
                     assert client.post(f'/inventory/{section}/1/edit',data=form).status_code==503
                     assert snapshot()==before
