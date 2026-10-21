@@ -212,7 +212,10 @@ from expense_repository import (
     search_expenses,
 )
 
+from expense_category_management import ExpenseCategoryError, fields as expense_category_fields, submitted_values as expense_category_submitted_values
+from mysql.connector import Error as ExpenseCategoryDatabaseError
 from expense_category_repository import (
+    get_expense_category_page,
     create_expense_category,
     get_active_expense_categories,
     get_all_expense_categories,
@@ -2813,144 +2816,28 @@ def cancel_purchase_order_route(purchase_order_id):
 @app.route("/finance/expense-categories")
 @permission_required("finance.view")
 def expense_categories():
+    selected={key:request.args.get(key,'') for key in ('search','status','page_size')}
+    page=None;code=200
+    try:
+        page=get_expense_category_page(request.args);selected=page['filters']
+    except ValueError as error:
+        flash(str(error),'danger');code=getattr(error,'status_code',400);page=None
+    except ExpenseCategoryDatabaseError:
+        flash('Expense categories are temporarily unavailable. Please retry later.','danger');code=503;page=None
+    def page_url(number):return url_for('expense_categories',**dict(selected,page=number))
+    return render_template('finance/expense_categories/index.html',categories=page['records'] if page else [],
+        selected_filters=selected,pagination=page,category_page_url=page_url,load_error=page is None),code
 
-    categories = get_all_expense_categories()
-
-    return render_template(
-        "finance/expense_categories/index.html",
-        categories=categories,
-    )
 
 # ==========================================================
 # FINANCE - ADD EXPENSE CATEGORY
 # ==========================================================
 
-@app.route(
-    "/finance/expense-categories/add",
-    methods=["GET", "POST"],
-)
-@permission_required("finance.categories.manage")
+@app.route('/finance/expense-categories/add',methods=['GET','POST'])
+@permission_required('finance.categories.manage')
 def add_expense_category():
+    return _expense_category_form()
 
-    if request.method == "POST":
-
-        # ==================================================
-        # FORM INPUT
-        # ==================================================
-
-        category_code = request.form.get(
-            "category_code",
-            "",
-        ).strip().upper()
-
-        category_name = request.form.get(
-            "category_name",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-
-        # ==================================================
-        # VALIDATION
-        # ==================================================
-
-        if not category_code or not category_name:
-
-            flash(
-                "Category code and category name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/expense_categories/add.html"
-            )
-
-
-        if len(category_code) > 30:
-
-            flash(
-                "Category code must not exceed 30 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/expense_categories/add.html"
-            )
-
-
-        if len(category_name) > 100:
-
-            flash(
-                "Category name must not exceed 100 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/expense_categories/add.html"
-            )
-
-
-        if len(description) > 255:
-
-            flash(
-                "Description must not exceed 255 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/expense_categories/add.html"
-            )
-
-
-        # ==================================================
-        # DATABASE INSERT
-        # ==================================================
-
-        try:
-
-            category_id = create_expense_category(
-                category_code,
-                category_name,
-                description or None,
-            )
-
-        except Exception as error:
-
-            # # MySQL duplicate-entry error
-            if getattr(error, "errno", None) == 1062:
-
-                flash(
-                    "Expense category code already exists.",
-                    "danger",
-                )
-
-                return render_template(
-                    "finance/expense_categories/add.html"
-                )
-
-            raise
-
-
-        record_audit_event("FINANCE", "CREATE", "EXPENSE_CATEGORY", category_id,
-                           f"Expense category {category_id} ({category_code}) created.")
-
-        flash(
-            "Expense category created successfully.",
-            "success",
-        )
-
-        return redirect(
-            url_for("expense_categories")
-        )
-
-
-    return render_template(
-        "finance/expense_categories/add.html"
-    )
 
 # ==========================================================
 # FINANCE - EXPENSES
@@ -2967,231 +2854,76 @@ def expenses():
         selected_filters=selected, filter_departments=get_all_departments(), current_year=date.today().year)
 
 
-@app.route(
-    "/finance/expense-categories/<int:category_id>/edit",
-    methods=["GET", "POST"],
-)
-@permission_required("finance.categories.manage")
+@app.route('/finance/expense-categories/<int:category_id>/edit',methods=['GET','POST'])
+@permission_required('finance.categories.manage')
 def edit_expense_category(category_id):
-
-    # ======================================================
-    # GET CATEGORY
-    # ======================================================
-
-    category = get_expense_category_by_id(category_id)
-
+    try:category=get_expense_category_by_id(category_id)
+    except ValueError as error:
+        flash(str(error),'danger');return str(error),getattr(error,'status_code',400)
+    except ExpenseCategoryDatabaseError:
+        return 'Expense category could not be loaded. Refresh and retry.',503
     if not category:
-        flash(
-            "Expense category not found.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("expense_categories")
-        )
+        flash('Expense category not found.','danger')
+        return redirect(url_for('expense_categories'))
+    return _expense_category_form(category)
 
 
-    if request.method == "POST":
 
-        # ==================================================
-        # FORM INPUT
-        # ==================================================
-
-        category_code = request.form.get(
-            "category_code",
-            "",
-        ).strip().upper()
-
-        category_name = request.form.get(
-            "category_name",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-
-        # ==================================================
-        # VALIDATION
-        # ==================================================
-
-        if not category_code or not category_name:
-
-            flash(
-                "Category code and category name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/expense_categories/edit.html",
-                category=category,
-            )
-
-
-        if len(category_code) > 30:
-
-            flash(
-                "Category code must not exceed 30 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/expense_categories/edit.html",
-                category=category,
-            )
-
-
-        if len(category_name) > 100:
-
-            flash(
-                "Category name must not exceed 100 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/expense_categories/edit.html",
-                category=category,
-            )
-
-
-        if len(description) > 255:
-
-            flash(
-                "Description must not exceed 255 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "finance/expense_categories/edit.html",
-                category=category,
-            )
-
-
-        # ==================================================
-        # DATABASE UPDATE
-        # ==================================================
-
+def _expense_category_form(category=None):
+    context=dict(category=category)
+    template='finance/expense_categories/edit.html' if category else 'finance/expense_categories/add.html'
+    if request.method=='POST':
         try:
+            values=expense_category_fields(*expense_category_submitted_values(request.form),uppercase_code=True)
+            if category:
+                if update_expense_category(category['category_id'],*values) is False:
+                    flash('No expense category changes were needed.','info')
+                    return redirect(url_for('expense_categories'))
+                category_id=category['category_id']
+            else:category_id=create_expense_category(*values)
+        except ValueError as error:
+            flash(str(error),'danger')
+            return render_template(template,**context),getattr(error,'status_code',200)
+        except ExpenseCategoryDatabaseError:
+            flash('Category write was not confirmed. Refresh and reconcile the record before retrying.','danger')
+            return render_template(template,**context),503
+        record_audit_event('FINANCE','UPDATE' if category else 'CREATE','EXPENSE_CATEGORY',category_id,
+                           f"Expense category {values[0]} (ID {category_id}) {'updated' if category else 'created'}.")
+        flash('Expense category updated successfully.' if category else 'Expense category created successfully.','success')
+        return redirect(url_for('expense_categories'))
+    return render_template(template,**context)
 
-            changed = update_expense_category(
-                category_id,
-                category_code,
-                category_name,
-                description or None,
-            )
-
-        except Exception as error:
-
-            if getattr(error, "errno", None) == 1062:
-
-                flash(
-                    "Expense category code already exists.",
-                    "danger",
-                )
-
-                return render_template(
-                    "finance/expense_categories/edit.html",
-                    category=category,
-                )
-
-            raise
-
-
-        if not changed:
-            flash("Expense category was not changed. Reload and try again.", "warning")
-            return redirect(url_for("expense_categories"))
-        record_audit_event("FINANCE", "UPDATE", "EXPENSE_CATEGORY", category_id,
-                           f"Expense category {category_id} ({category_code}) updated.")
-
-        flash(
-            "Expense category updated successfully.",
-            "success",
-        )
-
-        return redirect(
-            url_for("expense_categories")
-        )
-
-
-    return render_template(
-        "finance/expense_categories/edit.html",
-        category=category,
-    )
 
 
 # ==========================================================
 # FINANCE - CHANGE EXPENSE CATEGORY STATUS
 # ==========================================================
 
-@app.route(
-    "/finance/expense-categories/<int:category_id>/status",
-    methods=["POST"],
-)
-@permission_required("finance.categories.manage")
+@app.route('/finance/expense-categories/<int:category_id>/status',methods=['POST'])
+@permission_required('finance.categories.manage')
 def change_expense_category_status(category_id):
-
-    # ======================================================
-    # GET CATEGORY
-    # ======================================================
-
-    category = get_expense_category_by_id(category_id)
-
-    if not category:
-        flash(
-            "Expense category not found.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("expense_categories")
-        )
-
-
-    # ======================================================
-    # TOGGLE STATUS
-    # ======================================================
-
-    new_status = not bool(category["is_active"])
-
-    changed = set_expense_category_active_status(
-        category_id,
-        new_status,
-    )
-
-
-    # ======================================================
-    # ======================================================
-    # SUCCESS MESSAGE
-    # ======================================================
-
+    try:
+        category=get_expense_category_by_id(category_id)
+        if not category:raise ExpenseCategoryError('Expense category not found.',404)
+        # Rendered forms submit a target, so duplicate/stale requests cannot undo
+        # a completed operation. Preserve the legacy no-target caller interface.
+        if len(request.form.getlist('is_active'))>1:raise ExpenseCategoryError('Submit only one category status.')
+        target=request.form.get('is_active')
+        if target not in (None,'0','1'):raise ExpenseCategoryError('Select a valid category status.')
+        new_status=not bool(category['is_active']) if target is None else target=='1'
+        changed=set_expense_category_active_status(category_id,new_status)
+    except ValueError as error:
+        flash(str(error),'danger');return str(error),getattr(error,'status_code',400)
+    except ExpenseCategoryDatabaseError:
+        return 'Category status write was not confirmed. Refresh and reconcile before retrying.',503
     if not changed:
-        flash("Expense category status was not changed. Reload and try again.", "warning")
-        return redirect(url_for("expense_categories"))
-    record_audit_event("FINANCE", "ACTIVATE" if new_status else "DEACTIVATE",
-                       "EXPENSE_CATEGORY", category_id,
-                       f"Expense category {category_id} ({category['category_code']}) "
-                       + ("activated." if new_status else "deactivated."))
-
-    if new_status:
-
-        flash(
-            "Expense category activated successfully.",
-            "success",
-        )
-
+        flash('Expense category status was not changed. Refresh the page before trying again.','info')
     else:
+        record_audit_event('FINANCE','ACTIVATE' if new_status else 'DEACTIVATE','EXPENSE_CATEGORY',category_id,
+                           f"Expense category {category['category_code']} (ID {category_id}) {'activated' if new_status else 'deactivated'}.")
+        flash('Expense category activated successfully.' if new_status else 'Expense category deactivated successfully.','success')
+    return redirect(url_for('expense_categories'))
 
-        flash(
-            "Expense category deactivated successfully.",
-            "success",
-        )
-
-
-    return redirect(
-        url_for("expense_categories")
-    )
 
 
 
