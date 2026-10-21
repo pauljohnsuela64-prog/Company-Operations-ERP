@@ -159,6 +159,45 @@ class BudgetRouteTests(unittest.TestCase):
         with patch.object(self.erp,'get_department_budget_page',side_effect=Error('PRIVATE SQL')):
             self.assertEqual(self.client.get('/finance/budgets').status_code,503)
 
+    def test_rendered_currency_normal_filtered_and_empty_listings(self):
+        from html.parser import HTMLParser
+
+        class VisibleText(HTMLParser):
+            def __init__(self, html):
+                super().__init__(); self.parts=[]; self.feed(html)
+            def handle_data(self, data):
+                self.parts.append(data)
+
+        selected=listing_values({},2026)
+        row=dict(self.row,department_name='One <script> & Co',
+                 budget_amount=Decimal('1234567.89'),spent_amount=Decimal('234567.80'),
+                 remaining_amount=Decimal('1000000.09'))
+        for query,records in (('',[row]),('?year=2026&department_id=1&search=One',[row]),
+                              ('?year=2026&search=missing',[])):
+            with self.subTest(query=query):
+                summary=dict(department_count=len(records),total_budget=row['budget_amount'] if records else Decimal('0'),
+                             total_spent=row['spent_amount'] if records else Decimal('0'),
+                             total_remaining=row['remaining_amount'] if records else Decimal('0'))
+                page=dict(records=records,summary=summary,total=len(records),pages=1,first=1 if records else 0,
+                          last=len(records),filters=dict(selected,search='missing' if not records else ''))
+                with patch.object(self.erp,'get_department_budget_page',return_value=page):
+                    response=self.client.get('/finance/budgets'+query)
+                self.assertEqual(response.status_code,200)
+                self.assertIn('charset=utf-8',response.content_type)
+                html=response.data.decode('utf-8',errors='strict')
+                text=' '.join(' '.join(VisibleText(html).parts).split())
+                self.assertEqual(text.count('\u20b1'),6 if records else 3)
+                for corrupt in ('\u00c3','\u00c2','\ufffd'):
+                    self.assertNotIn(corrupt,text)
+                if records:
+                    for amount in ('1,234,567.89','234,567.80','1,000,000.09'):
+                        self.assertEqual(text.count('\u20b1'+amount),2)
+                    self.assertIn('One &lt;script&gt; &amp; Co',html)
+                    self.assertNotIn('One <script>',html)
+                else:
+                    self.assertEqual(text.count('\u20b10.00'),3)
+                    self.assertIn('No department budgets match these filters.',text)
+
     def test_missing_record_duplicate_form_and_permission_denial(self):
         with patch.object(self.erp,'get_department_budget_by_id',return_value=None):self.assertEqual(self.client.get('/finance/budgets/9/edit').status_code,302)
         with patch.object(self.erp,'create_department_budget') as write:
