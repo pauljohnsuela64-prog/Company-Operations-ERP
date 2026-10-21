@@ -28,7 +28,7 @@ class SessionSecurityTests(unittest.TestCase):
         self.state=user_state(permissions=['procurement.view','inventory.view'])
         self.loader=self.stack.enter_context(patch.object(self.erp,'get_authorization_state',side_effect=lambda _:self.state))
         self.stack.enter_context(patch.object(self.erp.app.logger,'exception'))
-        self.suppliers=self.stack.enter_context(patch.object(self.erp,'get_all_suppliers',return_value=[]))
+        self.suppliers=self.stack.enter_context(patch.object(self.erp,'get_supplier_page',return_value=dict(records=[],total=0,pages=1,first=0,last=0,filters=dict(search='',status='',page=1,page_size=25))))
         self.client=csrf_client(self.erp.app)
         self.signin(self.client)
 

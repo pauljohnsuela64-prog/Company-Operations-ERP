@@ -11,7 +11,7 @@ The workflow has three independent jobs:
 | --- | --- | --- |
 | Python unit tests and syntax | Ubuntu 24.04, Python 3.14 | Install `requirements.txt`; `pip check`; compile tracked Python; parse Jinja templates; complete unittest discovery |
 | JavaScript tests and syntax | Ubuntu 24.04, Node 24 | `node --check` for tracked JS/CJS files; navigation tests; no npm install |
-| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 30 suites |
+| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 31 suites |
 
 Python, Node and runner labels select supported release lines, not immutable OS
 images. Official checkout/setup Actions are pinned to full commit SHAs with release
@@ -480,3 +480,27 @@ The existing master smoke expects generic 503 on category SQL failure, with its
 unchanged-data assertion preserved. New SQL smoke is discovered automatically by
 CI; Chrome remains local-only. Fixture grants/schema setup apply only to the fresh
 verified disposable server, never company databases.
+
+
+## Supplier management
+
+See [SUPPLIER_MANAGEMENT.md](../SUPPLIER_MANAGEMENT.md) for unchanged required-field
+policy, existing email/PO consistency questions, listing/write/audit contracts and
+remaining limitations.
+
+```powershell
+.venv/Scripts/python.exe -B -m unittest discover -s tests -p test_supplier_management.py -q
+.venv/Scripts/python.exe -B tests/mysql_supplier_management_smoke.py
+.venv/Scripts/python.exe -B tests/mysql_supplier_management_browser.py
+```
+
+Focused unit fixtures forbid company DB access. Disposable SQL checks 1,005
+same-name suppliers, literal/combined/invalid filters, 25/50/100 pages, consistent
+count/rows under concurrent insert, observed duplicate/edit/status/Finance locks,
+rollback, uncertain commits, audit failure isolation and historical PO/expense
+relationships. Native Chrome verifies retained escaped fields, explicit status
+replay, security and optional contact/email/phone/address submission. Its wrapper
+checks four changed audit actions and unchanged historical fixtures/POs. Session
+security fixtures now mock the paged supplier reader while preserving existing
+authorization assertions. SQL smoke is auto-discovered by CI; Chrome is local-only.
+No production grants, migrations or deployment are performed.

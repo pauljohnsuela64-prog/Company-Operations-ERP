@@ -39,9 +39,11 @@ SUPPLIER_LIMITS = {'supplier_code': 30, 'supplier_name': 150,
 
 
 def validate_supplier(supplier_code, supplier_name, contact_person=None, email=None, phone=None, address=None):
+    from supplier_management import validate_text
     values = locals()
     for name, limit in SUPPLIER_LIMITS.items():
         value = values[name]
+        validate_text(value,name.replace('_',' ').capitalize(),multiline=name=='address')
         if name in ('supplier_code', 'supplier_name') and (not value or not value.strip()):
             raise ValueError(f"{name.replace('_', ' ').capitalize()} is required.")
         validate_notes(value, name.replace('_', ' ').capitalize(), limit)
