@@ -84,6 +84,7 @@ Add Inventory Item
                                     No Category
                                 </option>
 
+                                {% if unlisted_category %}<option value="{{ selected_category }}" selected>Selected category (not in current list)</option>{% endif %}
                                 {% for category in categories %}
 
                                     <option
@@ -121,6 +122,7 @@ Add Inventory Item
                                     'pcs'
                                 ) %}
 
+                                {% if selected_unit not in ['pcs','box','pack','unit','meter','liter'] %}<option value="{{ selected_unit }}" selected>{{ selected_unit }}</option>{% endif %}
                                 <option value="pcs" {% if selected_unit == 'pcs' %}selected{% endif %}>
                                     Pieces
                                 </option>
@@ -157,7 +159,8 @@ Add Inventory Item
                             </label>
 
                             <input
-                                type="number"
+                                type="text"
+                                inputmode="decimal"
                                 name="reorder_level"
                                 class="form-control"
                                 min="0"

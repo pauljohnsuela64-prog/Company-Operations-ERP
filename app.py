@@ -275,7 +275,11 @@ from stock_repository import (
 )
 
 
+from inventory_item_management import ItemError, submitted_values as item_submitted_values
+from inventory_validation import item_fields
+from mysql.connector import Error as ItemDatabaseError
 from inventory_item_repository import (
+    get_inventory_item_page,
     create_inventory_item,
     get_all_inventory_items,
     get_inventory_item_by_id,
@@ -1040,278 +1044,96 @@ def change_warehouse_status(warehouse_id):
 @app.route("/inventory/items")
 @permission_required("inventory.view")
 def inventory_items():
-    items = get_all_inventory_items()
+    selected={key:request.args.get(key,'') for key in ('search','category_id','status','page_size')}
+    page=None;categories=[];code=200
+    try:
+        page=get_inventory_item_page(request.args);selected=page['filters']
+        categories=get_all_inventory_categories()
+    except ValueError as error:
+        flash(str(error),'danger');code=getattr(error,'status_code',400);page=None
+    except ItemDatabaseError:
+        flash('Inventory items are temporarily unavailable. Please retry later.','danger');code=503;page=None
+    def page_url(number):return url_for('inventory_items',**dict(selected,page=number))
+    return render_template('inventory/items/index.html',items=page['records'] if page else [],
+        selected_filters=selected,categories=categories,pagination=page,item_page_url=page_url,load_error=page is None),code
 
-    return render_template(
-        "inventory/items/index.html",
-        items=items,
-    )
 
-@app.route(
-    "/inventory/items/add",
-    methods=["GET", "POST"],
-)
-@permission_required("inventory.items.manage")
+@app.route('/inventory/items/add',methods=['GET','POST'])
+@permission_required('inventory.items.manage')
 def add_inventory_item():
-    categories = get_active_inventory_categories()
-
-    if request.method == "POST":
-        item_code = request.form.get(
-            "item_code",
-            "",
-        ).strip().upper()
-
-        item_name = request.form.get(
-            "item_name",
-            "",
-        ).strip()
-
-        category_id = request.form.get(
-            "category_id",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-        unit_of_measure = request.form.get(
-            "unit_of_measure",
-            "",
-        ).strip()
-
-        reorder_level = request.form.get(
-            "reorder_level",
-            "0",
-        ).strip()
-
-        if not item_code or not item_name or not unit_of_measure:
-            flash(
-                "Item code, item name, and unit of measure are required.",
-                "danger",
-            )
-
-            return render_template(
-                "inventory/items/add.html",
-                categories=categories,
-            )
-
-        try:
-            reorder_level_value = decimal_value(reorder_level, "Reorder level")
-
-        except ValueError as error:
-            flash(
-                str(error),
-                "danger",
-            )
-
-            return render_template(
-                "inventory/items/add.html",
-                categories=categories,
-            )
-
-        try:
-            item_id = create_inventory_item(
-                item_code,
-                item_name,
-                category_id if category_id else None,
-                description or None,
-                unit_of_measure,
-                reorder_level_value,
-            )
-
-        except ValueError as error:
-            flash(str(error), "danger")
-            return render_template("inventory/items/add.html", categories=categories)
-
-        except Exception as error:
-            if getattr(error, "errno", None) == 1062:
-                flash(
-                    "Item code already exists.",
-                    "danger",
-                )
-
-                return render_template(
-                    "inventory/items/add.html",
-                    categories=categories,
-                )
-
-            raise
-
-        record_audit_event("INVENTORY", "CREATE", "INVENTORY_ITEM", item_id,
-                           f"Inventory item {item_code} (ID {item_id}) created.")
-
-        flash(
-            "Inventory item created successfully.",
-            "success",
-        )
-
-        return redirect(url_for("inventory_items"))
-
-    return render_template(
-        "inventory/items/add.html",
-        categories=categories,
-    )
+    return _inventory_item_form()
 
 
-@app.route(
-    "/inventory/items/<int:item_id>/edit",
-    methods=["GET", "POST"],
-)
-@permission_required("inventory.items.manage")
+@app.route('/inventory/items/<int:item_id>/edit',methods=['GET','POST'])
+@permission_required('inventory.items.manage')
 def edit_inventory_item(item_id):
-    item = get_inventory_item_by_id(item_id)
-
+    try:item=get_inventory_item_by_id(item_id)
+    except ValueError as error:
+        flash(str(error),'danger');return str(error),getattr(error,'status_code',400)
+    except ItemDatabaseError:
+        return 'Inventory item could not be loaded. Refresh and retry.',503
     if not item:
-        flash("Inventory item not found.", "danger")
-        return redirect(url_for("inventory_items"))
+        flash('Inventory item not found.','danger')
+        return redirect(url_for('inventory_items'))
+    return _inventory_item_form(item)
 
-    categories = [category for category in get_all_inventory_categories()
-                  if category["is_active"] or category["category_id"] == item["category_id"]]
 
-    if request.method == "POST":
-        item_code = request.form.get(
-            "item_code",
-            "",
-        ).strip().upper()
-
-        item_name = request.form.get(
-            "item_name",
-            "",
-        ).strip()
-
-        category_id = request.form.get(
-            "category_id",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-        unit_of_measure = request.form.get(
-            "unit_of_measure",
-            "",
-        ).strip()
-
-        reorder_level = request.form.get(
-            "reorder_level",
-            "0",
-        ).strip()
-
-        if not item_code or not item_name or not unit_of_measure:
-            flash(
-                "Item code, item name, and unit of measure are required.",
-                "danger",
-            )
-
-            return render_template(
-                "inventory/items/edit.html",
-                item=item,
-                categories=categories,
-            )
-
+def _inventory_item_form(item=None):
+    try:
+        categories=([c for c in get_all_inventory_categories() if c['is_active'] or c['category_id']==item['category_id']]
+                    if item else get_active_inventory_categories())
+    except ItemDatabaseError:
+        return 'Inventory categories are temporarily unavailable. Please retry later.',503
+    selected_category=request.form.get('category_id','') if request.method=='POST' else str((item or {}).get('category_id') or '')
+    context=dict(categories=categories,item=item,selected_category=selected_category,
+                 unlisted_category=bool(selected_category) and not any(str(c['category_id'])==selected_category for c in categories))
+    template='inventory/items/edit.html' if item else 'inventory/items/add.html'
+    if request.method=='POST':
         try:
-            reorder_level_value = decimal_value(reorder_level, "Reorder level")
-
+            values=item_fields(*item_submitted_values(request.form))
+            if item:
+                if update_inventory_item(item['item_id'],*values) is False:
+                    flash('No inventory item changes were needed.','info')
+                    return redirect(url_for('inventory_items'))
+                item_id=item['item_id']
+            else:item_id=create_inventory_item(*values)
         except ValueError as error:
-            flash(
-                str(error),
-                "danger",
-            )
+            flash(str(error),'danger')
+            return render_template(template,**context),getattr(error,'status_code',200)
+        except ItemDatabaseError:
+            flash('Item write was not confirmed. Refresh and reconcile the record before retrying.','danger')
+            return render_template(template,**context),503
+        record_audit_event('INVENTORY','UPDATE' if item else 'CREATE','INVENTORY_ITEM',item_id,
+                           f"Inventory item {values[0]} (ID {item_id}) {'updated' if item else 'created'}.")
+        flash('Inventory item updated successfully.' if item else 'Inventory item created successfully.','success')
+        return redirect(url_for('inventory_items'))
+    return render_template(template,**context)
 
-            return render_template(
-                "inventory/items/edit.html",
-                item=item,
-                categories=categories,
-            )
 
-        try:
-            update_inventory_item(
-                item_id,
-                item_code,
-                item_name,
-                category_id if category_id else None,
-                description or None,
-                unit_of_measure,
-                reorder_level_value,
-            )
-
-        except ValueError as error:
-            flash(str(error), "danger")
-            return render_template("inventory/items/edit.html", item=item, categories=categories)
-
-        except Exception as error:
-            if getattr(error, "errno", None) == 1062:
-                flash(
-                    "Item code already exists.",
-                    "danger",
-                )
-
-                return render_template(
-                    "inventory/items/edit.html",
-                    item=item,
-                    categories=categories,
-                )
-
-            raise
-
-        record_audit_event("INVENTORY", "UPDATE", "INVENTORY_ITEM", item_id,
-                           f"Inventory item {item_code} (ID {item_id}) updated.")
-
-        flash(
-            "Inventory item updated successfully.",
-            "success",
-        )
-
-        return redirect(url_for("inventory_items"))
-
-    return render_template(
-        "inventory/items/edit.html",
-        item=item,
-        categories=categories,
-    )
-
-@app.route(
-    "/inventory/items/<int:item_id>/status",
-    methods=["POST"],
-)
-@permission_required("inventory.items.manage")
+@app.route('/inventory/items/<int:item_id>/status',methods=['POST'])
+@permission_required('inventory.items.manage')
 def change_inventory_item_status(item_id):
-    item = get_inventory_item_by_id(item_id)
-
-    if not item:
-        flash("Inventory item not found.", "danger")
-        return redirect(url_for("inventory_items"))
-
-    new_status = not bool(item["is_active"])
-
-    changed = set_inventory_item_active_status(
-        item_id,
-        new_status,
-    )
-
+    try:
+        item=get_inventory_item_by_id(item_id)
+        if not item:raise ItemError('Inventory item not found.',404)
+        # Rendered forms submit a target, so duplicate/stale requests cannot undo
+        # a completed operation. Preserve the legacy no-target caller interface.
+        if len(request.form.getlist('is_active'))>1:raise ItemError('Submit only one item status.')
+        target=request.form.get('is_active')
+        if target not in (None,'0','1'):raise ItemError('Select a valid item status.')
+        new_status=not bool(item['is_active']) if target is None else target=='1'
+        changed=set_inventory_item_active_status(item_id,new_status)
+    except ValueError as error:
+        flash(str(error),'danger');return str(error),getattr(error,'status_code',400)
+    except ItemDatabaseError:
+        return 'Item status write was not confirmed. Refresh and reconcile before retrying.',503
     if not changed:
-        flash("Inventory item status was not changed. Refresh the page before trying again.", "info")
-        return redirect(url_for("inventory_items"))
-    record_audit_event("INVENTORY", "ACTIVATE" if new_status else "DEACTIVATE",
-                       "INVENTORY_ITEM", item_id,
-                       f"Inventory item {item['item_code']} (ID {item_id}) {'activated' if new_status else 'deactivated'}.")
-
-    if new_status:
-        flash(
-            "Inventory item activated successfully.",
-            "success",
-        )
+        flash('Inventory item status was not changed. Refresh the page before trying again.','info')
     else:
-        flash(
-            "Inventory item deactivated successfully.",
-            "success",
-        )
-
-    return redirect(url_for("inventory_items"))
+        record_audit_event('INVENTORY','ACTIVATE' if new_status else 'DEACTIVATE','INVENTORY_ITEM',item_id,
+                           f"Inventory item {item['item_code']} (ID {item_id}) {'activated' if new_status else 'deactivated'}.")
+        flash('Inventory item activated successfully.' if new_status else 'Inventory item deactivated successfully.','success')
+    return redirect(url_for('inventory_items'))
 
 
 @app.route("/inventory/stock")

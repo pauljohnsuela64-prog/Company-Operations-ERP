@@ -88,6 +88,7 @@ Edit Inventory Item
                                     No Category
                                 </option>
 
+                                {% if unlisted_category %}<option value="{{ selected_category }}" selected>Selected category (not in current list)</option>{% endif %}
                                 {% for category in categories %}
 
                                     <option
@@ -147,7 +148,8 @@ Edit Inventory Item
                             </label>
 
                             <input
-                                type="number"
+                                type="text"
+                                inputmode="decimal"
                                 name="reorder_level"
                                 class="form-control"
                                 min="0"
