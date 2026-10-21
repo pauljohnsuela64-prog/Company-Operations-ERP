@@ -94,7 +94,7 @@ def run(port,data_dir):
 
         # Simulate a vanished category after the route loaded it: writer returns False.
         with patch.object(erp,'get_expense_category_by_id',return_value=dict(category_id=999,category_code='GONE',is_active=True)):
-            before=len(rows());post('/finance/expense-categories/999/status');assert len(rows())==before
+            before=len(rows());assert post('/finance/expense-categories/999/status').status_code==404;assert len(rows())==before
         before=snapshot()
         for path,data in [('/finance/expenses/add',dict(expense,amount='NaN')),
                           ('/finance/budgets/add',budget),('/finance/budgets/1/edit',dict(budget,budget_amount='1.001')),

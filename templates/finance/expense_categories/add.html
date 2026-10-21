@@ -60,6 +60,7 @@ Add Expense Category
                 <input
                     type="text"
                     name="category_code"
+                    value="{{ request.form.get('category_code', '') }}"
                     class="form-control"
                     maxlength="30"
                     required
@@ -80,6 +81,7 @@ Add Expense Category
                 <input
                     type="text"
                     name="category_name"
+                    value="{{ request.form.get('category_name', '') }}"
                     class="form-control"
                     maxlength="100"
                     required
@@ -103,7 +105,7 @@ Add Expense Category
                     rows="3"
                     maxlength="255"
                     placeholder="Optional description"
-                ></textarea>
+                >{{ request.form.get('description', '') }}</textarea>
 
             </div>
 

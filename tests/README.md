@@ -11,7 +11,7 @@ The workflow has three independent jobs:
 | --- | --- | --- |
 | Python unit tests and syntax | Ubuntu 24.04, Python 3.14 | Install `requirements.txt`; `pip check`; compile tracked Python; parse Jinja templates; complete unittest discovery |
 | JavaScript tests and syntax | Ubuntu 24.04, Node 24 | `node --check` for tracked JS/CJS files; navigation tests; no npm install |
-| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 31 suites |
+| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 32 suites |
 
 Python, Node and runner labels select supported release lines, not immutable OS
 images. Official checkout/setup Actions are pinned to full commit SHAs with release
@@ -504,3 +504,27 @@ checks four changed audit actions and unchanged historical fixtures/POs. Session
 security fixtures now mock the paged supplier reader while preserving existing
 authorization assertions. SQL smoke is auto-discovered by CI; Chrome is local-only.
 No production grants, migrations or deployment are performed.
+
+
+## Finance Expense Categories management
+
+See [EXPENSE_CATEGORIES_MANAGEMENT.md](../EXPENSE_CATEGORIES_MANAGEMENT.md) for
+listing/write contracts, unchanged helper/reference rules, storage requirements
+and limitations.
+
+```powershell
+.venv/Scripts/python.exe -B -m unittest discover -s tests -p test_expense_category_management.py -q
+.venv/Scripts/python.exe -B tests/mysql_expense_category_management_smoke.py
+.venv/Scripts/python.exe -B tests/mysql_expense_category_management_browser.py
+```
+
+Unit fixtures forbid company DB access. The disposable SQL suite covers 1,005
+same-name records, filtered 25/50/100 traversal, snapshot counts under inserts,
+duplicate/edit/status lock waits, both expense reference/deactivation orders,
+no-op/rollback/uncertain commits, audit failure isolation, history and active-only
+eligibility preservation, and actual MyISAM rejection without repair. Chrome
+verifies retained escaped values, native correction, duplicate/no-op edits, status
+replay, security, four persisted audit actions and unchanged historical expenses.
+The Finance audit suite expects 404 for a category lost before a status write,
+retaining its no-success-audit assertion. Existing CI discovers the SQL smoke;
+Chrome is local-only. No company DB, migration or production grants are used.

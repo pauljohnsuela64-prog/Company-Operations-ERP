@@ -48,6 +48,14 @@ Expense Categories
 <!-- # EXPENSE CATEGORY TABLE -->
 <!-- # ========================================== -->
 
+<form method="GET" action="{{ url_for('expense_categories') }}" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+    <div><label for="category-search" class="form-label">Search</label><input id="category-search" name="search" class="form-control" maxlength="100" value="{{ selected_filters.search }}" placeholder="Category code or name"></div>
+    <div><label for="category-status" class="form-label">Status</label><select id="category-status" name="status" class="form-select"><option value="">All statuses</option><option value="active" {% if selected_filters.status=='active' %}selected{% endif %}>Active</option><option value="inactive" {% if selected_filters.status=='inactive' %}selected{% endif %}>Inactive</option></select></div>
+    <div><label for="category-size" class="form-label">Rows per page</label><select id="category-size" name="page_size" class="form-select">{% for size in [25,50,100] %}<option value="{{ size }}" {% if selected_filters.page_size|string==size|string %}selected{% endif %}>{{ size }}</option>{% endfor %}</select></div>
+    <button class="btn btn-outline-primary" type="submit">Apply</button><a class="btn btn-outline-secondary" href="{{ url_for('expense_categories') }}">Clear</a>
+</form>
+{% if pagination %}<p>{{ pagination.total }} matching categories</p>{% endif %}
+
 <div class="card shadow-sm border-0">
 
     <div class="card-body">
@@ -166,6 +174,7 @@ Expense Categories
 
                                     <!-- # ACTIVATE / DEACTIVATE BUTTON -->
 
+                                        {% if has_permission('finance.categories.manage') %}
                                         <form
                                         method="POST"
                                         action="{{ url_for(
@@ -175,6 +184,7 @@ Expense Categories
                                         class="d-inline"
                                         >
                     {% include 'partials/csrf_field.html' %}
+    <input type="hidden" name="is_active" value="{{ '0' if category.is_active else '1' }}">
 
                                         {% if category.is_active %}
 
@@ -197,6 +207,7 @@ Expense Categories
                                 {% endif %}
 
                                         </form>
+                                        {% endif %}
 
                             
 
@@ -214,7 +225,7 @@ Expense Categories
                                 colspan="5"
                                 class="text-center text-muted py-4"
                             >
-                                No expense categories found.
+                                {% if load_error %}Expense categories were not loaded. Review the message above.{% else %}No expense categories match these filters.{% endif %}
                             </td>
 
                         </tr>
@@ -232,4 +243,5 @@ Expense Categories
 </div>
 
 
+{% if pagination %}<nav class="d-flex justify-content-between mt-3" aria-label="Expense category pages"><span>Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }} categories | Page {{ pagination.filters.page }} of {{ pagination.pages }}</span><div>{% if pagination.filters.page>1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ category_page_url(pagination.filters.page-1) }}">Previous</a>{% endif %} {% if pagination.filters.page<pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ category_page_url(pagination.filters.page+1) }}">Next</a>{% endif %}</div></nav>{% endif %}
 {% endblock %}

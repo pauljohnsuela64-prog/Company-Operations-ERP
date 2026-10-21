@@ -67,7 +67,7 @@ Edit Expense Category
                     name="category_code"
                     class="form-control"
                     maxlength="30"
-                    value="{{ category.category_code }}"
+                    value="{{ request.form.get('category_code', category.category_code) }}"
                     required
                 >
 
@@ -87,7 +87,7 @@ Edit Expense Category
                     name="category_name"
                     class="form-control"
                     maxlength="100"
-                    value="{{ category.category_name }}"
+                    value="{{ request.form.get('category_name', category.category_name) }}"
                     required
                 >
 
@@ -107,7 +107,7 @@ Edit Expense Category
                     class="form-control"
                     rows="3"
                     maxlength="255"
-                >{{ category.description or "" }}</textarea>
+                >{{ request.form.get('description', category.description or '') }}</textarea>
 
             </div>
 
