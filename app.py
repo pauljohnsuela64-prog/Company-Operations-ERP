@@ -300,7 +300,11 @@ from warehouse_repository import (
     update_warehouse,
 )
 
+from inventory_category_management import CategoryError, submitted_values as category_submitted_values
+from inventory_validation import category_fields
+from mysql.connector import Error as CategoryDatabaseError
 from inventory_category_repository import (
+    get_inventory_category_page,
     create_inventory_category,
     get_active_inventory_categories,
     get_all_inventory_categories,
@@ -716,225 +720,88 @@ def edit_employee(employee_id):
 @app.route("/inventory/categories")
 @permission_required("inventory.view")
 def inventory_categories():
-    categories = get_all_inventory_categories()
+    selected={key:request.args.get(key,'') for key in ('search','status','page_size')}
+    page=None;code=200
+    try:
+        page=get_inventory_category_page(request.args);selected=page['filters']
+    except ValueError as error:
+        flash(str(error),'danger');code=getattr(error,'status_code',400);page=None
+    except CategoryDatabaseError:
+        flash('Inventory categories are temporarily unavailable. Please retry later.','danger');code=503;page=None
+    def page_url(number):return url_for('inventory_categories',**dict(selected,page=number))
+    return render_template('inventory/categories/index.html',categories=page['records'] if page else [],
+        selected_filters=selected,pagination=page,category_page_url=page_url,load_error=page is None),code
 
-    return render_template(
-        "inventory/categories/index.html",
-        categories=categories,
-    )
 
-@app.route(
-    "/inventory/categories/add",
-    methods=["GET", "POST"],
-)
-@permission_required("inventory.categories.manage")
+@app.route('/inventory/categories/add',methods=['GET','POST'])
+@permission_required('inventory.categories.manage')
 def add_inventory_category():
-    if request.method == "POST":
-        category_code = request.form.get(
-            "category_code",
-            "",
-        ).strip().upper()
+    return _inventory_category_form()
 
-        category_name = request.form.get(
-            "category_name",
-            "",
-        ).strip()
 
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-        if not category_code or not category_name:
-            flash(
-                "Category code and name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "inventory/categories/add.html",
-            )
-
-        if len(category_code) > 30:
-            flash(
-                "Category code must not exceed 30 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "inventory/categories/add.html",
-            )
-
-        if len(category_name) > 100:
-            flash(
-                "Category name must not exceed 100 characters.",
-                "danger",
-            )
-
-            return render_template(
-                "inventory/categories/add.html",
-            )
-
-        try:
-            category_id = create_inventory_category(
-                category_code,
-                category_name,
-                description or None,
-            )
-
-        except ValueError as error:
-            flash(str(error), "danger")
-            return render_template("inventory/categories/add.html")
-
-        except Exception as error:
-            if getattr(error, "errno", None) == 1062:
-                flash(
-                    "Category code or category name already exists.",
-                    "danger",
-                )
-
-                return render_template(
-                    "inventory/categories/add.html",
-                )
-
-            raise
-
-        record_audit_event("INVENTORY", "CREATE", "INVENTORY_CATEGORY", category_id,
-                           f"Inventory category {category_code} (ID {category_id}) created.")
-
-        flash(
-            "Inventory category created successfully.",
-            "success",
-        )
-
-        return redirect(
-            url_for("inventory_categories")
-        )
-
-    return render_template(
-        "inventory/categories/add.html",
-    )
-
-@app.route(
-    "/inventory/categories/<int:category_id>/edit",
-    methods=["GET", "POST"],
-)
-@permission_required("inventory.categories.manage")
+@app.route('/inventory/categories/<int:category_id>/edit',methods=['GET','POST'])
+@permission_required('inventory.categories.manage')
 def edit_inventory_category(category_id):
-    category = get_inventory_category_by_id(category_id)
-
+    try:category=get_inventory_category_by_id(category_id)
+    except ValueError as error:
+        flash(str(error),'danger');return str(error),getattr(error,'status_code',400)
+    except CategoryDatabaseError:
+        return 'Inventory category could not be loaded. Refresh and retry.',503
     if not category:
-        flash("Inventory category not found.", "danger")
-        return redirect(url_for("inventory_categories"))
+        flash('Inventory category not found.','danger')
+        return redirect(url_for('inventory_categories'))
+    return _inventory_category_form(category)
 
-    if request.method == "POST":
-        category_code = request.form.get(
-            "category_code",
-            "",
-        ).strip().upper()
 
-        category_name = request.form.get(
-            "category_name",
-            "",
-        ).strip()
-
-        description = request.form.get(
-            "description",
-            "",
-        ).strip()
-
-        if not category_code or not category_name:
-            flash(
-                "Category code and name are required.",
-                "danger",
-            )
-
-            return render_template(
-                "inventory/categories/edit.html",
-                category=category,
-            )
-
+def _inventory_category_form(category=None):
+    context=dict(category=category)
+    template='inventory/categories/edit.html' if category else 'inventory/categories/add.html'
+    if request.method=='POST':
         try:
-            update_inventory_category(
-                category_id,
-                category_code,
-                category_name,
-                description or None,
-            )
-
+            values=category_fields(*category_submitted_values(request.form))
+            if category:
+                if update_inventory_category(category['category_id'],*values) is False:
+                    flash('No inventory category changes were needed.','info')
+                    return redirect(url_for('inventory_categories'))
+                category_id=category['category_id']
+            else:category_id=create_inventory_category(*values)
         except ValueError as error:
-            flash(str(error), "danger")
-            return render_template("inventory/categories/edit.html", category=category)
-
-        except Exception as error:
-            if getattr(error, "errno", None) == 1062:
-                flash(
-                    "Category code or category name already exists.",
-                    "danger",
-                )
-
-                return render_template(
-                    "inventory/categories/edit.html",
-                    category=category,
-                )
-
-            raise
-
-        record_audit_event("INVENTORY", "UPDATE", "INVENTORY_CATEGORY", category_id,
-                           f"Inventory category {category_code} (ID {category_id}) updated.")
-
-        flash(
-            "Inventory category updated successfully.",
-            "success",
-        )
-
-        return redirect(url_for("inventory_categories"))
-
-    return render_template(
-        "inventory/categories/edit.html",
-        category=category,
-    )
+            flash(str(error),'danger')
+            return render_template(template,**context),getattr(error,'status_code',200)
+        except CategoryDatabaseError:
+            flash('Category write was not confirmed. Refresh and reconcile the record before retrying.','danger')
+            return render_template(template,**context),503
+        record_audit_event('INVENTORY','UPDATE' if category else 'CREATE','INVENTORY_CATEGORY',category_id,
+                           f"Inventory category {values[0]} (ID {category_id}) {'updated' if category else 'created'}.")
+        flash('Inventory category updated successfully.' if category else 'Inventory category created successfully.','success')
+        return redirect(url_for('inventory_categories'))
+    return render_template(template,**context)
 
 
-@app.route(
-    "/inventory/categories/<int:category_id>/status",
-    methods=["POST"],
-)
-@permission_required("inventory.categories.manage")
+@app.route('/inventory/categories/<int:category_id>/status',methods=['POST'])
+@permission_required('inventory.categories.manage')
 def change_inventory_category_status(category_id):
-    category = get_inventory_category_by_id(category_id)
-
-    if not category:
-        flash("Inventory category not found.", "danger")
-        return redirect(url_for("inventory_categories"))
-
-    new_status = not bool(category["is_active"])
-
-    changed = set_inventory_category_active_status(
-        category_id,
-        new_status,
-    )
-
+    try:
+        category=get_inventory_category_by_id(category_id)
+        if not category:raise CategoryError('Inventory category not found.',404)
+        # Rendered forms submit a target, so duplicate/stale requests cannot undo
+        # a completed operation. Preserve the legacy no-target caller interface.
+        if len(request.form.getlist('is_active'))>1:raise CategoryError('Submit only one category status.')
+        target=request.form.get('is_active')
+        if target not in (None,'0','1'):raise CategoryError('Select a valid category status.')
+        new_status=not bool(category['is_active']) if target is None else target=='1'
+        changed=set_inventory_category_active_status(category_id,new_status)
+    except ValueError as error:
+        flash(str(error),'danger');return str(error),getattr(error,'status_code',400)
+    except CategoryDatabaseError:
+        return 'Category status write was not confirmed. Refresh and reconcile before retrying.',503
     if not changed:
-        flash("Inventory category status was not changed. Refresh the page before trying again.", "info")
-        return redirect(url_for("inventory_categories"))
-    record_audit_event("INVENTORY", "ACTIVATE" if new_status else "DEACTIVATE",
-                       "INVENTORY_CATEGORY", category_id,
-                       f"Inventory category {category['category_code']} (ID {category_id}) {'activated' if new_status else 'deactivated'}.")
-
-    if new_status:
-        flash(
-            "Inventory category activated successfully.",
-            "success",
-        )
+        flash('Inventory category status was not changed. Refresh the page before trying again.','info')
     else:
-        flash(
-            "Inventory category deactivated successfully.",
-            "success",
-        )
-
-    return redirect(url_for("inventory_categories"))
-
+        record_audit_event('INVENTORY','ACTIVATE' if new_status else 'DEACTIVATE','INVENTORY_CATEGORY',category_id,
+                           f"Inventory category {category['category_code']} (ID {category_id}) {'activated' if new_status else 'deactivated'}.")
+        flash('Inventory category activated successfully.' if new_status else 'Inventory category deactivated successfully.','success')
+    return redirect(url_for('inventory_categories'))
 
 
 @app.route("/inventory/warehouses")
