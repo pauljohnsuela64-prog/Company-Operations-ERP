@@ -1,6 +1,7 @@
 import uuid
 from database import get_connection
 from procurement_validation import decimal_value, validate_notes, lock_item_parent
+from supplier_management import identifier as supplier_identifier
 
 
 
@@ -57,6 +58,7 @@ def create_purchase_order_from_request(
     expected_delivery_date=None,
     notes=None,
 ):
+    supplier_id = supplier_identifier(supplier_id)
     validate_notes(notes, "Purchase order notes")
     connection = get_connection()
     cursor = connection.cursor()
@@ -104,6 +106,19 @@ def create_purchase_order_from_request(
             raise ValueError(
                 "A purchase order already exists for this purchase request."
             )
+
+        # Parent first, then supplier, matching Procurement/Finance reference
+        # locking. Supplier status writers lock only the supplier, so they cannot
+        # form a reverse supplier -> purchase-request lock dependency here.
+        # A current shared read waits for deactivation and holds eligibility until
+        # commit; the route's earlier lookup is only advisory.
+        cursor.execute(
+            "SELECT is_active FROM suppliers WHERE supplier_id = %s FOR SHARE",
+            (supplier_id,),
+        )
+        supplier = cursor.fetchone()
+        if not supplier or not supplier[0]:
+            raise ValueError("Selected supplier is invalid or inactive.")
 
         # Temporary unique number while we wait
         # for MySQL to generate the PO ID.
