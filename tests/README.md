@@ -11,7 +11,7 @@ The workflow has three independent jobs:
 | --- | --- | --- |
 | Python unit tests and syntax | Ubuntu 24.04, Python 3.14 | Install `requirements.txt`; `pip check`; compile tracked Python; parse Jinja templates; complete unittest discovery |
 | JavaScript tests and syntax | Ubuntu 24.04, Node 24 | `node --check` for tracked JS/CJS files; navigation tests; no npm install |
-| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 27 suites |
+| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 28 suites |
 
 Python, Node and runner labels select supported release lines, not immutable OS
 images. Official checkout/setup Actions are pinned to full commit SHAs with release
@@ -400,3 +400,37 @@ warehouse rows remain unchanged. The shared wrapper performs only synthetic DB
 setup; its viewer grant is a test fixture, not a production permission change.
 Native Chrome remains a separate local check. `mysql_warehouse_smoke.py` is picked
 up automatically by the existing CI suite discovery. Tests do not approve deployment.
+
+
+## Department Budget management
+
+See [BUDGET_MANAGEMENT.md](../BUDGET_MANAGEMENT.md) for filters, unchanged financial
+rules, audit boundaries and limitations. Commands use synthetic data only:
+
+```powershell
+.venv/Scripts/python.exe -m unittest discover -s tests -p test_budget_management.py -q
+.venv/Scripts/python.exe -u -B tests/mysql_budget_management_smoke.py
+.venv/Scripts/python.exe -u -B tests/mysql_finance_functional_browser.py
+```
+
+The 14 focused unit tests cover strict filters, exact existing money/year bounds,
+notes, duplicate form fields, resource cleanup, transaction results, no-op/missing
+edits, snapshot summary/page SQL binding, retained/escaped forms and security guards.
+The disposable suite checks 1,005 historical budgets, 25/50/100 pages, all-match
+sums, equivalence to legacy paid-only totals, inactive Department eligibility,
+literal search excluding notes, read snapshots during a real paid-expense insert,
+actual duplicate/edit/Department lock waits, real non-InnoDB storage rejection,
+no precommit audit, rollback, lost
+commit acknowledgments, audit SQL failure isolation, permissions and CSRF. Existing
+Finance payment suites continue to verify key moves, creation races, both edit/pay
+orders and the existing below-paid-spending reduction behavior. They are not mocks.
+
+The existing Finance Chrome runner now also loads `browser_budget_management.cjs`.
+It retains the expense correction/usage-boundary/viewer checks, and verifies Budget
+pagination, full filtered cards, historical rows, strict invalid filters, retained
+amount/year/notes, duplicate and unchanged edits, safe audits, viewer forgery and
+CSRF rejection. It checks exactly one CREATE/UPDATE and unchanged historical Budget
+fixtures. Existing invalid-year tests now expect 400 with no broader result, rather
+than the previous redirect to the current year. This changes input handling, not
+financial formulas. Browser checks remain local-only. The new SQL suite is picked
+up automatically by existing CI discovery; no workflow/deployment changes are made.

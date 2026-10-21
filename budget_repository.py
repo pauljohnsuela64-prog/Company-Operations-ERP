@@ -1,4 +1,5 @@
 from finance_validation import budget_values, identifier, lock_department
+from budget_management import BudgetError, listing_values
 # ==========================================================
 # FINANCE - BUDGET REPOSITORY
 # ==========================================================
@@ -29,17 +30,7 @@ from database import get_connection
 # - Remaining budget
 # ==========================================================
 
-def get_all_department_budgets(year=None):
-    connection = get_connection()
-    cursor = connection.cursor(dictionary=True)
-
-    try:
-
-        # ==================================================
-        # BASE QUERY
-        # ==========================================================
-
-        query = """
+BUDGET_LIST_BASE = """
             SELECT
                 b.budget_id,
                 b.department_id,
@@ -104,6 +95,19 @@ def get_all_department_budgets(year=None):
             WHERE 1 = 1
         """
 
+
+def get_all_department_budgets(year=None):
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        # ==================================================
+        # BASE QUERY
+        # ==========================================================
+
+        query = BUDGET_LIST_BASE
+
         parameters = []
 
 
@@ -156,6 +160,16 @@ def get_all_department_budgets(year=None):
 # by the database UNIQUE constraint.
 # ==========================================================
 
+def _require_budget_storage(cursor,include_expenses=False):
+    """The global schema manifest does not cover Finance tables. Never repair them."""
+    cursor.execute("SELECT TABLE_NAME,ENGINE FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('department_budgets','expenses')")
+    rows=cursor.fetchall()
+    engines={row['TABLE_NAME'] if isinstance(row,dict) else row[0]:row['ENGINE'] if isinstance(row,dict) else row[1] for row in rows}
+    required=('department_budgets','expenses') if include_expenses else ('department_budgets',)
+    if any(engines.get(name)!='InnoDB' for name in required):
+        raise BudgetError('Budget storage is temporarily unavailable. Ask an administrator to verify the Finance schema.',503)
+
+
 def create_department_budget(
     department_id,
     budget_year,
@@ -167,10 +181,12 @@ def create_department_budget(
         department_id, budget_year, budget_amount, notes)
     created_by = identifier(created_by, 'Creator')
     connection = get_connection()
-    cursor = connection.cursor()
+    cursor = None
 
     try:
         connection.start_transaction()
+        cursor = connection.cursor()
+        _require_budget_storage(cursor)
         lock_department(cursor, department_id)
 
 
@@ -198,9 +214,10 @@ def create_department_budget(
             ),
         )
 
+        budget_id = cursor.lastrowid
         connection.commit()
 
-        return cursor.lastrowid
+        return budget_id
 
     except Exception as error:
         connection.rollback()
@@ -212,8 +229,9 @@ def create_department_budget(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:cursor.close()
+        finally:connection.close()
 
 
 
@@ -275,10 +293,12 @@ def get_department_budget_by_department_and_year(
 # ==========================================================
 
 def get_department_budget_by_id(budget_id):
+    budget_id = identifier(budget_id, 'Budget')
     connection = get_connection()
-    cursor = connection.cursor(dictionary=True)
+    cursor = None
 
     try:
+        cursor = connection.cursor(dictionary=True)
 
         cursor.execute(
             """
@@ -313,8 +333,9 @@ def get_department_budget_by_id(budget_id):
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:cursor.close()
+        finally:connection.close()
 
 
 # ==========================================================
@@ -338,7 +359,7 @@ def update_department_budget(
         department_id, budget_year, budget_amount, notes)
     budget_id = identifier(budget_id, 'Budget')
     connection = get_connection()
-    cursor = connection.cursor()
+    cursor = None
 
     try:
 
@@ -347,6 +368,8 @@ def update_department_budget(
         # ==========================================================
 
         connection.start_transaction()
+        cursor = connection.cursor()
+        _require_budget_storage(cursor)
 
 
         # ==================================================
@@ -355,7 +378,7 @@ def update_department_budget(
 
         cursor.execute(
             """
-            SELECT budget_id
+            SELECT budget_id,department_id,budget_year,budget_amount,notes
             FROM department_budgets
             WHERE budget_id = %s
             FOR UPDATE
@@ -366,9 +389,7 @@ def update_department_budget(
         existing_budget = cursor.fetchone()
 
         if not existing_budget:
-            raise ValueError(
-                "Department budget was not found."
-            )
+            raise BudgetError('Department budget was not found.',404)
 
 
         # ==================================================
@@ -376,6 +397,9 @@ def update_department_budget(
         # ==========================================================
 
         lock_department(cursor, department_id)
+        if tuple(existing_budget[1:]) == (department_id,budget_year,budget_amount,notes):
+            connection.rollback()
+            return False
         cursor.execute(
             """
             UPDATE department_budgets
@@ -403,6 +427,7 @@ def update_department_budget(
         # ==========================================================
 
         connection.commit()
+        return True
 
 
     except Exception as error:
@@ -415,8 +440,9 @@ def update_department_budget(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:cursor.close()
+        finally:connection.close()
 
 
 # ==========================================================
@@ -933,3 +959,37 @@ def get_department_budget_report(budget_id):
         raise
     finally:
         connection.close()
+
+
+
+def get_department_budget_page(args,default_year):
+    selected=listing_values(args,default_year)
+    params=[selected['year']]
+    query=BUDGET_LIST_BASE+' AND b.budget_year=%s'
+    if selected['department_id']=='none':query+=' AND b.department_id IS NULL'
+    elif selected['department_id'] is not None:
+        query+=' AND b.department_id=%s';params.append(selected['department_id'])
+    if selected['search']:
+        needle='%'+selected['search'].replace('!','!!').replace('%','!%').replace('_','!_')+'%'
+        query+=" AND (d.department_code LIKE %s ESCAPE '!' OR d.department_name LIKE %s ESCAPE '!')"
+        params.extend([needle,needle])
+    connection=get_connection();cursor=None
+    try:
+        connection.start_transaction(isolation_level='REPEATABLE READ',readonly=True,consistent_snapshot=True)
+        cursor=connection.cursor(dictionary=True)
+        _require_budget_storage(cursor,include_expenses=True)
+        cursor.execute('SELECT COUNT(*) AS department_count,COALESCE(SUM(budget_amount),0) AS total_budget,'
+            'COALESCE(SUM(spent_amount),0) AS total_spent,COALESCE(SUM(remaining_amount),0) AS total_remaining FROM ('+query+') filtered_budgets',tuple(params))
+        summary=cursor.fetchone();total=summary['department_count']
+        pages=max(1,(total+selected['page_size']-1)//selected['page_size'])
+        selected['page']=min(selected['page'],pages)
+        cursor.execute(query+' ORDER BY b.budget_year DESC,d.department_name ASC,b.budget_id ASC LIMIT %s OFFSET %s',
+            (*params,selected['page_size'],(selected['page']-1)*selected['page_size']))
+        rows=cursor.fetchall();first=(selected['page']-1)*selected['page_size']+1 if total else 0
+        return dict(records=rows,summary=summary,total=total,pages=pages,filters=selected,first=first,last=first+len(rows)-1 if rows else 0)
+    finally:
+        try:connection.rollback()
+        finally:
+            try:
+                if cursor is not None:cursor.close()
+            finally:connection.close()

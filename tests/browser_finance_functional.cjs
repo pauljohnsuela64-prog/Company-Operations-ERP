@@ -45,9 +45,9 @@ module.exports = async function ({send, tab, evaluate, navigate, until, submit, 
     assert.equal(await evaluate(manager, `document.querySelector('[name="year"]').value`),String(year));
     assert.equal(await evaluate(manager, `document.querySelector('[name="department_id"]').value`),String(fixture.department));
   }
-  // navigate() expects an exact URL, so use Page.navigate for the explicit redirect.
+  // Invalid Budget years fail without silently replacing the requested year.
   await send('Page.navigate', {url:fixture.base+'/finance/budgets?year=NaN&department_id='+fixture.department}, manager);
-  await until(manager, `document.body.textContent.includes('Invalid reporting year.') && document.readyState === 'complete'`);
+  await until(manager, `document.body.textContent.includes('Budget year must be between') && document.readyState === 'complete'`);
   assert.equal(await evaluate(manager, `document.querySelector('[name="department_id"]').value`),String(fixture.department));
   for (const [year,label] of [[2024,'Warning'],[2025,'Fully Used'],[2026,'Over Budget']]) {
     await navigate(manager, `/finance/budgets?year=${year}&department_id=${fixture.department}`);
@@ -65,4 +65,5 @@ module.exports = async function ({send, tab, evaluate, navigate, until, submit, 
   await navigate(manager,budgetPath);
   assert(await evaluate(manager, `Boolean(document.querySelector('main a[href="/finance/budgets/add"]')) && Boolean(document.querySelector('main a[href="/finance/budgets/${fixture.budget}/edit"]'))`));
   console.log('PASS Chrome valid years persist through native Apply; malformed year feedback, exact usage labels, viewer/manager links and forged POST denial');
+  await require('./browser_budget_management.cjs')({manager,viewer,evaluate,navigate,until,submit,fixture});
 };

@@ -1,0 +1,66 @@
+// Additional Budget management checks in the existing isolated Finance workflow.
+const assert=require('node:assert/strict');
+module.exports=async({manager,viewer,evaluate,navigate,until,submit,fixture})=>{
+  async function checkCurrency(expectedSymbols,amounts){
+    const text=await evaluate(manager,`document.querySelector('main').textContent.replace(/\s+/g,' ')`);
+    assert.equal([...text].filter(c=>c==='\u20b1').length,expectedSymbols);
+    assert.doesNotMatch(text,/[\u00c3\u00c2\ufffd]/);
+    for(const amount of amounts)assert.ok(text.includes('\u20b1'+amount),amount);
+  }
+  await navigate(manager,'/finance/budgets?year=2025');
+  const normalCount=await evaluate(manager,`document.querySelectorAll('main tbody a[href$="/edit"]').length`);
+  assert.ok(normalCount>0);
+  await checkCurrency(3+normalCount*3,['1,000,000.00']);
+  const filters='/finance/budgets?year=2011&search=BUD-ARCH&page_size=25';
+  await navigate(manager,filters);
+  await checkCurrency(78,['1,210.00','10.00','0.00']);
+  assert.equal(await evaluate(manager,`document.querySelectorAll('main tbody tr').length`),25);
+  assert.equal(await evaluate(manager,`document.body.textContent.includes('Showing 1-25 of 121 budgets | Page 1 of 5')`),true);
+  assert.equal(await evaluate(manager,`document.body.textContent.includes('1,210.00')`),true);
+  const next=await evaluate(manager,`document.querySelector('a[rel="next"]').getAttribute('href')`);
+  const parsed=new URL(next,'http://synthetic.invalid');
+  for(const [key,value] of Object.entries({year:'2011',search:'BUD-ARCH',page_size:'25',page:'2'}))assert.equal(parsed.searchParams.get(key),value);
+  await navigate(manager,next);
+  for(const size of [50,100]){
+    await submit(manager,{page_size:String(size)});
+    await until(manager,`document.readyState==='complete' && new URLSearchParams(location.search).get('page_size')==='${size}'`);
+    assert.equal(await evaluate(manager,`document.querySelectorAll('main tbody tr').length`),size);
+    assert.equal(await evaluate(manager,`document.body.textContent.includes('1,210.00')`),true);
+  }
+  await navigate(manager,filters.replace('page_size=25','page_size=100')+'&page=999');
+  assert.equal(await evaluate(manager,`document.querySelectorAll('main tbody tr').length`),21);
+  assert.equal(await evaluate(manager,`document.body.textContent.includes('Archive 0120')`),true);
+  await navigate(manager,'/finance/budgets?year=2011&search=BUD-ARCH%25');
+  assert.equal(await evaluate(manager,`document.body.textContent.includes('No department budgets match these filters.')`),true);
+  await checkCurrency(3,['0.00']);
+  const failures=await evaluate(manager,`(async()=>{const result=[];for(const query of ['year=NaN','year=2011&page_size=500','year=2011&department_id=bad','year=2011&year=2012']){const r=await fetch('/finance/budgets?'+query);const html=await r.text();result.push([r.status,html.includes('Budgets were not loaded.'),html.includes('Total Budget')]);}return result;})()`);
+  for(const result of failures)assert.deepEqual(result,[400,true,false]);
+  const data={department_id:String(fixture.department),budget_year:'2031',budget_amount:'NaN',notes:'PRIVATE <img src=x onerror=alert(1)> budget notes'};
+  await navigate(manager,'/finance/budgets/add');await submit(manager,data);
+  await until(manager,`document.readyState==='complete' && document.body.textContent.includes('finite positive')`);
+  const retained=await evaluate(manager,`Object.fromEntries([...document.querySelector('main form').elements].filter(e=>e.name&&e.name!=='csrf_token').map(e=>[e.name,e.value]))`);
+  for(const [key,value] of Object.entries(data))assert.equal(retained[key],value);
+  assert.equal(await evaluate(manager,`document.querySelector('main img[src="x"]')===null`),true);
+  await submit(manager,{budget_amount:'100.00'});
+  await until(manager,`location.pathname==='/finance/budgets' && document.readyState==='complete'`);
+  await navigate(manager,'/finance/budgets/add');await submit(manager,{...data,budget_amount:'100.00'});
+  await until(manager,`document.body.textContent.includes('already has a budget') && document.readyState==='complete'`);
+  assert.equal(await evaluate(manager,`document.querySelector('[name="notes"]').value`),data.notes);
+  await navigate(manager,'/finance/budgets?year=2031&department_id='+fixture.department);
+  const edit=await evaluate(manager,`document.querySelector('main a[href$="/edit"]').getAttribute('href')`);
+  await navigate(manager,edit);await submit(manager,{});
+  await until(manager,`location.pathname==='/finance/budgets' && document.body.textContent.includes('No department budget changes were needed.')`);
+  await navigate(manager,edit);await submit(manager,{budget_amount:'0',notes:'PRIVATE changed notes'});
+  await until(manager,`document.readyState==='complete' && document.body.textContent.includes('greater than zero')`);
+  assert.equal(await evaluate(manager,`document.querySelector('[name="budget_amount"]').value`),'0');
+  assert.equal(await evaluate(manager,`document.querySelector('[name="notes"]').value`),'PRIVATE changed notes');
+  await submit(manager,{budget_amount:'101.00'});
+  await until(manager,`location.pathname==='/finance/budgets' && document.readyState==='complete'`);
+  await navigate(viewer,'/finance/budgets?year=2031&department_id='+fixture.department);
+  assert.equal(await evaluate(viewer,`document.querySelectorAll('main a[href$="/edit"]').length`),0);
+  const denied=await evaluate(viewer,`(async()=>{const r=await fetch(${JSON.stringify(edit)},{method:'POST',body:new URLSearchParams({department_id:'${fixture.department}',budget_year:'2031',budget_amount:'200',csrf_token:document.querySelector('meta[name="csrf-token"]').content})});return new URL(r.url).pathname;})()`);
+  assert.equal(denied,'/dashboard');
+  const csrf=await evaluate(manager,`(async()=>{const r=await fetch(${JSON.stringify(edit)},{method:'POST',body:new URLSearchParams({budget_amount:'200',csrf_token:'invalid'})});return r.status;})()`);
+  assert.equal(csrf,400);
+  console.log('PASS Chrome Budget 25/50/100 pages, full filtered summaries, historical years, literal/invalid filters, retained escaped forms, duplicate/no-op/changed edits, viewer and CSRF denial');
+};

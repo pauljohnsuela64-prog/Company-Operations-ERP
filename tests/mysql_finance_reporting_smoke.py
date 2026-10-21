@@ -70,7 +70,8 @@ def verify_functional_corrections(erp, sql, c, post):
         values = FormValues(c.get(f'/finance/budgets?year={year}&department_id=2').get_data(as_text=True))
         assert values.selected('year') == str(year) and values.selected('department_id') == '2'
     response = c.get('/finance/budgets?year=NaN&department_id=2', follow_redirects=True)
-    assert 'Invalid reporting year.' in response.get_data(as_text=True)
+    assert response.status_code==400 and 'Budget year must be between' in response.get_data(as_text=True)
+    assert 'Total Budget' not in response.get_data(as_text=True)
     assert FormValues(response.get_data(as_text=True)).selected('department_id') == '2'
     # Exact exhaustion is distinct from either side; unit/Chrome checks also
     # cover amounts whose displayed percentages all round to 100.0%.

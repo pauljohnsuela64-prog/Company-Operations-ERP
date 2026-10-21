@@ -75,6 +75,12 @@ def expense_values(expense_date_value, category_id, department_id, supplier_id,
 
 
 def budget_values(department_id, year, amount, notes):
+    if notes is not None:
+        if not isinstance(notes,str):raise ValueError('Notes must be text.')
+        if any((ord(c)<32 and c not in '\t\r\n') or ord(c)==127 for c in notes):
+            raise ValueError('Notes contain unsupported control characters.')
+        try:notes.encode('utf-8')
+        except UnicodeError:raise ValueError('Notes must be valid Unicode.') from None
     return (identifier(department_id, 'Department'), calendar_year(year),
             money(amount, 'Budget amount', BUDGET_MAX), text(notes, 'Notes', 255))
 

@@ -52,9 +52,10 @@ Add Department Budget
                             Select Department
                         </option>
 
+                        {% if unlisted_department %}<option value="{{ budget_form.department_id }}" selected>Selected Department (not in current list)</option>{% endif %}
                         {% for department in departments %}
 
-                        <option value="{{ department.department_id }}">
+                        <option value="{{ department.department_id }}" {% if department.department_id|string == budget_form.department_id %}selected{% endif %}>
                             {{ department.department_name }}
                         </option>
 
@@ -73,8 +74,7 @@ Add Department Budget
                         Budget Year
                     </label>
 
-                    <input type="number" name="budget_year" class="form-control" placeholder="2026" min="2000"
-                        max="2100" required>
+                    <input type="text" inputmode="numeric" name="budget_year" class="form-control" value="{{ budget_form.budget_year }}" placeholder="YYYY" pattern="[0-9]{4}" required>
 
                 </div>
 
@@ -87,7 +87,7 @@ Add Department Budget
                         Budget Amount
                     </label>
 
-                    <input type="number" name="budget_amount" max="999999999999.99" class="form-control" placeholder="500000.00" min="0.01"
+                    <input type="text" inputmode="decimal" value="{{ budget_form.budget_amount }}" name="budget_amount" max="999999999999.99" class="form-control" placeholder="500000.00" min="0.01"
                         step="0.01" required>
 
                 </div>
@@ -102,7 +102,7 @@ Add Department Budget
                     </label>
 
                     <textarea name="notes" class="form-control" rows="3" maxlength="255"
-                        placeholder="Optional notes..."></textarea>
+                        placeholder="Optional notes...">{{ budget_form.notes }}</textarea>
 
                 </div>
 
