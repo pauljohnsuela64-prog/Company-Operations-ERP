@@ -85,6 +85,9 @@ class BusinessAuditTests(unittest.TestCase):
 
         def committed(*args, **kwargs):
             self.commits.append(case.operation)
+            if case.name in ('user_activate', 'user_deactivate'):
+                from user_repository import AdminAccessResult
+                return AdminAccessResult(42, 'target.user', True)
             return {"total_entries": 1} if case.module == "PAYROLL" else True
 
         self.operation = self.mock(case.operation, side_effect=committed)
@@ -102,8 +105,8 @@ class BusinessAuditTests(unittest.TestCase):
         self.mock("get_available_user_employees", return_value=[])
         self.mock("get_all_permissions", return_value=[{"permission_id": 5}])
         self.mock("generate_password_hash", return_value=SECRETS["password_hash"])
-        self.super_admins = self.mock("count_active_super_admins", return_value=2)
         self.form = {**SECRETS, "confirm_password": SECRETS["password"], "username": "target.user", "role_id": "42", "permission_ids": "5"}
+        self.form["is_active"] = "0" if case.active else "1"
         self.auth_loader = self.mock("get_authorization_state")
         self.authenticate(case)
 
@@ -207,7 +210,9 @@ class BusinessAuditTests(unittest.TestCase):
         }
 
         def reset_rows():
-            if case.name == "purchase_submit":
+            if case.name in ('user_activate', 'user_deactivate'):
+                cursor.fetchone.side_effect = [{'permission_id': 1}, {'role_id': 1}, {'user_id': 42, 'username': 'target.user', 'role_id': 42, 'is_active': case.active}]
+            elif case.name == "purchase_submit":
                 cursor.fetchone.side_effect = [("DRAFT",), (1,)]
             elif case.name == "leave_approve":
                 cursor.fetchone.side_effect = [row, row, row, row, None]  # Employee lookup/lock, type, pending request, attendance.
@@ -337,11 +342,12 @@ class BusinessAuditTests(unittest.TestCase):
             self.auth_loader.return_value = state
             stamp_session(self.erp.app, sess, state)
         self.client.post(case.path, data=self.form)
-        self.authenticate(case)
-        self.user.return_value["role_name"] = "Super Admin"
-        self.super_admins.return_value = 1
-        self.client.post(case.path, data=self.form)
         self.operation.assert_not_called()
+        self.authenticate(case)
+        from user_repository import AdminIntegrityError
+        self.operation.side_effect = AdminIntegrityError('Last active Super Admin', 409)
+        self.assertEqual(self.client.post(case.path, data=self.form).status_code, 409)
+        self.operation.assert_called_once()
         self.insert.assert_not_called()
         case = next(c for c in ACTIONS if c.name == "role_permissions")
         self.authenticate(case)

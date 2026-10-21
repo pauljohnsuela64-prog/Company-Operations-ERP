@@ -51,7 +51,7 @@ def run(port, data_dir):
                 continue
             assert "company_operations_erp" not in statement
             cursor.execute(statement)
-    cursor.execute("INSERT INTO roles(role_id,role_name) VALUES (41,'Acting role'),(42,'Operations'),(43,'Denied role')")
+    cursor.execute("INSERT INTO roles(role_id,role_name) VALUES (41,'Acting role'),(42,'Operations'),(43,'Denied role'),(44,'Super Admin')")
     cursor.execute("INSERT INTO users(user_id,role_id,username,password_hash,is_active) VALUES (7,41,'acting.user','test-only',1),(8,43,'denied.user','test-only',1),(42,42,'target.user','test-only',0)")
     cursor.execute("INSERT INTO employees(employee_id,employee_number,first_name,last_name) VALUES (9,'SMOKE-9','Smoke','Employee')")
     cursor.execute("INSERT INTO employee_compensation(compensation_id,employee_id,pay_type,basic_rate,effective_date,created_by) VALUES (1,9,'MONTHLY',1000,'2026-01-01',7)")
@@ -133,6 +133,7 @@ def run(port, data_dir):
         expected = []
         for case in ACTIONS:
             path, identifier, target_id = fixture(case)
+            form['is_active'] = '0' if case.active else '1'
             if case.name == "user_create":
                 identifier = form["username"]
             before = len(logs())

@@ -1,4 +1,101 @@
+from dataclasses import dataclass
+import re
+import mysql.connector
 from database import get_connection
+
+
+class AdminIntegrityError(ValueError):
+    def __init__(self, message, status_code=400):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+@dataclass(frozen=True)
+class AdminAccessResult:
+    user_id: int
+    username: str
+    changed: bool
+
+
+def _admin_identifier(value, label):
+    raw = str(value).strip()
+    if isinstance(value, bool) or not re.fullmatch(r'[0-9]{1,10}', raw) or not 1 <= int(raw) <= 2147483647:
+        raise AdminIntegrityError(f'Invalid {label}.')
+    return int(raw)
+
+
+def _write_user_access(user_id, actor_user_id, *, role_id=None, is_active=None):
+    user_id = _admin_identifier(user_id, 'user')
+    actor_user_id = _admin_identifier(actor_user_id, 'acting user')
+    if role_id is not None:
+        role_id = _admin_identifier(role_id, 'role')
+    if user_id == actor_user_id:
+        raise AdminIntegrityError('You cannot change your own role or account status.')
+    connection = get_connection()
+    cursor = None
+    try:
+        connection.start_transaction(isolation_level='READ COMMITTED')
+        cursor = connection.cursor(dictionary=True)
+        # Stable existing permission row serializes both access writers without
+        # exclusively locking a role needed by user->role readers (Help Desk).
+        # Only lock it; never create permissions or change any grants here.
+        cursor.execute("SELECT permission_id FROM permissions WHERE permission_code='users.manage' FOR UPDATE")
+        guardian = cursor.fetchone()
+        if not guardian:
+            raise AdminIntegrityError('Administration integrity is unavailable. Contact an operator.', 503)
+        cursor.execute("SELECT role_id FROM roles WHERE role_name='Super Admin' FOR SHARE")
+        super_role = cursor.fetchone()
+        if not super_role:
+            raise AdminIntegrityError('Administration integrity is unavailable. Contact an operator.', 503)
+        super_role_id = super_role['role_id']
+        cursor.execute('SELECT user_id,username,role_id,is_active FROM users WHERE user_id=%s FOR UPDATE', (user_id,))
+        current = cursor.fetchone()
+        if current is None:
+            raise AdminIntegrityError('User account not found.', 404)
+        if role_id is not None:
+            cursor.execute('SELECT role_id FROM roles WHERE role_id=%s FOR SHARE', (role_id,))
+            if cursor.fetchone() is None:
+                raise AdminIntegrityError('Selected role does not exist.')
+        target_role = current['role_id'] if role_id is None else role_id
+        target_active = bool(current['is_active']) if is_active is None else is_active
+        changed = target_role != current['role_id'] or target_active != bool(current['is_active'])
+        if not changed:
+            connection.rollback()
+            return AdminAccessResult(user_id, current['username'], False)
+        if current['role_id'] == super_role_id and current['is_active'] and (target_role != super_role_id or not target_active):
+            # Nonlocking READ COMMITTED read after the shared writer gate sees
+            # preceding access commits, without locking other users out of order.
+            cursor.execute('SELECT COUNT(*) AS total FROM users WHERE role_id=%s AND is_active=1', (super_role_id,))
+            if cursor.fetchone()['total'] <= 1:
+                raise AdminIntegrityError('You cannot remove or deactivate the last active Super Admin.', 409)
+        cursor.execute('UPDATE users SET role_id=%s,is_active=%s WHERE user_id=%s', (target_role, target_active, user_id))
+        if cursor.rowcount != 1:
+            raise AdminIntegrityError('Account changed concurrently. Reload and review before retrying.', 409)
+        connection.commit()
+        return AdminAccessResult(user_id, current['username'], True)
+    except Exception as error:
+        try:
+            connection.rollback()
+        except mysql.connector.Error:
+            pass
+        if isinstance(error, mysql.connector.Error):
+            if error.errno in (1205, 1213, 1452):
+                raise AdminIntegrityError('Account data is busy or changed. Reload and review before retrying.', 409) from error
+            raise AdminIntegrityError('Could not confirm the account change. Reload and reconcile before retrying.', 503) from error
+        raise
+    finally:
+        failed = False
+        try:
+            if cursor is not None:
+                cursor.close()
+        except mysql.connector.Error:
+            failed = True
+        try:
+            connection.close()
+        except mysql.connector.Error:
+            failed = True
+        if failed:
+            raise AdminIntegrityError('Could not confirm the account change. Reload and reconcile before retrying.', 503)
 
 
 def get_user_by_username(username):
@@ -312,76 +409,15 @@ def create_user(
 # USER ADMINISTRATION - CHANGE ROLE
 # ==========================================================
 
-def update_user_role(
-    user_id,
-    role_id,
-):
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        cursor.execute(
-            """
-            UPDATE users
-            SET role_id = %s
-            WHERE user_id = %s
-            """,
-            (
-                role_id,
-                user_id,
-            ),
-        )
-
-        connection.commit()
-
-    except Exception:
-
-        connection.rollback()
-        raise
-
-    finally:
-
-        cursor.close()
-        connection.close()
+def update_user_role(user_id, role_id, *, actor_user_id):
+    role_id = _admin_identifier(role_id, 'role')
+    return _write_user_access(user_id, actor_user_id, role_id=role_id)
 
 
-# ==========================================================
-# USER ADMINISTRATION - CHANGE ACTIVE STATUS
-# ==========================================================
-
-def set_user_active_status(
-    user_id,
-    is_active,
-):
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        cursor.execute(
-            """
-            UPDATE users
-            SET is_active = %s
-            WHERE user_id = %s
-            """,
-            (
-                is_active,
-                user_id,
-            ),
-        )
-
-        connection.commit()
-
-    except Exception:
-
-        connection.rollback()
-        raise
-
-    finally:
-
-        cursor.close()
-        connection.close()
+def set_user_active_status(user_id, is_active, *, actor_user_id):
+    if type(is_active) is not bool:
+        raise AdminIntegrityError('Account status must be active or inactive.')
+    return _write_user_access(user_id, actor_user_id, is_active=is_active)
 
 
 # ==========================================================
