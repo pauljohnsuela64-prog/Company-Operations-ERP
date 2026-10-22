@@ -320,6 +320,7 @@ from inventory_category_repository import (
 )
 from flask import (
     Flask,
+    g,
     flash,
     redirect,
     render_template,
@@ -554,7 +555,7 @@ def _record_it_asset_audit(action, asset_id, maintenance_id=None, asset_tag=None
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    summary = get_dashboard_summary()
+    summary = get_dashboard_summary(g.authorization['permissions'])
 
     return render_template(
         "dashboard.html",

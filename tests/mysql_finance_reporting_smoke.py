@@ -139,14 +139,9 @@ def run(port,data_dir):
         assert expenses.get_finance_summary_by_year(2026)==data['summary']
         assert expenses.get_finance_summary()['paid_count']==5  # Dashboard is all dates.
         dashboard=importlib.import_module('dashboard_repository')
-        with ExitStack() as unrelated:
-            for name in ['get_all_employees','get_filtered_attendance_records','get_all_leave_requests',
-                         'get_all_inventory_items','get_all_purchase_requests','get_all_it_assets',
-                         'get_all_helpdesk_tickets','get_all_payroll_periods']:
-                unrelated.enter_context(patch.object(dashboard,name,return_value=[]))
-            counts=dashboard.get_dashboard_summary()['finance']
-            assert counts==dict(draft=1,approved=1,paid=5)
-            assert c.get('/dashboard').status_code==200
+        counts=dashboard.get_dashboard_summary({'finance.view'})['finance']
+        assert counts==dict(draft=1,approved=1,paid=5)
+        assert c.get('/dashboard').status_code==200
         budget,records=budgets.get_department_budget_report(1)
         assert budget['spent_amount']==Decimal('0.30') and budget['remaining_amount']==Decimal('0.00')
         assert sum(r['amount'] for r in records)==budget['spent_amount']

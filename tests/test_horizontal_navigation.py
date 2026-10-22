@@ -88,12 +88,13 @@ class HorizontalNavigationTests(unittest.TestCase):
             self.assertIn(f'id="{attrs["aria-controls"]}"', html)
         self.assertTrue(all(attrs.get("name") == "erp-modules" for attrs in nav.groups.values()))
 
-    def test_existing_permission_visibility_is_preserved(self):
+    def test_destination_permissions_do_not_require_administration(self):
         combinations = [set(), PERMISSIONS]
         combinations.extend({p} for p in PERMISSIONS)
         combinations.extend(PERMISSIONS - {p} for p in PERMISSIONS)
         combinations.extend({admin, "attendance.view", "leave.view"} for admin in ("users.manage", "roles.manage", "audit_logs.view"))
         combinations.append({"inventory.view", "procurement.view"})
+        combinations.append({"employees.view", "departments.view", "attendance.view", "leave.view"})
         for permissions in combinations:
             with self.subTest(permissions=sorted(permissions)):
                 _, nav = self.render(permissions=permissions)
@@ -101,6 +102,7 @@ class HorizontalNavigationTests(unittest.TestCase):
                 expected = {"/dashboard"}
                 for permission, paths in {
                     "employees.view": ["/employees"], "departments.view": ["/departments"],
+                    "attendance.view": ["/attendance"], "leave.view": ["/leave/requests"],
                     "payroll.view": ["/payroll/compensation"],
                     "inventory.view": ["/inventory/categories", "/inventory/warehouses", "/inventory/items", "/inventory/stock", "/inventory/stock/movements"],
                     "it_assets.view": ["/it/assets"], "helpdesk.view": ["/it/help-desk"],
@@ -111,11 +113,6 @@ class HorizontalNavigationTests(unittest.TestCase):
                         expected.update(paths)
                 if "procurement.view" in permissions:
                     expected.update({"/procurement/suppliers", "/procurement/requests", "/procurement/orders", "/procurement/receipts"})
-                if permissions & {"users.manage", "roles.manage", "audit_logs.view"}:
-                    if "attendance.view" in permissions:
-                        expected.add("/attendance")
-                    if "leave.view" in permissions:
-                        expected.add("/leave/requests")
                 self.assertEqual(actual, expected)
                 self.assertEqual(len(nav.links), len(expected))
 
