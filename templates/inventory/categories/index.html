@@ -1,65 +1,42 @@
 {% extends "base.html" %}
-
+{% import 'partials/workspace_components.html' as ui with context %}
 
 {% block title %}
-Inventory Categories | Company Operations ERP
+Inventory Categories
 {% endblock %}
-
 
 {% block page_title %}
 Inventory Categories
 {% endblock %}
 
-
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-page catalog-page">
+{{ ui.page_header('Inventory Categories', 'Organize inventory items into categories.', url_for('add_inventory_category') if has_permission('inventory.categories.manage') else '', 'Add Category') }}
 
-    <div>
-        <h2 class="mb-1">Inventory Categories</h2>
-
-        <p class="text-muted mb-0">
-            Organize inventory items into categories.
-        </p>
-    </div>
-
-    {% if has_permission('inventory.categories.manage') %}
-    <a
-        href="{{ url_for('add_inventory_category') }}"
-        class="btn btn-primary"
-    >
-        Add Category
-    </a>
-{% endif %}
-
-</div>
-
-
-<form method="GET" action="{{ url_for('inventory_categories') }}" class="d-flex flex-wrap gap-2 align-items-end mb-3">
-    <div><label for="category-search" class="form-label">Search</label><input id="category-search" name="search" class="form-control" maxlength="100" value="{{ selected_filters.search }}" placeholder="Category code or name"></div>
+<form method="GET" action="{{ url_for('inventory_categories') }}" class="workspace-filters catalog-filters" aria-label="Filter categories">
+    <div class="filter-search"><label for="category-search" class="form-label">Search</label><input id="category-search" name="search" class="form-control" maxlength="100" value="{{ selected_filters.search }}" placeholder="Category code or name"></div>
     <div><label for="category-status" class="form-label">Status</label><select id="category-status" name="status" class="form-select"><option value="">All statuses</option><option value="active" {% if selected_filters.status=='active' %}selected{% endif %}>Active</option><option value="inactive" {% if selected_filters.status=='inactive' %}selected{% endif %}>Inactive</option></select></div>
     <div><label for="category-size" class="form-label">Rows per page</label><select id="category-size" name="page_size" class="form-select">{% for size in [25,50,100] %}<option value="{{ size }}" {% if selected_filters.page_size|string==size|string %}selected{% endif %}>{{ size }}</option>{% endfor %}</select></div>
-    <button class="btn btn-outline-primary" type="submit">Apply</button><a class="btn btn-outline-secondary" href="{{ url_for('inventory_categories') }}">Clear</a>
+    <div class="filter-actions"><button class="btn btn-primary" type="submit">Apply</button><a class="btn btn-outline-secondary" href="{{ url_for('inventory_categories') }}">Clear</a></div>
 </form>
-{% if pagination %}<p>{{ pagination.total }} matching categories</p>{% endif %}
+<section class="workspace-table-panel" aria-labelledby="catalog-results-title">
+{{ ui.result_header('Categories', pagination, 'categories') }}
 
-<div class="card shadow-sm border-0">
+        <p class="table-scroll-hint" id="catalog-results-title">Inventory Categories - scroll the table to see all columns on smaller screens.</p>
+<div class="workspace-table-scroll" role="region" aria-labelledby="catalog-results-title" tabindex="0">
 
-    <div class="card-body">
-
-        <div class="table-responsive">
-
-            <table class="table table-hover align-middle mb-0">
+            <table class="table workspace-table category-table{{ ' table-empty' if not categories else '' }}"><caption class="visually-hidden">Inventory Categories</caption>
 
                 <thead>
                     <tr>
-                        <th>Code</th>
-                        <th>Category</th>
-                        <th>Description</th>
-                        <th>Status</th>
+                        <th scope="col">Code</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Status</th>
 
                         {% if has_permission('inventory.categories.manage') %}
-                            <th class="text-end">Actions</th>
+                            <th scope="col" class="record-actions-heading">Actions</th>
                         {% endif %}
                     </tr>
                 </thead>
@@ -86,25 +63,13 @@ Inventory Categories
 
                             <td>
 
-                                {% if category.is_active %}
-
-                                    <span class="badge text-bg-success">
-                                        Active
-                                    </span>
-
-                                {% else %}
-
-                                    <span class="badge text-bg-secondary">
-                                        Inactive
-                                    </span>
-
-                                {% endif %}
+                                {{ ui.badge(category.is_active) }}
 
                             </td>
 
                             {% if has_permission('inventory.categories.manage') %}
 
-                                <td class="text-end">
+                                <td><div class="record-actions">
 
                                     <a
                                         href="{{ url_for(
@@ -115,7 +80,7 @@ Inventory Categories
                                         >
                                         Edit
                                     </a>
-                                
+
                                     <form
     method="POST"
     action="{{ url_for(
@@ -153,7 +118,7 @@ Inventory Categories
 
     {% endif %}
 
-</form>
+</form></div>
 
                                 </td>
 
@@ -166,9 +131,9 @@ Inventory Categories
                         <tr>
                             <td
                                 colspan="{{ 5 if has_permission('inventory.categories.manage') else 4 }}"
-                                class="text-center text-muted py-4"
+                                class="text-center text-muted"
                             >
-                                {% if load_error %}Inventory categories were not loaded. Review the message above.{% else %}No inventory categories match these filters.{% endif %}
+                                {{ ui.empty_state(load_error, 'inventory categories', 'Inventory categories') }}
                             </td>
                         </tr>
 
@@ -179,10 +144,7 @@ Inventory Categories
             </table>
 
         </div>
-
-    </div>
-
+{{ ui.pages(pagination, category_page_url, 'categories', 'Inventory category pages') }}
+</section>
 </div>
-
-{% if pagination %}<nav class="d-flex justify-content-between mt-3" aria-label="Inventory category pages"><span>Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }} categories | Page {{ pagination.filters.page }} of {{ pagination.pages }}</span><div>{% if pagination.filters.page>1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ category_page_url(pagination.filters.page-1) }}">Previous</a>{% endif %} {% if pagination.filters.page<pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ category_page_url(pagination.filters.page+1) }}">Next</a>{% endif %}</div></nav>{% endif %}
 {% endblock %}

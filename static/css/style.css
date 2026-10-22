@@ -312,3 +312,18 @@ button.logout-link { background: transparent; font-family: inherit; cursor: poin
     .workflow-heading > .workflow-actions .btn, .workflow-form form > .workflow-actions .btn { width: 100%; }
     .workflow-page .card-header .btn { max-width: 100%; }
 }
+
+/* Inventory catalog opts into the shared workspace foundation. */
+.catalog-page .workspace-field .form-select { font-size: .875rem; max-width: 100%; }
+.catalog-page .workspace-heading > div { min-width: 0; }
+.catalog-page .workspace-heading h1, .catalog-page .workspace-heading p { overflow-wrap: anywhere; }
+.catalog-page .record-actions form { margin: 0; }
+.catalog-item-table { min-width: 1050px; }
+.catalog-item-table th:nth-child(1) { width: 15%; }
+.catalog-item-table th:nth-child(2), .catalog-item-table th:nth-child(3) { width: 21%; }
+.catalog-item-table th:nth-child(4) { width: 9%; }
+.catalog-item-table th:nth-child(5) { width: 13%; }
+.catalog-item-table th:nth-child(6) { width: 12%; }
+@media (min-width: 1200px) {
+    .catalog-item-filters { grid-template-columns: minmax(160px, 2fr) minmax(160px, 2fr) minmax(120px, 1fr) minmax(120px, 1fr) auto; }
+}
