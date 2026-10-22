@@ -1,0 +1,27 @@
+{# Presentation only: callers must check the destination permission. #}
+{% import 'partials/navigation.html' as navigation with context %}
+{% macro section(id, number, title, description) %}
+<section class="dashboard-section" aria-labelledby="section-{{ id }}">
+    <div class="section-heading"><span class="section-index" aria-hidden="true">{{ number }}</span><div><h2 id="section-{{ id }}">{{ title }}</h2><p>{{ description }}</p></div></div>
+    <div class="kpi-grid">{{ caller() }}</div>
+</section>
+{% endmacro %}
+
+{% macro kpi(id, label, data, primary, glyph, href, caption) %}
+<article class="kpi-panel{{ ' is-unavailable' if data is none else '' }}" aria-labelledby="kpi-{{ id }}" data-section="{{ id }}">
+    <div class="kpi-header"><span class="kpi-icon">{{ navigation.icon(glyph) }}</span><h3 id="kpi-{{ id }}">{{ label }}</h3></div>
+    {% if data is none %}
+    <div class="kpi-unavailable" role="status"><strong>Unavailable</strong><p>Currently unavailable. Please try again later.</p></div>
+    {% else %}
+    <div class="kpi-primary"><strong>{{ data[primary] }}</strong><span>{{ caption }}</span></div>
+    {{ caller() }}
+    {% endif %}
+    <div class="kpi-footer"><a href="{{ href }}" aria-label="View {{ label }}">View <span aria-hidden="true">→</span></a><span>{{ 'Data unavailable' if data is none else 'Module overview' }}</span></div>
+</article>
+{% endmacro %}
+
+{% macro metrics(data, fields) %}
+<dl class="kpi-metrics">
+    {% for key, label, tone in fields %}<div><dt>{{ label }}</dt><dd class="metric-{{ tone }}">{{ data[key] }}</dd></div>{% endfor %}
+</dl>
+{% endmacro %}

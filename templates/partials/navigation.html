@@ -68,7 +68,7 @@
 {% macro header() %}
 <header class="topbar">
     <div class="account-bar">
-        <div class="company-brand"><strong>Company Operations</strong><span>ERP System</span></div>
+        <div class="company-brand"><span class="brand-mark" aria-hidden="true">{{ icon('box') }}</span><div><strong>Company Operations</strong><span>Enterprise resource planning</span></div></div>
         <div class="account-controls">
             <div class="account-identity"><strong>{{ session.username }}</strong><small>{{ session.role_name }}</small></div>
             <form method="POST" action="{{ url_for('logout') }}" class="logout-form">
