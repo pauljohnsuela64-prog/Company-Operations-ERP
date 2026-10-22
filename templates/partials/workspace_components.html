@@ -33,3 +33,9 @@
 {% endmacro %}
 
 {% macro form_actions(label, cancel) %}<div class="workspace-form-actions"><button type="submit" class="btn btn-primary">{{ label }}</button><a href="{{ cancel }}" class="btn btn-outline-secondary">Cancel</a></div>{% endmacro %}
+
+
+{% macro workflow_status(status, manual_sent=false) %}
+{% set labels = {'DRAFT':'Draft','SUBMITTED':'Submitted','APPROVED':'Approved','REJECTED':'Rejected','COMPLETED':'Completed','CANCELLED':'Cancelled','SENT':'Sent (manually issued)' if manual_sent else 'Sent','PARTIALLY_RECEIVED':'Partially Received','RECEIVED':'Received'} %}
+<span class="record-status workflow-status" data-status="{{ status }}">{{ labels.get(status, status) }}</span>
+{% endmacro %}

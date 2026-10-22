@@ -1,32 +1,30 @@
 {% extends "base.html" %}
-
+{% import 'partials/workspace_components.html' as ui with context %}
 
 {% block title %}
-Purchase Requests | Company Operations ERP
+Purchase Requests
 {% endblock %}
-
 
 {% block page_title %}
 Purchase Requests
 {% endblock %}
 
-
 {% block content %}
+<div class="workflow-page workspace-page">
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
+        <h1 class="mb-1">
             Purchase Requests
-        </h2>
+        </h1>
 
         <p class="text-muted mb-0">
             Manage company requests for purchasing inventory items.
         </p>
 
     </div>
-
 
     {% if has_permission('procurement.requests.create') %}
 
@@ -39,34 +37,30 @@ Purchase Requests
 
 {% endif %}
 
-
 </div>
-
 
 <div class="card shadow-sm border-0">
 
     <div class="card-body">
 
-        <div class="table-responsive">
-
-            <table class="table table-hover align-middle mb-0">
+        <div class="workspace-table-scroll" role="region" aria-labelledby="wf-requests-index-table-1" tabindex="0">
+<table class="table workspace-table{{ ' table-empty' if not purchase_requests else '' }}"><caption class="visually-hidden" id="wf-requests-index-table-1">Purchase request records</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Request No.</th>
-                        <th>Department</th>
-                        <th>Requested By</th>
-                        <th>Purpose</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th class="text-end">
+                        <th scope="col">Request No.</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Requested By</th>
+                        <th scope="col">Purpose</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Created</th>
+                        <th scope="col" class="text-end">
                             Actions
                         </th>
                     </tr>
 
                 </thead>
-
 
                 <tbody>
 
@@ -79,7 +73,6 @@ Purchase Requests
                                     {{ purchase_request.request_number }}
                                 </strong>
                             </td>
-
 
                             <td>
 
@@ -101,66 +94,25 @@ Purchase Requests
 
                             </td>
 
-
                             <td>
                                 {{ purchase_request.requested_by_username }}
                             </td>
-
 
                             <td>
                                 {{ purchase_request.purpose or '-' }}
                             </td>
 
-
                             <td>
 
-                                {% if purchase_request.status == 'DRAFT' %}
-
-                                    <span class="badge text-bg-secondary">
-                                        Draft
-                                    </span>
-
-                                {% elif purchase_request.status == 'SUBMITTED' %}
-
-                                    <span class="badge text-bg-primary">
-                                        Submitted
-                                    </span>
-
-                                {% elif purchase_request.status == 'APPROVED' %}
-
-                                    <span class="badge text-bg-success">
-                                        Approved
-                                    </span>
-
-                                {% elif purchase_request.status == 'REJECTED' %}
-
-                                    <span class="badge text-bg-danger">
-                                        Rejected
-                                    </span>
-
-                                {% elif purchase_request.status == 'COMPLETED' %}
-
-                                    <span class="badge text-bg-success">
-                                        Completed
-                                    </span>
-
-                                {% else %}
-
-                                    <span class="badge text-bg-dark">
-                                        {{ purchase_request.status }}
-                                    </span>
-
-                                {% endif %}
+                                {{ ui.workflow_status(purchase_request.status) }}
 
                             </td>
-
 
                             <td>
                                 {{ purchase_request.created_at.strftime(
                                     '%Y-%m-%d'
                                 ) }}
                             </td>
-
 
                             <td class="text-end">
 
@@ -177,7 +129,6 @@ Purchase Requests
                             </td>
 
                         </tr>
-
 
                     {% else %}
 
@@ -204,4 +155,5 @@ Purchase Requests
 
 </div>
 
+</div>
 {% endblock %}

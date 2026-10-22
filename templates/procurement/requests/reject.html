@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'partials/workspace_components.html' as ui with context %}
 
 {% block title %}
 Reject {{ purchase_request.request_number }}
@@ -9,6 +10,7 @@ Reject Purchase Request
 {% endblock %}
 
 {% block content %}
+<div class="workflow-page workspace-page workflow-form">
 
 <div class="row">
 
@@ -18,9 +20,9 @@ Reject Purchase Request
 
             <div class="card-body p-4">
 
-                <h4 class="mb-1">
+                <h1 class="mb-1">
                     Reject {{ purchase_request.request_number }}
-                </h4>
+                </h1>
 
                 <p class="text-muted mb-4">
                     Enter the reason why this purchase request is being rejected.
@@ -31,11 +33,11 @@ Reject Purchase Request
 
                     <div class="mb-4">
 
-                        <label class="form-label">
+                        <label class="form-label" for="wf-requests-reject-rejection-reason">
                             Rejection Reason
-                        </label>
+                        <span class="field-required">Required</span></label>
 
-                        <textarea
+                        <textarea id="wf-requests-reject-rejection-reason"
                             name="rejection_reason"
                             class="form-control"
                             rows="5"
@@ -45,7 +47,7 @@ Reject Purchase Request
 
                     </div>
 
-                    <div class="d-flex gap-2">
+                    <div class="workflow-actions">
 
                         <button
                             type="submit"
@@ -76,4 +78,5 @@ Reject Purchase Request
 
 </div>
 
+</div>
 {% endblock %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'partials/workspace_components.html' as ui with context %}
 
 {% block title %}
 Edit Item | {{ purchase_request.request_number }}
@@ -9,6 +10,7 @@ Edit Request Item
 {% endblock %}
 
 {% block content %}
+<div class="workflow-page workspace-page workflow-form">
 
 <div class="row">
 
@@ -18,9 +20,9 @@ Edit Request Item
 
             <div class="card-body p-4">
 
-                <h4 class="mb-1">
+                <h1 class="mb-1">
                     Edit Item
-                </h4>
+                </h1>
 
                 <p class="text-muted mb-4">
                     Update an item in
@@ -32,11 +34,11 @@ Edit Request Item
 
                     <div class="mb-3">
 
-                        <label class="form-label">
+                        <label class="form-label" for="wf-requests-edit_item-item-id">
                             Inventory Item
-                        </label>
+                        <span class="field-required">Required</span></label>
 
-                        <select
+                        <select id="wf-requests-edit_item-item-id"
                             name="item_id"
                             class="form-select"
                             required
@@ -66,14 +68,13 @@ Edit Request Item
 
                     </div>
 
-
                     <div class="mb-3">
 
-                        <label class="form-label">
+                        <label class="form-label" for="wf-requests-edit_item-quantity">
                             Quantity
-                        </label>
+                        <span class="field-required">Required</span></label>
 
-                        <input
+                        <input id="wf-requests-edit_item-quantity"
                             type="number"
                             name="quantity"
                             class="form-control"
@@ -88,14 +89,13 @@ Edit Request Item
 
                     </div>
 
-
                     <div class="mb-3">
 
-                        <label class="form-label">
+                        <label class="form-label" for="wf-requests-edit_item-estimated-unit-cost">
                             Estimated Unit Cost
                         </label>
 
-                        <input
+                        <input id="wf-requests-edit_item-estimated-unit-cost"
                             type="number"
                             name="estimated_unit_cost"
                             class="form-control"
@@ -111,14 +111,13 @@ Edit Request Item
 
                     </div>
 
-
                     <div class="mb-4">
 
-                        <label class="form-label">
+                        <label class="form-label" for="wf-requests-edit_item-notes">
                             Notes
                         </label>
 
-                        <textarea
+                        <textarea id="wf-requests-edit_item-notes"
                             name="notes"
                             class="form-control"
                             rows="3"
@@ -130,8 +129,7 @@ Edit Request Item
 
                     </div>
 
-
-                    <div class="d-flex gap-2">
+                    <div class="workflow-actions">
 
                         <button
                             type="submit"
@@ -162,4 +160,5 @@ Edit Request Item
 
 </div>
 
+</div>
 {% endblock %}

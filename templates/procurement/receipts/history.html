@@ -1,37 +1,30 @@
 {% extends "base.html" %}
-
+{% import 'partials/workspace_components.html' as ui with context %}
 
 {% block title %}
-Goods Receipt History | Company Operations ERP
+Goods Receipt History
 {% endblock %}
-
 
 {% block page_title %}
 Goods Receipt History
 {% endblock %}
 
-
 {% block content %}
+<div class="workflow-page workspace-page">
 
-
-<!-- # ========================================== -->
-<!-- # PAGE HEADER -->
-<!-- # ========================================== -->
-
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
+        <h1 class="mb-1">
             Goods Receipt History
-        </h2>
+        </h1>
 
         <p class="text-muted mb-0">
             View all supplier deliveries recorded in the system.
         </p>
 
     </div>
-
 
     <a
         href="{{ url_for('goods_receipts') }}"
@@ -42,61 +35,50 @@ Goods Receipt History
 
 </div>
 
-
-
-<!-- # ========================================== -->
-<!-- # RECEIPT HISTORY TABLE -->
-<!-- # ========================================== -->
-
 <div class="card shadow-sm border-0">
 
     <div class="card-body">
 
-        <div class="table-responsive">
-
-            <table class="table table-hover align-middle mb-0">
-
-
-                <!-- # TABLE HEADER -->
+        <div class="workspace-table-scroll" role="region" aria-labelledby="wf-receipts-history-table-1" tabindex="0">
+<table class="table workspace-table{{ ' table-empty' if not receipts else '' }}"><caption class="visually-hidden" id="wf-receipts-history-table-1">Goods receipt history</caption>
 
                 <thead>
 
                     <tr>
 
-                        <th>
+                        <th scope="col">
                             Receipt Number
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Purchase Order
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Supplier
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Warehouse
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Quantity Received
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Received By
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Received At
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Notes
                         </th>
-                        
 
-                        <th class="text-end">
+                        <th scope="col" class="text-end">
                             Actions
                         </th>
 
@@ -104,18 +86,11 @@ Goods Receipt History
 
                 </thead>
 
-
-
-                <!-- # TABLE BODY -->
-
                 <tbody>
 
                     {% for receipt in receipts %}
 
                         <tr>
-
-
-                            <!-- # RECEIPT NUMBER -->
 
                             <td>
                                 <strong>
@@ -123,15 +98,9 @@ Goods Receipt History
                                 </strong>
                             </td>
 
-
-                            <!-- # PURCHASE ORDER -->
-
                             <td>
                                 {{ receipt.po_number }}
                             </td>
-
-
-                            <!-- # SUPPLIER -->
 
                             <td>
 
@@ -143,9 +112,6 @@ Goods Receipt History
 
                             </td>
 
-
-                            <!-- # WAREHOUSE -->
-
                             <td>
 
                                 {{ receipt.warehouse_name }}
@@ -156,36 +122,21 @@ Goods Receipt History
 
                             </td>
 
-
-                            <!-- # TOTAL QUANTITY -->
-
                             <td>
                                 {{ receipt.total_quantity_received }}
                             </td>
-
-
-                            <!-- # RECEIVED BY -->
 
                             <td>
                                 {{ receipt.received_by_username or '-' }}
                             </td>
 
-
-                            <!-- # RECEIVED DATE -->
-
                             <td>
                                 {{ receipt.received_at }}
                             </td>
 
-
-                            <!-- # NOTES -->
-
                             <td>
                                 {{ receipt.notes or '-' }}
                             </td>
-
-
-                            <!-- # VIEW RECEIPT BUTTON -->
 
                             <td class="text-end">
 
@@ -201,9 +152,7 @@ Goods Receipt History
 
                             </td>
 
-
                         </tr>
-
 
                     {% else %}
 
@@ -230,5 +179,5 @@ Goods Receipt History
 
 </div>
 
-
+</div>
 {% endblock %}

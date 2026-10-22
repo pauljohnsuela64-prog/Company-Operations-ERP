@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'partials/workspace_components.html' as ui with context %}
 
 {% block title %}
 Add Item | {{ purchase_request.request_number }}
@@ -9,6 +10,7 @@ Add Request Item
 {% endblock %}
 
 {% block content %}
+<div class="workflow-page workspace-page workflow-form">
 
 <div class="row">
 
@@ -18,9 +20,9 @@ Add Request Item
 
             <div class="card-body p-4">
 
-                <h4 class="mb-1">
+                <h1 class="mb-1">
                     Add Item
-                </h4>
+                </h1>
 
                 <p class="text-muted mb-4">
                     Add an inventory item to
@@ -32,11 +34,11 @@ Add Request Item
 
                     <div class="mb-3">
 
-                        <label class="form-label">
+                        <label class="form-label" for="wf-requests-add_item-item-id">
                             Inventory Item
-                        </label>
+                        <span class="field-required">Required</span></label>
 
-                        <select
+                        <select id="wf-requests-add_item-item-id"
                             name="item_id"
                             class="form-select"
                             required
@@ -65,14 +67,13 @@ Add Request Item
 
                     </div>
 
-
                     <div class="mb-3">
 
-                        <label class="form-label">
+                        <label class="form-label" for="wf-requests-add_item-quantity">
                             Quantity
-                        </label>
+                        <span class="field-required">Required</span></label>
 
-                        <input
+                        <input id="wf-requests-add_item-quantity"
                             type="number"
                             name="quantity"
                             class="form-control"
@@ -84,14 +85,13 @@ Add Request Item
 
                     </div>
 
-
                     <div class="mb-3">
 
-                        <label class="form-label">
+                        <label class="form-label" for="wf-requests-add_item-estimated-unit-cost">
                             Estimated Unit Cost
                         </label>
 
-                        <input
+                        <input id="wf-requests-add_item-estimated-unit-cost"
                             type="number"
                             name="estimated_unit_cost"
                             class="form-control"
@@ -103,14 +103,13 @@ Add Request Item
 
                     </div>
 
-
                     <div class="mb-4">
 
-                        <label class="form-label">
+                        <label class="form-label" for="wf-requests-add_item-notes">
                             Notes
                         </label>
 
-                        <textarea
+                        <textarea id="wf-requests-add_item-notes"
                             name="notes"
                             class="form-control"
                             rows="3"
@@ -119,8 +118,7 @@ Add Request Item
 
                     </div>
 
-
-                    <div class="d-flex gap-2">
+                    <div class="workflow-actions">
 
                         <button
                             type="submit"
@@ -151,4 +149,5 @@ Add Request Item
 
 </div>
 
+</div>
 {% endblock %}
