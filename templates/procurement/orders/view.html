@@ -1,30 +1,24 @@
 {% extends "base.html" %}
-
+{% import 'partials/workspace_components.html' as ui with context %}
 
 {% block title %}
-{{ purchase_order.po_number }} | Company Operations ERP
+{{ purchase_order.po_number }}
 {% endblock %}
-
 
 {% block page_title %}
 Purchase Order
 {% endblock %}
 
-
 {% block content %}
+<div class="workflow-page workspace-page">
 
-
-<!-- # ========================================== -->
-<!-- # PAGE HEADER -->
-<!-- # ========================================== -->
-
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
+        <h1 class="mb-1">
             {{ purchase_order.po_number }}
-        </h2>
+        </h1>
 
         <p class="text-muted mb-0">
             Purchase order details
@@ -32,17 +26,7 @@ Purchase Order
 
     </div>
 
-
-    <!-- # ========================================== -->
-<!-- # PAGE ACTION BUTTONS -->
-<!-- # ========================================== -->
-
-<div class="d-flex gap-2">
-
-
-    <!-- # SEND PURCHASE ORDER BUTTON -->
-    <!-- # Only appears while the PO is DRAFT -->
-    <!-- # User also needs procurement.orders.manage -->
+<div class="workflow-actions">
 
     {% if
         purchase_order.status == 'DRAFT'
@@ -72,11 +56,6 @@ Purchase Order
 
     {% endif %}
 
-    <!-- # ========================================== -->
-<!-- # CANCEL PURCHASE ORDER -->
-<!-- # Only DRAFT or SENT orders can show this -->
-<!-- # ========================================== -->
-
 {% if purchase_order.status in ["DRAFT", "SENT"] and not receipts and has_permission('procurement.orders.manage') %}
 
     <form
@@ -103,13 +82,10 @@ Purchase Order
 
 {% endif %}
 
-
     {% if purchase_order.status in ['SENT', 'PARTIALLY_RECEIVED'] and has_permission('procurement.receipts.manage') %}
         <a href="{{ url_for('receive_purchase_order', purchase_order_id=purchase_order.purchase_order_id) }}" class="btn btn-success">Receive Goods</a>
     {% endif %}
     <a href="{{ url_for('print_purchase_order', purchase_order_id=purchase_order.purchase_order_id) }}" class="btn btn-outline-primary">Print Purchase Order</a>
-
-    <!-- # BACK BUTTON -->
 
     <a
         href="{{ url_for('purchase_orders') }}"
@@ -120,22 +96,13 @@ Purchase Order
 
 </div>
 
-
-
 </div>
-
-<!-- # ========================================== -->
-<!-- # PURCHASE ORDER INFORMATION CARD -->
-<!-- # ========================================== -->
 
 <div class="card shadow-sm border-0 mb-4">
 
     <div class="card-body p-4">
 
         <div class="row">
-
-
-            <!-- # PO NUMBER -->
 
             <div class="col-md-4 mb-3">
 
@@ -149,10 +116,6 @@ Purchase Order
 
             </div>
 
-
-
-            <!-- # SOURCE PURCHASE REQUEST -->
-
             <div class="col-md-4 mb-3">
 
                 <div class="text-muted small">
@@ -164,10 +127,6 @@ Purchase Order
                 </strong>
 
             </div>
-
-
-
-            <!-- # SUPPLIER -->
 
             <div class="col-md-4 mb-3">
 
@@ -185,65 +144,15 @@ Purchase Order
 
             </div>
 
-
-
-            <!-- # STATUS -->
-
             <div class="col-md-4 mb-3">
 
                 <div class="text-muted small">
                     Status
                 </div>
 
-
-                {% if purchase_order.status == 'DRAFT' %}
-
-                    <span class="badge text-bg-secondary">
-                        Draft
-                    </span>
-
-
-                {% elif purchase_order.status == 'SENT' %}
-
-                    <span class="badge text-bg-primary">
-                        Sent (manually issued)
-                    </span>
-
-
-                {% elif purchase_order.status == 'PARTIALLY_RECEIVED' %}
-
-                    <span class="badge text-bg-warning">
-                        Partially Received
-                    </span>
-
-
-                {% elif purchase_order.status == 'RECEIVED' %}
-
-                    <span class="badge text-bg-success">
-                        Received
-                    </span>
-
-
-                {% elif purchase_order.status == 'CANCELLED' %}
-
-                    <span class="badge text-bg-danger">
-                        Cancelled
-                    </span>
-
-
-                {% else %}
-
-                    <span class="badge text-bg-dark">
-                        {{ purchase_order.status }}
-                    </span>
-
-                {% endif %}
+                {{ ui.workflow_status(purchase_order.status, manual_sent=true) }}
 
             </div>
-
-
-
-            <!-- # ORDER DATE -->
 
             <div class="col-md-4 mb-3">
 
@@ -257,10 +166,6 @@ Purchase Order
 
             </div>
 
-
-
-            <!-- # EXPECTED DELIVERY -->
-
             <div class="col-md-4 mb-3">
 
                 <div class="text-muted small">
@@ -272,10 +177,6 @@ Purchase Order
                 </strong>
 
             </div>
-
-
-
-            <!-- # CREATED BY -->
 
             <div class="col-md-4 mb-3">
 
@@ -289,10 +190,6 @@ Purchase Order
 
             </div>
 
-
-
-            <!-- # PO NOTES -->
-
             <div class="col-md-8 mb-3">
 
                 <div class="text-muted small">
@@ -305,83 +202,63 @@ Purchase Order
 
             </div>
 
-
         </div>
 
     </div>
 
 </div>
 
-
-
-<!-- # ========================================== -->
-<!-- # PURCHASE ORDER ITEMS CARD -->
-<!-- # ========================================== -->
-
 <div class="card shadow-sm border-0">
 
     <div class="card-header bg-white">
 
-        <h5 class="mb-0">
+        <h2 class="mb-0">
             Purchase Order Items
-        </h5>
+        </h2>
 
     </div>
 
-
     <div class="card-body">
 
-        <div class="table-responsive">
-
-            <table class="table table-hover align-middle mb-0">
-
-
-                <!-- # ====================================== -->
-                <!-- # TABLE HEADER -->
-                <!-- # Everything inside <thead> describes -->
-                <!-- # the names at the TOP of each column. -->
-                <!-- # ====================================== -->
+        <div class="workspace-table-scroll" role="region" aria-labelledby="wf-orders-view-table-1" tabindex="0">
+<table class="table workspace-table{{ ' table-empty' if not items else '' }}"><caption class="visually-hidden" id="wf-orders-view-table-1">Purchase order items</caption>
 
                 <thead>
 
                     <tr>
 
-                        <th>
+                        <th scope="col">
                             Item Code
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Item
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Ordered
                         </th>
-                        <th>Already Received</th>
-                        <th>Remaining</th>
+                        <th scope="col">Already Received</th>
+                        <th scope="col">Remaining</th>
 
-                        <th>
+                        <th scope="col">
                             Unit Cost
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Total
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Notes
                         </th>
-
-
-                        <!-- # ACTIONS COLUMN HEADER -->
-                        <!-- # Only visible while PO is DRAFT -->
 
                         {% if
                             purchase_order.status == 'DRAFT'
                             and has_permission('procurement.orders.manage')
                         %}
 
-                            <th class="text-end">
+                            <th scope="col" class="text-end">
                                 Actions
                             </th>
 
@@ -391,43 +268,19 @@ Purchase Order
 
                 </thead>
 
-
-
-                <!-- # ====================================== -->
-                <!-- # TABLE BODY -->
-                <!-- # Actual database records appear here. -->
-                <!-- # ====================================== -->
-
                 <tbody>
-
-
-                    <!-- # LOOP THROUGH EVERY PO ITEM -->
 
                     {% for item in items %}
 
-
-                        <!-- # ONE TABLE ROW / ONE ITEM -->
-
                         <tr>
-
-
-                            <!-- # ITEM CODE -->
 
                             <td>
                                 {{ item.item_code }}
                             </td>
 
-
-
-                            <!-- # ITEM NAME -->
-
                             <td>
                                 {{ item.item_name }}
                             </td>
-
-
-
-                            <!-- # QUANTITY -->
 
                             <td>
 
@@ -436,45 +289,24 @@ Purchase Order
 
                             </td>
 
-
-
                             <td class="received-quantity">{{ item.received_quantity }} {{ item.unit_of_measure }}</td>
                             <td class="remaining-quantity">{{ item.remaining_quantity }} {{ item.unit_of_measure }}</td>
 
-                            <!-- # UNIT COST -->
-
-                            <td>
+                            <td class="workflow-money">
 
                                 ₱{{ item.unit_cost|procurement_currency }}
 
                             </td>
 
-
-
-                            <!-- # TOTAL -->
-                            <!-- # Quantity × Unit Cost -->
-
-                            <td>
+                            <td class="workflow-money">
 
                                 ₱{{ item.line_total|procurement_currency }}
 
                             </td>
 
-
-
-                            <!-- # NOTES -->
-
                             <td>
                                 {{ item.notes or '-' }}
                             </td>
-
-
-
-                            <!-- # ================================== -->
-                            <!-- # ACTION BUTTONS -->
-                            <!-- # This matches the Actions header -->
-                            <!-- # above. -->
-                            <!-- # ================================== -->
 
                             {% if
                                 purchase_order.status == 'DRAFT'
@@ -484,9 +316,6 @@ Purchase Order
                             %}
 
                                 <td class="text-end">
-
-
-                                    <!-- # EDIT COST BUTTON -->
 
                                     <a
                                         href="{{ url_for(
@@ -499,21 +328,13 @@ Purchase Order
                                         Edit Cost
                                     </a>
 
-
                                 </td>
 
                             {% endif %}
 
-
                         </tr>
 
-
                     {% else %}
-
-
-                        <!-- # ====================================== -->
-                        <!-- # DISPLAYED IF THERE ARE NO PO ITEMS -->
-                        <!-- # ====================================== -->
 
                         <tr>
 
@@ -526,12 +347,10 @@ Purchase Order
 
                         </tr>
 
-
                     {% endfor %}
 
-
                 </tbody>
-                <tfoot><tr><th colspan="6" class="text-end">Order Total</th><td colspan="{{ 3 if purchase_order.status == 'DRAFT' and has_permission('procurement.orders.manage') else 2 }}">&#8369;{{ total|procurement_currency }}</td></tr></tfoot>
+                <tfoot><tr><th scope="row" colspan="6" class="text-end">Order Total</th><td colspan="{{ 3 if purchase_order.status == 'DRAFT' and has_permission('procurement.orders.manage') else 2 }}">&#8369;{{ total|procurement_currency }}</td></tr></tfoot>
 
             </table>
 
@@ -541,42 +360,34 @@ Purchase Order
 
 </div>
 
-<!-- # ========================================== -->
-<!-- # GOODS RECEIPT HISTORY -->
-<!-- # THIS BELONGS ON THE PURCHASE ORDER PAGE -->
-<!-- # ========================================== -->
-
 <div class="card shadow-sm border-0 mt-4">
 
     <div class="card-header bg-white">
 
-        <h5 class="mb-0">
+        <h2 class="mb-0">
             Goods Receipt History
-        </h5>
+        </h2>
 
     </div>
 
-
     <div class="card-body">
 
-        <div class="table-responsive">
-
-            <table class="table table-hover align-middle mb-0">
+        <div class="workspace-table-scroll" role="region" aria-labelledby="wf-orders-view-table-2" tabindex="0">
+<table class="table workspace-table{{ ' table-empty' if not receipts else '' }}"><caption class="visually-hidden" id="wf-orders-view-table-2">Purchase order history</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Receipt Number</th>
-                        <th>Warehouse</th>
-                        <th>Quantity Received</th>
-                        <th>Received By</th>
-                        <th>Received At</th>
-                        <th>Notes</th>
-                        <th class="text-end">Actions</th>
+                        <th scope="col">Receipt Number</th>
+                        <th scope="col">Warehouse</th>
+                        <th scope="col">Quantity Received</th>
+                        <th scope="col">Received By</th>
+                        <th scope="col">Received At</th>
+                        <th scope="col">Notes</th>
+                        <th scope="col" class="text-end">Actions</th>
                     </tr>
 
                 </thead>
-
 
                 <tbody>
 
@@ -655,4 +466,5 @@ Purchase Order
 
 </div>
 
+</div>
 {% endblock %}

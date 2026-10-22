@@ -1,37 +1,30 @@
 {% extends "base.html" %}
-
+{% import 'partials/workspace_components.html' as ui with context %}
 
 {% block title %}
-Receive {{ purchase_order.po_number }} | Company Operations ERP
+Receive {{ purchase_order.po_number }}
 {% endblock %}
-
 
 {% block page_title %}
 Receive Items
 {% endblock %}
 
-
 {% block content %}
+<div class="workflow-page workspace-page">
 
-
-<!-- # ========================================== -->
-<!-- # PAGE HEADER -->
-<!-- # ========================================== -->
-
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
+        <h1 class="mb-1">
             Receive {{ purchase_order.po_number }}
-        </h2>
+        </h1>
 
         <p class="text-muted mb-0">
-            Record items delivered by the supplier.
+            Record items delivered by the supplier. Enter only quantities delivered now; already received quantities are excluded from the remaining balance.
         </p>
 
     </div>
-
 
     <a
         href="{{ url_for('goods_receipts') }}"
@@ -42,19 +35,11 @@ Receive Items
 
 </div>
 
-
-
-<!-- # ========================================== -->
-<!-- # PURCHASE ORDER INFORMATION -->
-<!-- # ========================================== -->
-
 <div class="card shadow-sm border-0 mb-4">
 
     <div class="card-body">
 
         <div class="row">
-
-            <!-- # PO NUMBER -->
 
             <div class="col-md-3 mb-3">
 
@@ -67,9 +52,6 @@ Receive Items
                 </strong>
 
             </div>
-
-
-            <!-- # SUPPLIER -->
 
             <div class="col-md-3 mb-3">
 
@@ -87,33 +69,15 @@ Receive Items
 
             </div>
 
-
-            <!-- # STATUS -->
-
             <div class="col-md-3 mb-3">
 
                 <div class="text-muted small">
                     Status
                 </div>
 
-                {% if purchase_order.status == 'SENT' %}
-
-                    <span class="badge text-bg-primary">
-                        Sent
-                    </span>
-
-                {% elif purchase_order.status == 'PARTIALLY_RECEIVED' %}
-
-                    <span class="badge text-bg-warning">
-                        Partially Received
-                    </span>
-
-                {% endif %}
+                {{ ui.workflow_status(purchase_order.status) }}
 
             </div>
-
-
-            <!-- # EXPECTED DELIVERY -->
 
             <div class="col-md-3 mb-3">
 
@@ -133,40 +97,23 @@ Receive Items
 
 </div>
 
-
-
-<!-- # ========================================== -->
-<!-- # GOODS RECEIPT FORM -->
-<!-- # ========================================== -->
-
 <div class="card shadow-sm border-0">
 
     <div class="card-body">
-
-        <!-- # ========================================== -->
-<!-- # GOODS RECEIPT FORM START -->
-<!-- # Everything between this and </form> -->
-<!-- # is sent to app.py when Save is clicked. -->
-<!-- # ========================================== -->
 
 <form method="POST">
     {% include 'partials/csrf_field.html' %}
     <input type="hidden" name="submission_id" value="{{ submission_id }}">
 
-
-        <!-- # ====================================== -->
-        <!-- # WAREHOUSE SELECTION -->
-        <!-- # ====================================== -->
-
         <div class="row mb-4">
 
             <div class="col-md-6">
 
-                <label class="form-label">
+                <label class="form-label" for="wf-receipts-receive-warehouse-id">
                     Receiving Warehouse
-                </label>
+                <span class="field-required">Required</span></label>
 
-                <select
+                <select id="wf-receipts-receive-warehouse-id"
                     class="form-select"
                     name="warehouse_id"
                     required
@@ -175,7 +122,6 @@ Receive Items
                     <option value="">
                         Select warehouse
                     </option>
-
 
                     {% for warehouse in warehouses %}
 
@@ -200,48 +146,38 @@ Receive Items
 
         </div>
 
-
-
-        <!-- # ====================================== -->
-        <!-- # ITEMS TABLE -->
-        <!-- # ====================================== -->
-
-        <div class="table-responsive">
-
-            <table class="table table-hover align-middle">
-
-
-                <!-- # TABLE HEADER -->
+        <div class="workspace-table-scroll" role="region" aria-labelledby="wf-receipts-receive-table-1" tabindex="0">
+<table class="table workspace-table{{ ' table-empty' if not items else '' }}"><caption class="visually-hidden" id="wf-receipts-receive-table-1">Goods receipt items</caption>
 
                 <thead>
 
                     <tr>
 
-                        <th>
+                        <th scope="col">
                             Item Code
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Item
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Ordered
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Already Received
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Remaining
                         </th>
 
-                        <th style="width: 180px;">
+                        <th scope="col" style="width: 180px;">
                             Quantity Received
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Unit
                         </th>
 
@@ -249,46 +185,27 @@ Receive Items
 
                 </thead>
 
-
-
-                <!-- # TABLE BODY -->
-
                 <tbody>
 
                     {% for item in items %}
 
                         <tr>
 
-
-                            <!-- # ITEM CODE -->
-
                             <td>
                                 {{ item.item_code }}
                             </td>
-
-
-                            <!-- # ITEM NAME -->
 
                             <td>
                                 {{ item.item_name }}
                             </td>
 
-
-                            <!-- # ORDERED -->
-
                             <td>
                                 {{ item.ordered_quantity }}
                             </td>
 
-
-                            <!-- # ALREADY RECEIVED -->
-
                             <td>
                                 {{ item.received_quantity }}
                             </td>
-
-
-                            <!-- # REMAINING -->
 
                             <td>
 
@@ -298,14 +215,10 @@ Receive Items
 
                             </td>
 
-
-                            <!-- # ================================== -->
-                            <!-- # QUANTITY BEING RECEIVED NOW -->
-                            <!-- # ================================== -->
-
                             <td>
 
-                                <input
+                                <label class="visually-hidden" for="wf-receive-quantity-{{ item.purchase_order_item_id }}">Quantity received now for {{ item.item_code }}</label>
+                                <input id="wf-receive-quantity-{{ item.purchase_order_item_id }}"
                                     type="number"
                                     class="form-control"
                                     name="quantity_received_{{ item.purchase_order_item_id }}"
@@ -317,16 +230,11 @@ Receive Items
 
                             </td>
 
-
-                            <!-- # UNIT -->
-
                             <td>
                                 {{ item.unit_of_measure }}
                             </td>
 
-
                         </tr>
-
 
                     {% else %}
 
@@ -349,21 +257,15 @@ Receive Items
 
         </div>
 
-
-
-        <!-- # ====================================== -->
-        <!-- # RECEIPT NOTES -->
-        <!-- # ====================================== -->
-
         <div class="row mt-4">
 
             <div class="col-md-6">
 
-                <label class="form-label">
+                <label class="form-label" for="wf-receipts-receive-notes">
                     Receipt Notes
                 </label>
 
-                <textarea
+                <textarea id="wf-receipts-receive-notes"
                     class="form-control"
                     name="notes"
                     rows="3"
@@ -374,18 +276,7 @@ Receive Items
 
         </div>
 
-
-
-        <!-- # ====================================== -->
-        <!-- # SAVE BUTTON -->
-        <!-- # ====================================== -->
-
-        <div class="mt-4">
-
-
-            <!-- # ========================================== -->
-            <!-- # SAVE GOODS RECEIPT -->
-            <!-- # ========================================== -->
+        <div class="workflow-actions mt-4">
 
         <button
         type="submit"
@@ -397,18 +288,12 @@ Receive Items
             Save Goods Receipt
         </button>
 
-
-
-            <!-- # GOODS RECEIPT FORM END -->
-
-            </form>
-
         </div>
-
+</form>
 
     </div>
 
 </div>
 
-
+</div>
 {% endblock %}

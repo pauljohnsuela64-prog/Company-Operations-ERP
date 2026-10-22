@@ -263,3 +263,52 @@ button.logout-link { background: transparent; font-family: inherit; cursor: poin
 .workspace-table.table-empty { min-width: 0; }
 .table-empty thead { display: none; }
 .workspace-table.table-empty tbody td { padding: 0; }
+
+/* Procurement workflow screens opt in; the standalone A4 PO document does not. */
+.workflow-page { min-width: 0; }
+.workflow-page h1 { font-size: clamp(1.5rem, 2.5vw, 1.9rem); font-weight: 650; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.workflow-heading { align-items: flex-start; }
+.workflow-heading > div:first-child { min-width: 0; flex: 1 1 220px; }
+.workflow-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--erp-space-2); min-width: 0; }
+.workflow-actions form { margin: 0; }
+.workflow-actions .btn { min-height: 44px; }
+.workflow-page .card { background: var(--erp-surface); border: 1px solid var(--erp-border) !important; border-radius: var(--erp-radius); box-shadow: var(--erp-shadow) !important; min-width: 0; }
+.workflow-page .card-body { padding: 24px; min-width: 0; }
+.workflow-page .card-header { padding: 18px 24px; border-color: var(--erp-border); border-radius: var(--erp-radius) var(--erp-radius) 0 0; flex-wrap: wrap; gap: 12px; }
+.workflow-page h2 { font-size: 1rem; font-weight: 650; line-height: 1.4; }
+.workflow-page strong, .workflow-page p, .workflow-page .alert { overflow-wrap: anywhere; }
+.workflow-page .card-body > .row strong { display: block; font-size: .875rem; font-weight: 600; margin-top: 6px; }
+.workflow-page .form-label { display: flex; gap: 12px; justify-content: space-between; align-items: baseline; font-size: .8125rem; }
+.workflow-page .form-text { color: var(--erp-muted); font-size: .75rem; }
+.workflow-page textarea { resize: vertical; min-height: 110px; }
+.workflow-page .form-control, .workflow-page .form-select { max-width: 100%; font-size: .875rem; }
+.workflow-page .form-control:disabled { background-color: #edf1f6; color: var(--erp-muted); }
+.workflow-form { max-width: 960px; }
+.workflow-form > .row > [class*="col-"] { width: 100%; flex: 0 0 100%; }
+.workflow-form .card-body { padding: 28px; }
+.workflow-form form > .workflow-actions { border-top: 1px solid var(--erp-border); padding-top: 20px; margin-top: 24px; }
+.workflow-page .workspace-table-scroll { position: relative; border: 1px solid var(--erp-border); border-radius: 8px; }
+.workflow-page .workspace-table { min-width: 1000px; table-layout: auto; }
+.workflow-page .workspace-table.table-empty { min-width: 0; }
+.workflow-page .workspace-table td, .workflow-page .workspace-table th { min-width: 100px; max-width: 300px; }
+.workflow-page .workspace-table td:last-child { min-width: 140px; }
+.workflow-page .workspace-table .workflow-money { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.workflow-page .workspace-table .form-control { min-width: 140px; }
+.workflow-page .workspace-table tfoot { background: var(--erp-blue-soft); font-weight: 650; }
+.workflow-page .workspace-table tfoot > tr > * { padding: 18px 20px; border-top: 1px solid var(--erp-border); }
+.workflow-page .workspace-table .text-center[colspan] { padding: 32px 20px; font-size: .875rem; }
+.workflow-status { white-space: normal; font-size: .72rem; border-radius: 7px; background: #f0f3f7; border-color: #dce3ec; color: #546175; }
+.workflow-status[data-status="SUBMITTED"], .workflow-status[data-status="SENT"] { background: var(--erp-blue-soft); color: var(--erp-blue-hover); border-color: #cbdcf8; }
+.workflow-status[data-status="APPROVED"], .workflow-status[data-status="RECEIVED"] { background: #edf8f2; color: var(--erp-positive); border-color: #cce5d7; }
+.workflow-status[data-status="COMPLETED"] { background: #eaf7f7; color: #176067; border-color: #c4e1e3; }
+.workflow-status[data-status="REJECTED"] { background: #fceef1; color: var(--erp-negative); border-color: #edc9d1; }
+.workflow-status[data-status="CANCELLED"] { background: #e9edf3; color: #354258; border-color: #c4cddd; }
+.workflow-status[data-status="PARTIALLY_RECEIVED"] { background: #fff5e6; color: var(--erp-attention); border-color: #efdab7; }
+@media (max-width: 767.98px) {
+    .workflow-page .card-body, .workflow-form .card-body { padding: 20px; }
+    .workflow-page .card-header { padding: 16px 20px; }
+    .workflow-heading > .workflow-actions { width: 100%; }
+    .workflow-heading > .workflow-actions > *, .workflow-form form > .workflow-actions > * { width: 100%; }
+    .workflow-heading > .workflow-actions .btn, .workflow-form form > .workflow-actions .btn { width: 100%; }
+    .workflow-page .card-header .btn { max-width: 100%; }
+}

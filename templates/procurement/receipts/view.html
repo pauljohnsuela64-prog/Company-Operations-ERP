@@ -1,37 +1,30 @@
 {% extends "base.html" %}
-
+{% import 'partials/workspace_components.html' as ui with context %}
 
 {% block title %}
-{{ receipt.receipt_number }} | Company Operations ERP
+{{ receipt.receipt_number }}
 {% endblock %}
-
 
 {% block page_title %}
 Goods Receipt
 {% endblock %}
 
-
 {% block content %}
+<div class="workflow-page workspace-page">
 
-
-<!-- # ========================================== -->
-<!-- # PAGE HEADER -->
-<!-- # ========================================== -->
-
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
+        <h1 class="mb-1">
             {{ receipt.receipt_number }}
-        </h2>
+        </h1>
 
         <p class="text-muted mb-0">
             Goods receipt details
         </p>
 
     </div>
-
 
     <a
         href="{{ url_for('goods_receipt_history') }}"
@@ -42,20 +35,11 @@ Goods Receipt
 
 </div>
 
-
-
-<!-- # ========================================== -->
-<!-- # RECEIPT INFORMATION -->
-<!-- # ========================================== -->
-
 <div class="card shadow-sm border-0 mb-4">
 
     <div class="card-body p-4">
 
         <div class="row">
-
-
-            <!-- # RECEIPT NUMBER -->
 
             <div class="col-md-4 mb-3">
 
@@ -69,9 +53,6 @@ Goods Receipt
 
             </div>
 
-
-            <!-- # PURCHASE ORDER -->
-
             <div class="col-md-4 mb-3">
 
                 <div class="text-muted small">
@@ -83,9 +64,6 @@ Goods Receipt
                 </strong>
 
             </div>
-
-
-            <!-- # SUPPLIER -->
 
             <div class="col-md-4 mb-3">
 
@@ -103,9 +81,6 @@ Goods Receipt
 
             </div>
 
-
-            <!-- # WAREHOUSE -->
-
             <div class="col-md-4 mb-3">
 
                 <div class="text-muted small">
@@ -122,9 +97,6 @@ Goods Receipt
 
             </div>
 
-
-            <!-- # RECEIVED BY -->
-
             <div class="col-md-4 mb-3">
 
                 <div class="text-muted small">
@@ -136,9 +108,6 @@ Goods Receipt
                 </strong>
 
             </div>
-
-
-            <!-- # RECEIVED AT -->
 
             <div class="col-md-4 mb-3">
 
@@ -152,9 +121,6 @@ Goods Receipt
 
             </div>
 
-
-            <!-- # NOTES -->
-
             <div class="col-md-12">
 
                 <div class="text-muted small">
@@ -167,64 +133,52 @@ Goods Receipt
 
             </div>
 
-
         </div>
 
     </div>
 
 </div>
 
-
-
-<!-- # ========================================== -->
-<!-- # RECEIVED ITEMS -->
-<!-- # ========================================== -->
-
 <div class="card shadow-sm border-0">
 
     <div class="card-header bg-white">
 
-        <h5 class="mb-0">
+        <h2 class="mb-0">
             Received Items
-        </h5>
+        </h2>
 
     </div>
 
-
     <div class="card-body">
 
-        <div class="table-responsive">
-
-            <table class="table table-hover align-middle mb-0">
-
-
-                <!-- # TABLE HEADER -->
+        <div class="workspace-table-scroll" role="region" aria-labelledby="wf-receipts-view-table-1" tabindex="0">
+<table class="table workspace-table{{ ' table-empty' if not items else '' }}"><caption class="visually-hidden" id="wf-receipts-view-table-1">Goods receipt items</caption>
 
                 <thead>
 
                     <tr>
 
-                        <th>
+                        <th scope="col">
                             Item Code
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Item
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Quantity Received
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Unit
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Unit Cost
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Total
                         </th>
 
@@ -232,30 +186,19 @@ Goods Receipt
 
                 </thead>
 
-
-                <!-- # TABLE BODY -->
-
                 <tbody>
 
                     {% for item in items %}
 
                         <tr>
 
-                            <!-- # ITEM CODE -->
-
                             <td>
                                 {{ item.item_code }}
                             </td>
 
-
-                            <!-- # ITEM NAME -->
-
                             <td>
                                 {{ item.item_name }}
                             </td>
-
-
-                            <!-- # QUANTITY RECEIVED -->
 
                             <td>
 
@@ -265,31 +208,21 @@ Goods Receipt
 
                             </td>
 
-
-                            <!-- # UNIT -->
-
                             <td>
                                 {{ item.unit_of_measure }}
                             </td>
 
-
-                            <!-- # UNIT COST -->
-
-                            <td>
+                            <td class="workflow-money">
                                 ₱{{ item.unit_cost|procurement_currency }}
                             </td>
 
-
-                            <!-- # LINE TOTAL -->
-
-                            <td>
+                            <td class="workflow-money">
 
                                 ₱{{ (item.quantity_received * item.unit_cost)|procurement_currency }}
 
                             </td>
 
                         </tr>
-
 
                     {% else %}
 
@@ -316,9 +249,5 @@ Goods Receipt
 
 </div>
 
-
-
-
-
-
+</div>
 {% endblock %}

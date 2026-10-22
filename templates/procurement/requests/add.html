@@ -1,7 +1,8 @@
 {% extends "base.html" %}
+{% import 'partials/workspace_components.html' as ui with context %}
 
 {% block title %}
-New Purchase Request | Company Operations ERP
+New Purchase Request
 {% endblock %}
 
 {% block page_title %}
@@ -9,6 +10,7 @@ New Purchase Request
 {% endblock %}
 
 {% block content %}
+<div class="workflow-page workspace-page workflow-form">
 
 <div class="row">
 
@@ -18,9 +20,9 @@ New Purchase Request
 
             <div class="card-body p-4">
 
-                <h4 class="mb-1">
+                <h1 class="mb-1">
                     Create Purchase Request
-                </h4>
+                </h1>
 
                 <p class="text-muted mb-4">
                     Create a draft request for items needed by a department.
@@ -28,11 +30,11 @@ New Purchase Request
 
                 <div class="mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="wf-requests-add-context-758">
                         Requested By
                     </label>
 
-                    <input
+                    <input id="wf-requests-add-context-758"
                         type="text"
                         class="form-control"
                         value="{{ session.username }}"
@@ -45,17 +47,16 @@ New Purchase Request
 
                 </div>
 
-
                 <form method="POST">
                     {% include 'partials/csrf_field.html' %}
 
                     <div class="mb-3">
 
-                        <label class="form-label">
+                        <label class="form-label" for="wf-requests-add-department-id">
                             Department
-                        </label>
+                        <span class="field-required">Required</span></label>
 
-                        <select
+                        <select id="wf-requests-add-department-id"
                             name="department_id"
                             class="form-select"
                             required
@@ -84,14 +85,13 @@ New Purchase Request
 
                     </div>
 
-
                     <div class="mb-4">
 
-                        <label class="form-label">
+                        <label class="form-label" for="wf-requests-add-purpose">
                             Purpose
-                        </label>
+                        <span class="field-required">Required</span></label>
 
-                        <textarea
+                        <textarea id="wf-requests-add-purpose"
                             name="purpose"
                             class="form-control"
                             rows="4"
@@ -102,8 +102,7 @@ New Purchase Request
 
                     </div>
 
-
-                    <div class="d-flex gap-2">
+                    <div class="workflow-actions">
 
                         <button
                             type="submit"
@@ -131,4 +130,5 @@ New Purchase Request
 
 </div>
 
+</div>
 {% endblock %}

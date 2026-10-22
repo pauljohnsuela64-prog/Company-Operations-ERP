@@ -1,7 +1,8 @@
 {% extends "base.html" %}
+{% import 'partials/workspace_components.html' as ui with context %}
 
 {% block title %}
-Purchase Orders | Company Operations ERP
+Purchase Orders
 {% endblock %}
 
 {% block page_title %}
@@ -9,13 +10,14 @@ Purchase Orders
 {% endblock %}
 
 {% block content %}
+<div class="workflow-page workspace-page">
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
-        <h2 class="mb-1">
+        <h1 class="mb-1">
             Purchase Orders
-        </h2>
+        </h1>
 
         <p class="text-muted mb-0">
             Manage purchase orders sent to suppliers.
@@ -24,25 +26,23 @@ Purchase Orders
 
 </div>
 
-
 <div class="card shadow-sm border-0">
 
     <div class="card-body">
 
-        <div class="table-responsive">
-
-            <table class="table table-hover align-middle mb-0">
+        <div class="workspace-table-scroll" role="region" aria-labelledby="wf-orders-index-table-1" tabindex="0">
+<table class="table workspace-table{{ ' table-empty' if not purchase_orders else '' }}"><caption class="visually-hidden" id="wf-orders-index-table-1">Purchase order records</caption>
 
                 <thead>
                     <tr>
-                        <th>PO Number</th>
-                        <th>Purchase Request</th>
-                        <th>Supplier</th>
-                        <th>Order Date</th>
-                        <th>Expected Delivery</th>
-                        <th>Status</th>
-                        <th>Created By</th>
-                        <th class="text-end">
+                        <th scope="col">PO Number</th>
+                        <th scope="col">Purchase Request</th>
+                        <th scope="col">Supplier</th>
+                        <th scope="col">Order Date</th>
+                        <th scope="col">Expected Delivery</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Created By</th>
+                        <th scope="col" class="text-end">
                             Actions
                         </th>
                     </tr>
@@ -82,36 +82,7 @@ Purchase Orders
 
                             <td>
 
-                                {% if order.status == 'DRAFT' %}
-                                    <span class="badge text-bg-secondary">
-                                        Draft
-                                    </span>
-
-                                {% elif order.status == 'SENT' %}
-                                    <span class="badge text-bg-primary">
-                                        Sent
-                                    </span>
-
-                                {% elif order.status == 'PARTIALLY_RECEIVED' %}
-                                    <span class="badge text-bg-warning">
-                                        Partially Received
-                                    </span>
-
-                                {% elif order.status == 'RECEIVED' %}
-                                    <span class="badge text-bg-success">
-                                        Received
-                                    </span>
-
-                                {% elif order.status == 'CANCELLED' %}
-                                    <span class="badge text-bg-danger">
-                                        Cancelled
-                                    </span>
-
-                                {% else %}
-                                    <span class="badge text-bg-dark">
-                                        {{ order.status }}
-                                    </span>
-                                {% endif %}
+                                {{ ui.workflow_status(order.status) }}
 
                             </td>
 
@@ -157,4 +128,5 @@ Purchase Orders
 
 </div>
 
+</div>
 {% endblock %}
