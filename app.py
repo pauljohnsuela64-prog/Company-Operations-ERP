@@ -330,7 +330,7 @@ from flask import (
 )
 
 from user_repository import (
-    count_active_super_admins,
+    AdminIntegrityError,
     create_user,
     get_all_permissions,
     get_all_roles,
@@ -7712,250 +7712,43 @@ def export_leave_report():
 )
 @permission_required("users.manage")
 def change_admin_user_role(user_id):
-
-    user = get_user_by_id(
-        user_id
-    )
-
-    if not user:
-
-        flash(
-            "User account not found.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("admin_users")
-        )
+    return _change_admin_user_access(user_id, role_change=True)
 
 
-    # ======================================================
-    # DO NOT CHANGE YOUR OWN ROLE
-    # ======================================================
-
-    if user_id == session["user_id"]:
-
-        flash(
-            "You cannot change your own role.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("admin_users")
-        )
-
-
-    role_id = request.form.get(
-        "role_id",
-        "",
-    ).strip()
-
-    try:
-
-        role_id_value = int(
-            role_id
-        )
-
-    except ValueError:
-
-        flash(
-            "Invalid role.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("admin_users")
-        )
-
-
-    roles = get_all_roles()
-
-    selected_role = next(
-        (
-            role
-            for role in roles
-            if role["role_id"]
-            == role_id_value
-        ),
-        None,
-    )
-
-    if not selected_role:
-
-        flash(
-            "Selected role does not exist.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("admin_users")
-        )
-
-
-    # ======================================================
-    # PROTECT LAST ACTIVE SUPER ADMIN
-    # ======================================================
-
-    if (
-        user["role_name"] == "Super Admin"
-        and selected_role["role_name"]
-        != "Super Admin"
-        and user["is_active"]
-        and count_active_super_admins() <= 1
-    ):
-
-        flash(
-            (
-                "You cannot remove the role from "
-                "the last active Super Admin."
-            ),
-            "danger",
-        )
-
-        return redirect(
-            url_for("admin_users")
-        )
-
-
-    update_user_role(
-        user_id,
-        role_id_value,
-    )
-
-    flash(
-        "User role updated successfully.",
-        "success",
-    )
-
-    return redirect(
-        url_for("admin_users")
-    )
-
-
-# ==========================================================
-# ADMINISTRATION - CHANGE USER STATUS
-# ==========================================================
-
-@app.route(
-    "/admin/users/<int:user_id>/status",
-    methods=["POST"],
-)
-@permission_required("users.manage")
+@app.route('/admin/users/<int:user_id>/status', methods=['POST'])
+@permission_required('users.manage')
 def change_admin_user_status(user_id):
-
-    # ======================================================
-    # GET USER
-    # ======================================================
-
-    user = get_user_by_id(
-        user_id
-    )
-
-    if not user:
-
-        flash(
-            "User account not found.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("admin_users")
-        )
+    return _change_admin_user_access(user_id, role_change=False)
 
 
-    # ======================================================
-    # DO NOT DEACTIVATE YOUR OWN ACCOUNT
-    # ======================================================
-
-    if user_id == session["user_id"]:
-
-        flash(
-            "You cannot deactivate your own account.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("admin_users")
-        )
-
-
-    # ======================================================
-    # NEW STATUS
-    # ======================================================
-
-    new_status = not bool(
-        user["is_active"]
-    )
-
-
-    # ======================================================
-    # PROTECT LAST ACTIVE SUPER ADMIN
-    # ======================================================
-
-    if (
-        not new_status
-        and user["role_name"] == "Super Admin"
-        and count_active_super_admins() <= 1
-    ):
-
-        flash(
-            (
-                "You cannot deactivate the "
-                "last active Super Admin."
-            ),
-            "danger",
-        )
-
-        return redirect(
-            url_for("admin_users")
-        )
-
-
-    # ======================================================
-    # DATABASE UPDATE
-    # ======================================================
-
-    set_user_active_status(
-        user_id,
-        new_status,
-    )
-
-
-    # AUDIT LOG: The business action has committed successfully.
-    record_audit_event(
-        module="ADMINISTRATION",
-        action="ACTIVATE" if new_status else "DEACTIVATE",
-        entity_type="USER",
-        entity_id=user["username"],
-        description="User account status updated.",
-    )
-
-    # ======================================================
-    # SUCCESS MESSAGE
-    # ======================================================
-
-    if new_status:
-
-        flash(
-            "User account activated successfully.",
-            "success",
-        )
-
+def _change_admin_user_access(user_id, *, role_change):
+    if user_id == session['user_id']:
+        flash('You cannot change your own role.' if role_change else 'You cannot deactivate your own account.', 'danger')
+        return redirect(url_for('admin_users'))
+    field = 'role_id' if role_change else 'is_active'
+    try:
+        if len(request.form.getlist(field)) != 1:
+            raise AdminIntegrityError('Submit one explicit role or account status. Reload the user list.')
+        value = request.form[field]
+        if role_change:
+            result = update_user_role(user_id, value, actor_user_id=session['user_id'])
+            action = 'UPDATE'
+            message = 'User role updated successfully.'
+        else:
+            if value not in ('0', '1'):
+                raise AdminIntegrityError('Select an explicit active or inactive account status.')
+            result = set_user_active_status(user_id, value == '1', actor_user_id=session['user_id'])
+            action = 'ACTIVATE' if value == '1' else 'DEACTIVATE'
+            message = 'User account activated successfully.' if value == '1' else 'User account deactivated successfully.'
+    except AdminIntegrityError as error:
+        return render_template('admin/users/access_error.html', message=str(error)), error.status_code
+    if result.changed:
+        record_audit_event('ADMINISTRATION', action, 'USER', result.username,
+                           'User role updated.' if role_change else 'User account status updated.')
+        flash(message, 'success')
     else:
-
-        flash(
-            "User account deactivated successfully.",
-            "success",
-        )
-
-
-    # ======================================================
-    # RETURN TO USER ADMINISTRATION
-    # ======================================================
-
-    return redirect(
-        url_for("admin_users")
-    )
+        flash('User account already has the requested role or status. No change made.', 'info')
+    return redirect(url_for('admin_users'))
 
 
 # ==========================================================
@@ -8260,74 +8053,6 @@ def admin_role_permissions(role_id):
         selected_permission_ids=selected_permission_ids,
     )
 
-    # ======================================================
-    # DO NOT DEACTIVATE YOUR OWN ACCOUNT
-    # ======================================================
-
-    if user_id == session["user_id"]:
-
-        flash(
-            "You cannot deactivate your own account.",
-            "danger",
-        )
-
-        return redirect(
-            url_for("admin_users")
-        )
-
-
-    new_status = not bool(
-        user["is_active"]
-    )
-
-
-    # ======================================================
-    # PROTECT LAST ACTIVE SUPER ADMIN
-    # ======================================================
-
-    if (
-        not new_status
-        and user["role_name"] == "Super Admin"
-        and count_active_super_admins() <= 1
-    ):
-
-        flash(
-            (
-                "You cannot deactivate the "
-                "last active Super Admin."
-            ),
-            "danger",
-        )
-
-        return redirect(
-            url_for("admin_users")
-        )
-
-
-    set_user_active_status(
-        user_id,
-        new_status,
-    )
-
-
-    if new_status:
-
-        flash(
-            "User account activated successfully.",
-            "success",
-        )
-
-    else:
-
-        flash(
-            "User account deactivated successfully.",
-            "success",
-        )
-
-
-    return redirect(
-        url_for("admin_users")
-    )
 # ==========================================================
 # PAYROLL - CALCULATE MONTHLY PAYROLL
 # ==========================================================

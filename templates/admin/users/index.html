@@ -267,6 +267,7 @@ User Administration
                                             ) }}"
                                         >
                     {% include 'partials/csrf_field.html' %}
+                                            <input type="hidden" name="is_active" value="{{ '0' if user.is_active else '1' }}">
 
                                             {% if user.is_active %}
 
