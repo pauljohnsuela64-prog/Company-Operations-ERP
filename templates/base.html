@@ -29,7 +29,7 @@
             {% if navigation.current.label and navigation.current.label != location_title %}<span aria-hidden="true">/</span><span>{{ navigation.current.label }}</span>{% endif %}
             <span aria-hidden="true">/</span><span aria-current="page">{{ location_title }}</span>
         </nav>
-        <strong>{% block page_title %}{{ self.title() | striptags | trim }}{% endblock %}</strong>
+        <div class="page-heading">{% block page_title %}{{ self.title() | striptags | trim }}{% endblock %}</div>
     </div>
 
     <main class="content-area" id="main-content" tabindex="-1">
@@ -40,7 +40,7 @@
 
         {% for category, message in messages %}
 
-        <div class="alert alert-{{ category }}">
+        <div class="alert alert-{{ category }} shell-message" role="{{ 'alert' if category in ['danger', 'warning'] else 'status' }}">
             {{ message }}
         </div>
 
