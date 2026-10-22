@@ -1,7 +1,8 @@
 {% extends "base.html" %}
+{% import 'partials/workspace_components.html' as ui with context %}
 
 {% block title %}
-Add Inventory Category | Company Operations ERP
+Add Inventory Category
 {% endblock %}
 
 {% block page_title %}
@@ -9,33 +10,18 @@ Add Inventory Category
 {% endblock %}
 
 {% block content %}
-
-<div class="row">
-
-    <div class="col-lg-7 col-xl-6">
-
-        <div class="card shadow-sm border-0">
-
-            <div class="card-body p-4">
-
-                <h4 class="mb-1">
-                    New Inventory Category
-                </h4>
-
-                <p class="text-muted mb-4">
-                    Add a category for organizing inventory items.
-                </p>
-
-                <form method="POST">
+<div class="workspace-page workspace-form-page catalog-page">
+{{ ui.page_header('New Inventory Category', 'Add a category for organizing inventory items.') }}
+<section class="workspace-form-panel" aria-labelledby="details-title">
+<div class="workspace-form-intro"><h2 id="details-title">Category details</h2><p>Fields marked <span class="field-required">Required</span> must be completed.</p></div>
+<form method="POST">
                     {% include 'partials/csrf_field.html' %}
+<div class="workspace-form-grid">
 
-                    <div class="mb-3">
+                    <div class="workspace-field">
 
-                        <label class="form-label">
-                            Category Code
-                        </label>
-
-                        <input
+                        <label class="form-label" for="catalog-category_code">Category Code <span class="field-required">Required</span></label>
+<input id="catalog-category_code"
                             type="text"
                             name="category_code"
                             class="form-control"
@@ -47,14 +33,10 @@ Add Inventory Category
 
                     </div>
 
+                    <div class="workspace-field">
 
-                    <div class="mb-3">
-
-                        <label class="form-label">
-                            Category Name
-                        </label>
-
-                        <input
+                        <label class="form-label" for="catalog-category_name">Category Name <span class="field-required">Required</span></label>
+<input id="catalog-category_name"
                             type="text"
                             name="category_name"
                             class="form-control"
@@ -66,14 +48,10 @@ Add Inventory Category
 
                     </div>
 
+                    <div class="workspace-field field-wide">
 
-                    <div class="mb-4">
-
-                        <label class="form-label">
-                            Description
-                        </label>
-
-                        <textarea
+                        <label class="form-label" for="catalog-description">Description</label>
+<textarea id="catalog-description"
                             name="description"
                             class="form-control"
                             rows="4"
@@ -83,33 +61,10 @@ Add Inventory Category
 
                     </div>
 
-
-                    <div class="d-flex gap-2">
-
-                        <button
-                            type="submit"
-                            class="btn btn-primary"
-                        >
-                            Save Category
-                        </button>
-
-                        <a
-                            href="{{ url_for('inventory_categories') }}"
-                            class="btn btn-outline-secondary"
-                        >
-                            Cancel
-                        </a>
-
                     </div>
+{{ ui.form_actions('Save Category', url_for('inventory_categories')) }}
 
                 </form>
-
-            </div>
-
-        </div>
-
-    </div>
-
+</section>
 </div>
-
 {% endblock %}
