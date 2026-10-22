@@ -1,131 +1,21 @@
 {% extends "base.html" %}
-
-
-{% block title %}
-Edit Expense Category
-{% endblock %}
-
-
-{% block page_title %}
-Edit Expense Category
-{% endblock %}
-
-
+{% import 'partials/workspace_components.html' as ui with context %}
+{% block title %}Edit Expense Category{% endblock %}
+{% block page_title %}Edit Expense Category{% endblock %}
 {% block content %}
-
-
-<!-- # ========================================== -->
-<!-- # PAGE HEADER -->
-<!-- # ========================================== -->
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-
-    <div>
-
-        <h2 class="mb-1">
-            Edit Expense Category
-        </h2>
-
-        <p class="text-muted mb-0">
-            Update expense category information.
-        </p>
-
-    </div>
-
-    <a
-        href="{{ url_for('expense_categories') }}"
-        class="btn btn-outline-secondary"
-    >
-        Back
-    </a>
-
+<div class="workspace-page workspace-form-page">
+{{ ui.page_header('Edit Expense Category', 'Update expense category information.') }}
+<section class="workspace-form-panel" aria-labelledby="details-title">
+    <div class="workspace-form-intro"><h2 id="details-title">Category details</h2><p>Fields marked <span class="field-required">Required</span> must be completed.</p></div>
+    <form method="POST">
+        {% include 'partials/csrf_field.html' %}
+        <div class="workspace-form-grid">
+    {{ ui.field('category-category-code', 'category_code', 'Category Code', request.form.get('category_code', category.category_code or ''), 30, true, 'text', wide=false) }}
+    {{ ui.field('category-category-name', 'category_name', 'Category Name', request.form.get('category_name', category.category_name or ''), 100, true, 'text', wide=false) }}
+    {{ ui.field('category-description', 'description', 'Description', request.form.get('description', category.description or ''), 255, false, 'textarea', wide=true) }}
+        </div>
+        {{ ui.form_actions('Save Changes', url_for('expense_categories')) }}
+    </form>
+</section>
 </div>
-
-
-<!-- # ========================================== -->
-<!-- # EDIT FORM -->
-<!-- # ========================================== -->
-
-<div class="card shadow-sm border-0">
-
-    <div class="card-body">
-
-        <form method="POST">
-                    {% include 'partials/csrf_field.html' %}
-
-
-            <!-- # CATEGORY CODE -->
-
-            <div class="mb-3">
-
-                <label class="form-label">
-                    Category Code
-                </label>
-
-                <input
-                    type="text"
-                    name="category_code"
-                    class="form-control"
-                    maxlength="30"
-                    value="{{ request.form.get('category_code', category.category_code) }}"
-                    required
-                >
-
-            </div>
-
-
-            <!-- # CATEGORY NAME -->
-
-            <div class="mb-3">
-
-                <label class="form-label">
-                    Category Name
-                </label>
-
-                <input
-                    type="text"
-                    name="category_name"
-                    class="form-control"
-                    maxlength="100"
-                    value="{{ request.form.get('category_name', category.category_name) }}"
-                    required
-                >
-
-            </div>
-
-
-            <!-- # DESCRIPTION -->
-
-            <div class="mb-3">
-
-                <label class="form-label">
-                    Description
-                </label>
-
-                <textarea
-                    name="description"
-                    class="form-control"
-                    rows="3"
-                    maxlength="255"
-                >{{ request.form.get('description', category.description or '') }}</textarea>
-
-            </div>
-
-
-            <!-- # SAVE BUTTON -->
-
-            <button
-                type="submit"
-                class="btn btn-primary"
-            >
-                Save Changes
-            </button>
-
-        </form>
-
-    </div>
-
-</div>
-
-
 {% endblock %}
