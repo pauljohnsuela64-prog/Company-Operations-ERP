@@ -1,163 +1,24 @@
 {% extends "base.html" %}
-
-{% block title %}
-Add Supplier | Company Operations ERP
-{% endblock %}
-
-{% block page_title %}
-Add Supplier
-{% endblock %}
-
+{% import 'partials/workspace_components.html' as ui with context %}
+{% block title %}Add Supplier{% endblock %}
+{% block page_title %}Add Supplier{% endblock %}
 {% block content %}
-
-<div class="row">
-
-    <div class="col-xl-8">
-
-        <div class="card shadow-sm border-0">
-
-            <div class="card-body p-4">
-
-                <h4 class="mb-1">
-                    New Supplier
-                </h4>
-
-                <p class="text-muted mb-4">
-                    Add a new company supplier or vendor.
-                </p>
-
-                <form method="POST">
-                    {% include 'partials/csrf_field.html' %}
-
-                    <div class="row">
-
-                        <div class="col-md-6 mb-3">
-
-                            <label class="form-label">
-                                Supplier Code
-                            </label>
-
-                            <input
-                                type="text"
-                                name="supplier_code"
-                                class="form-control"
-                                maxlength="30"
-                                value="{{ request.form.get('supplier_code', '') }}"
-                                placeholder="Example: SUP-001"
-                                required
-                            >
-
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-
-                            <label class="form-label">
-                                Supplier Name
-                            </label>
-
-                            <input
-                                type="text"
-                                name="supplier_name"
-                                class="form-control"
-                                maxlength="150"
-                                value="{{ request.form.get('supplier_name', '') }}"
-                                placeholder="Example: ABC Computer Supplies"
-                                required
-                            >
-
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-
-                            <label class="form-label">
-                                Contact Person
-                            </label>
-
-                            <input
-                                type="text"
-                                name="contact_person"
-                                class="form-control"
-                                maxlength="100"
-                                value="{{ request.form.get('contact_person', '') }}"
-                            >
-
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-
-                            <label class="form-label">
-                                Email
-                            </label>
-
-                            <input
-                                type="email"
-                                name="email"
-                                class="form-control"
-                                maxlength="150"
-                                value="{{ request.form.get('email', '') }}"
-                            >
-
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-
-                            <label class="form-label">
-                                Phone
-                            </label>
-
-                            <input
-                                type="text"
-                                name="phone"
-                                class="form-control"
-                                maxlength="30"
-                                value="{{ request.form.get('phone', '') }}"
-                            >
-
-                        </div>
-
-                        <div class="col-12 mb-4">
-
-                            <label class="form-label">
-                                Address
-                            </label>
-
-                            <textarea
-                                name="address"
-                                class="form-control"
-                                rows="3"
-                                maxlength="255"
-                            >{{ request.form.get('address', '') }}</textarea>
-
-                        </div>
-
-                    </div>
-
-                    <div class="d-flex gap-2">
-
-                        <button
-                            type="submit"
-                            class="btn btn-primary"
-                        >
-                            Save Supplier
-                        </button>
-
-                        <a
-                            href="{{ url_for('suppliers') }}"
-                            class="btn btn-outline-secondary"
-                        >
-                            Cancel
-                        </a>
-
-                    </div>
-
-                </form>
-
-            </div>
-
+<div class="workspace-page workspace-form-page">
+{{ ui.page_header('Add Supplier', 'Add a new company supplier or vendor.') }}
+<section class="workspace-form-panel" aria-labelledby="details-title">
+    <div class="workspace-form-intro"><h2 id="details-title">Supplier details</h2><p>Fields marked <span class="field-required">Required</span> must be completed.</p></div>
+    <form method="POST">
+        {% include 'partials/csrf_field.html' %}
+        <div class="workspace-form-grid">
+    {{ ui.field('supplier-supplier-code', 'supplier_code', 'Supplier Code', request.form.get('supplier_code', ''), 30, true, 'text', wide=false) }}
+    {{ ui.field('supplier-supplier-name', 'supplier_name', 'Supplier Name', request.form.get('supplier_name', ''), 150, true, 'text', wide=false) }}
+    {{ ui.field('supplier-contact-person', 'contact_person', 'Contact Person', request.form.get('contact_person', ''), 100, false, 'text', wide=false) }}
+    {{ ui.field('supplier-email', 'email', 'Email', request.form.get('email', ''), 150, false, 'email', wide=false) }}
+    {{ ui.field('supplier-phone', 'phone', 'Phone', request.form.get('phone', ''), 30, false, 'text', wide=false) }}
+    {{ ui.field('supplier-address', 'address', 'Address', request.form.get('address', ''), 255, false, 'textarea', wide=true) }}
         </div>
-
-    </div>
-
+        {{ ui.form_actions('Save Supplier', url_for('suppliers')) }}
+    </form>
+</section>
 </div>
-
 {% endblock %}

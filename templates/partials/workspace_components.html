@@ -1,0 +1,35 @@
+{# Opt-in list/form presentation. Callers retain permission and route decisions. #}
+{% macro page_header(title, description, href='', action='') %}
+<header class="workspace-heading"><div><p class="workspace-eyebrow">Company operations</p><h1>{{ title }}</h1><p>{{ description }}</p></div>{% if href %}<a href="{{ href }}" class="btn btn-primary">{{ action }}</a>{% endif %}</header>
+{% endmacro %}
+
+{% macro filters(href, selected, prefix, placeholder) %}
+<form method="GET" action="{{ href }}" class="workspace-filters" aria-label="Filter records">
+    <div class="filter-search"><label for="{{ prefix }}-search" class="form-label">Search</label><input id="{{ prefix }}-search" name="search" class="form-control" maxlength="100" value="{{ selected.search }}" placeholder="{{ placeholder }}"></div>
+    <div><label for="{{ prefix }}-status" class="form-label">Status</label><select id="{{ prefix }}-status" name="status" class="form-select"><option value="">All statuses</option><option value="active" {% if selected.status=='active' %}selected{% endif %}>Active</option><option value="inactive" {% if selected.status=='inactive' %}selected{% endif %}>Inactive</option></select></div>
+    <div><label for="{{ prefix }}-size" class="form-label">Rows per page</label><select id="{{ prefix }}-size" name="page_size" class="form-select">{% for size in [25,50,100] %}<option value="{{ size }}" {% if selected.page_size|string==size|string %}selected{% endif %}>{{ size }}</option>{% endfor %}</select></div>
+    <div class="filter-actions"><button class="btn btn-primary" type="submit">Apply</button><a class="btn btn-outline-secondary" href="{{ href }}">Clear</a></div>
+</form>
+{% endmacro %}
+
+{% macro badge(active) %}<span class="record-status {{ 'status-active' if active else 'status-inactive' }}"><span aria-hidden="true"></span>{{ 'Active' if active else 'Inactive' }}</span>{% endmacro %}
+
+{% macro result_header(title, pagination, noun) %}
+<div class="workspace-results"><h2>{{ title }}</h2>{% if pagination %}<span>{{ pagination.total }} matching {{ noun }}</span>{% else %}<span>Results unavailable</span>{% endif %}</div>
+{% endmacro %}
+
+{% macro pages(pagination, page_url, noun, label) %}
+{% if pagination %}<nav class="workspace-pagination" aria-label="{{ label }}"><span>Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }} {{ noun }} | Page {{ pagination.filters.page }} of {{ pagination.pages }}</span><div>{% if pagination.filters.page>1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ page_url(pagination.filters.page-1) }}">Previous</a>{% endif %}{% if pagination.filters.page<pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ page_url(pagination.filters.page+1) }}">Next</a>{% endif %}</div></nav>{% endif %}
+{% endmacro %}
+
+{% macro empty_state(error, noun, title) %}
+<div class="workspace-empty{{ ' is-error' if error else '' }}" role="{{ 'alert' if error else 'status' }}"><strong>{{ 'Unable to display records' if error else 'No matching records' }}</strong><p>{% if error %}{{ title }} were not loaded. Review the message above.{% else %}No {{ noun }} match these filters.{% endif %}</p>{% if not error %}<span>Try another search or clear the filters to see more records.</span>{% endif %}</div>
+{% endmacro %}
+
+{% macro field(id, name, label, value, maxlength, required=false, kind='text', placeholder='', wide=false) %}
+<div class="workspace-field{{ ' field-wide' if wide else '' }}"><label class="form-label" for="{{ id }}">{{ label }}{% if required %}<span class="field-required">Required</span>{% endif %}</label>
+{% if kind=='textarea' %}<textarea id="{{ id }}" name="{{ name }}" class="form-control" rows="4" maxlength="{{ maxlength }}" placeholder="{{ placeholder }}">{{ value }}</textarea>
+{% else %}<input id="{{ id }}" type="{{ kind }}" name="{{ name }}" class="form-control" maxlength="{{ maxlength }}" value="{{ value }}" placeholder="{{ placeholder }}"{% if required %} required{% endif %}>{% endif %}</div>
+{% endmacro %}
+
+{% macro form_actions(label, cancel) %}<div class="workspace-form-actions"><button type="submit" class="btn btn-primary">{{ label }}</button><a href="{{ cancel }}" class="btn btn-outline-secondary">Cancel</a></div>{% endmacro %}

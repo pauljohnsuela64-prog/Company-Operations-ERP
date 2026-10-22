@@ -1,247 +1,37 @@
 {% extends "base.html" %}
-
-
-{% block title %}
-Expense Categories
-{% endblock %}
-
-
+{% import 'partials/workspace_components.html' as ui with context %}
+{% block title %}Expense Categories{% endblock %}
+{% block page_title %}Expense Categories{% endblock %}
 {% block content %}
-
-
-<!-- # ========================================== -->
-<!-- # PAGE HEADER -->
-<!-- # ========================================== -->
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-
-    <div>
-
-        <h2 class="mb-1">
-            Expense Categories
-        </h2>
-
-        <p class="text-muted mb-0">
-            Manage categories used for company expenses.
-        </p>
-
+<div class="workspace-page">
+{% set can_manage = has_permission('finance.categories.manage') %}
+{{ ui.page_header('Expense Categories', 'Manage categories used for company expenses.', url_for('add_expense_category') if can_manage else '', 'Add Expense Category') }}
+{{ ui.filters(url_for('expense_categories'), selected_filters, 'category', 'Category code or name') }}
+<section class="workspace-table-panel" aria-label="Expense Categories directory">
+    {{ ui.result_header('Expense classification', pagination, 'categories') }}
+    <p class="table-scroll-hint" id="category-scroll-hint">Scroll horizontally to view all columns on smaller screens.</p>
+    <div class="workspace-table-scroll" role="region" aria-label="Expense Categories table" aria-describedby="category-scroll-hint" tabindex="0">
+        <table class="table workspace-table category-table{{ ' table-empty' if not categories else '' }}">
+            <caption class="visually-hidden">Expense Categories and their current status{% if can_manage %}, with edit and status actions{% endif %}.</caption>
+            <thead><tr><th scope="col">Code</th><th scope="col">Category Name</th><th scope="col">Description</th><th scope="col">Status</th>{% if can_manage %}<th scope="col" class="record-actions-heading">Actions</th>{% endif %}</tr></thead>
+            <tbody>{% for category in categories %}
+                <tr><th scope="row" class="record-code">{{ category.category_code }}</th>
+                    <td>{{ category.category_name or '-' }}</td>
+                    <td>{{ category.description or '-' }}</td>
+                    <td>{{ ui.badge(category.is_active) }}</td>
+                    {% if can_manage %}<td><div class="record-actions">
+                        <a href="{{ url_for('edit_expense_category', category_id=category.category_id) }}" class="btn btn-sm btn-outline-primary" aria-label="Edit {{ category.category_code }}">Edit</a>
+                        <form method="POST" action="{{ url_for('change_expense_category_status', category_id=category.category_id) }}" class="d-inline">
+                            {% include 'partials/csrf_field.html' %}
+                            <input type="hidden" name="is_active" value="{{ '0' if category.is_active else '1' }}">
+                            <button type="submit" class="btn btn-sm {{ 'btn-outline-danger' if category.is_active else 'btn-outline-success' }}" aria-label="{{ 'Deactivate' if category.is_active else 'Activate' }} {{ category.category_code }}">{{ 'Deactivate' if category.is_active else 'Activate' }}</button>
+                        </form>
+                    </div></td>{% endif %}
+                </tr>
+            {% else %}<tr><td colspan="{{ 5 if can_manage else 4 }}">{{ ui.empty_state(load_error, 'expense categories', 'Expense categories') }}</td></tr>{% endfor %}</tbody>
+        </table>
     </div>
-
-
-    <!-- # ADD CATEGORY BUTTON -->
-
-    {% if has_permission("finance.categories.manage") %}
-
-        <a
-            href="{{ url_for('add_expense_category') }}"
-            class="btn btn-primary"
-        >
-            Add Expense Category
-        </a>
-
-    {% endif %}
-
+    {{ ui.pages(pagination, category_page_url, 'categories', 'Expense category pages') }}
+</section>
 </div>
-
-
-<!-- # ========================================== -->
-<!-- # EXPENSE CATEGORY TABLE -->
-<!-- # ========================================== -->
-
-<form method="GET" action="{{ url_for('expense_categories') }}" class="d-flex flex-wrap gap-2 align-items-end mb-3">
-    <div><label for="category-search" class="form-label">Search</label><input id="category-search" name="search" class="form-control" maxlength="100" value="{{ selected_filters.search }}" placeholder="Category code or name"></div>
-    <div><label for="category-status" class="form-label">Status</label><select id="category-status" name="status" class="form-select"><option value="">All statuses</option><option value="active" {% if selected_filters.status=='active' %}selected{% endif %}>Active</option><option value="inactive" {% if selected_filters.status=='inactive' %}selected{% endif %}>Inactive</option></select></div>
-    <div><label for="category-size" class="form-label">Rows per page</label><select id="category-size" name="page_size" class="form-select">{% for size in [25,50,100] %}<option value="{{ size }}" {% if selected_filters.page_size|string==size|string %}selected{% endif %}>{{ size }}</option>{% endfor %}</select></div>
-    <button class="btn btn-outline-primary" type="submit">Apply</button><a class="btn btn-outline-secondary" href="{{ url_for('expense_categories') }}">Clear</a>
-</form>
-{% if pagination %}<p>{{ pagination.total }} matching categories</p>{% endif %}
-
-<div class="card shadow-sm border-0">
-
-    <div class="card-body">
-
-        <div class="table-responsive">
-
-            <table class="table table-hover align-middle mb-0">
-
-
-                <!-- # TABLE HEADER -->
-
-                <thead>
-
-                    <tr>
-
-                        <th>
-                            Code
-                        </th>
-
-                        <th>
-                            Category Name
-                        </th>
-
-                        <th>
-                            Description
-                        </th>
-
-                        <th>
-                            Status
-                        </th>
-
-                        <th class="text-end">
-                            Actions
-                        </th>
-
-                    </tr>
-
-                </thead>
-
-
-                <!-- # TABLE BODY -->
-
-                <tbody>
-
-                    {% for category in categories %}
-
-                        <tr>
-
-
-                            <!-- # CATEGORY CODE -->
-
-                            <td>
-
-                                <strong>
-                                    {{ category.category_code }}
-                                </strong>
-
-                            </td>
-
-
-                            <!-- # CATEGORY NAME -->
-
-                            <td>
-                                {{ category.category_name }}
-                            </td>
-
-
-                            <!-- # DESCRIPTION -->
-
-                            <td>
-                                {{ category.description or "-" }}
-                            </td>
-
-
-                            <!-- # STATUS -->
-
-                            <td>
-
-                                {% if category.is_active %}
-
-                                    <span class="badge text-bg-success">
-                                        Active
-                                    </span>
-
-                                {% else %}
-
-                                    <span class="badge text-bg-secondary">
-                                        Inactive
-                                    </span>
-
-                                {% endif %}
-
-                            </td>
-
-
-                            <!-- # ACTIONS -->
-
-                            <td class="text-end">
-
-                                {% if has_permission(
-                                    "finance.categories.manage"
-                                ) %}
-
-                                    <a
-                                        href="{{ url_for(
-                                        'edit_expense_category',
-                                        category_id=category.category_id
-                                        ) }}"
-                                        class="btn btn-sm btn-outline-primary"
-                                        >
-                                        Edit
-                                        </a>
-
-                                {% endif %}
-
-
-                                    <!-- # ACTIVATE / DEACTIVATE BUTTON -->
-
-                                        {% if has_permission('finance.categories.manage') %}
-                                        <form
-                                        method="POST"
-                                        action="{{ url_for(
-                                        'change_expense_category_status',
-                                        category_id=category.category_id
-                                        ) }}"
-                                        class="d-inline"
-                                        >
-                    {% include 'partials/csrf_field.html' %}
-    <input type="hidden" name="is_active" value="{{ '0' if category.is_active else '1' }}">
-
-                                        {% if category.is_active %}
-
-                                        <button
-                                        type="submit"
-                                        class="btn btn-sm btn-outline-danger"
-                                        >
-                                        Deactivate
-                                        </button>
-
-                                {% else %}
-
-                                        <button
-                                        type="submit"
-                                        class="btn btn-sm btn-outline-success"
-                                        >
-                                        Activate
-                                        </button>
-
-                                {% endif %}
-
-                                        </form>
-                                        {% endif %}
-
-                            
-
-                            </td>
-
-
-                        </tr>
-
-
-                    {% else %}
-
-                        <tr>
-
-                            <td
-                                colspan="5"
-                                class="text-center text-muted py-4"
-                            >
-                                {% if load_error %}Expense categories were not loaded. Review the message above.{% else %}No expense categories match these filters.{% endif %}
-                            </td>
-
-                        </tr>
-
-                    {% endfor %}
-
-                </tbody>
-
-            </table>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-{% if pagination %}<nav class="d-flex justify-content-between mt-3" aria-label="Expense category pages"><span>Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }} categories | Page {{ pagination.filters.page }} of {{ pagination.pages }}</span><div>{% if pagination.filters.page>1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ category_page_url(pagination.filters.page-1) }}">Previous</a>{% endif %} {% if pagination.filters.page<pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ category_page_url(pagination.filters.page+1) }}">Next</a>{% endif %}</div></nav>{% endif %}
 {% endblock %}
