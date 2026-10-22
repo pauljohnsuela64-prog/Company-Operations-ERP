@@ -1,11 +1,10 @@
-{# Procurement follows its own page permission; other visibility rules are preserved. #}
-{% set admin_visible = has_permission('users.manage') or has_permission('roles.manage') or has_permission('audit_logs.view') %}
+{# Each destination follows its own page permission. #}
 {% set groups = [
     ('hr', 'Human Resources', 'people', [
         ('Employees', 'employees', '/employees', has_permission('employees.view')),
         ('Departments', 'departments', '/departments', has_permission('departments.view')),
-        ('Attendance', 'attendance', '/attendance', admin_visible and has_permission('attendance.view')),
-        ('Leave Management', 'leave_requests', '/leave', admin_visible and has_permission('leave.view')),
+        ('Attendance', 'attendance', '/attendance', has_permission('attendance.view')),
+        ('Leave Management', 'leave_requests', '/leave', has_permission('leave.view')),
         ('Payroll', 'payroll_compensation', '/payroll', has_permission('payroll.view'))
     ]),
     ('inventory', 'Inventory', 'box', [
