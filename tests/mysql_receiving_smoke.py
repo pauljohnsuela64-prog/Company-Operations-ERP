@@ -45,6 +45,8 @@ def run(port, data_dir):
         def __getattr__(self,name):
             return getattr(self.connection,name)
         def commit(self):
+            if getattr(local, 'track_commits', False):
+                local.commit_calls += 1
             hold=getattr(local,'hold_commit',None)
             if hold:
                 entered,release=hold
@@ -53,7 +55,7 @@ def run(port, data_dir):
             result = self.connection.commit()
             if getattr(local, 'lose_commit_response', False):
                 local.lose_commit_response = False
-                raise mysql.connector.InterfaceError('Simulated lost commit response', errno=2013)
+                raise mysql.connector.InterfaceError('Simulated lost commit response', errno=getattr(local, 'commit_errno', 2013))
             return result
         def __enter__(self):
             return self
@@ -241,15 +243,24 @@ def run(port, data_dir):
         receipt(oid,oi,'10',token)
         print('PASS rollback at all six write stages, token rollback and successful retry')
 
-        rid,oid,oi=order()
-        token=str(uuid.uuid4())
-        local.lose_commit_response=True
-        fails(lambda:receipt(oid,oi,'10',token),'could not be confirmed')
-        assert receipt_count(oid)==1
-        before=snapshot()
-        result=receipt(oid,oi,'10',token)
-        assert snapshot()==before and quantity(oid)==Decimal('10')
-        print('PASS lost commit response resolves by replay without any duplicate writes')
+        for errno in (2013, 1205, 1213):
+            rid,oid,oi=order()
+            token=str(uuid.uuid4())
+            local.lose_commit_response=True
+            local.commit_errno=errno
+            local.commit_calls=0
+            local.track_commits=True
+            try:
+                fails(lambda:receipt(oid,oi,'10',token),'could not be confirmed')
+                assert local.commit_calls==1, 'Uncertain commit must never automatically replay'
+            finally:
+                local.track_commits=False
+                local.commit_errno=2013
+            assert receipt_count(oid)==1
+            before=snapshot()
+            result=receipt(oid,oi,'10',token)
+            assert snapshot()==before and quantity(oid)==Decimal('10')
+        print('PASS lost commit response (2013/1205/1213) never automatically replays; explicit same-UUID reconciliation preserves exactly one delivery')
 
         rid,oid,oi=order()
         before=snapshot()
