@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Add Warehouse | Company Operations ERP
@@ -10,33 +11,21 @@ Add Warehouse
 
 {% block content %}
 
-<div class="row">
-
-    <div class="col-lg-7 col-xl-6">
-
-        <div class="card shadow-sm border-0">
-
-            <div class="card-body p-4">
-
-                <h4 class="mb-1">
-                    New Warehouse
-                </h4>
-
-                <p class="text-muted mb-4">
-                    Add a new inventory storage location.
-                </p>
-
-                <form method="POST">
+<div class="workspace-page workspace-form-page">
+{{ ui.page_header('New Warehouse', 'Add a new inventory storage location.') }}
+<section class="workspace-form-panel" aria-labelledby="warehouse-details-title">
+<div class="workspace-form-intro"><h2 id="warehouse-details-title">Warehouse details</h2><p>Fields marked <span class="field-required">Required</span> must be completed. Location is optional.</p></div>
+<form method="POST">
                     {% include 'partials/csrf_field.html' %}
+<div class="workspace-form-grid">
 
-                    <div class="mb-3">
+                    <div class="workspace-field">
 
-                        <label class="form-label">
-                            Warehouse Code
-                        </label>
+                        <label class="form-label" for="warehouse-warehouse_code">Warehouse Code <span class="field-required">Required</span></label>
 
                         <input
                             type="text"
+                            id="warehouse-warehouse_code"
                             name="warehouse_code"
                             class="form-control"
                             maxlength="30"
@@ -48,14 +37,13 @@ Add Warehouse
                     </div>
 
 
-                    <div class="mb-3">
+                    <div class="workspace-field">
 
-                        <label class="form-label">
-                            Warehouse Name
-                        </label>
+                        <label class="form-label" for="warehouse-warehouse_name">Warehouse Name <span class="field-required">Required</span></label>
 
                         <input
                             type="text"
+                            id="warehouse-warehouse_name"
                             name="warehouse_name"
                             class="form-control"
                             maxlength="100"
@@ -67,14 +55,13 @@ Add Warehouse
                     </div>
 
 
-                    <div class="mb-4">
+                    <div class="workspace-field field-wide">
 
-                        <label class="form-label">
-                            Location
-                        </label>
+                        <label class="form-label" for="warehouse-location">Location</label>
 
                         <input
                             type="text"
+                            id="warehouse-location"
                             name="location"
                             class="form-control"
                             maxlength="255"
@@ -85,32 +72,9 @@ Add Warehouse
                     </div>
 
 
-                    <div class="d-flex gap-2">
-
-                        <button
-                            type="submit"
-                            class="btn btn-primary"
-                        >
-                            Save Warehouse
-                        </button>
-
-                        <a
-                            href="{{ url_for('warehouses') }}"
-                            class="btn btn-outline-secondary"
-                        >
-                            Cancel
-                        </a>
-
                     </div>
-
-                </form>
-
-            </div>
-
-        </div>
-
-    </div>
-
+{{ ui.form_actions('Save Warehouse', url_for('warehouses')) }}
+</form>
+</section>
 </div>
-
 {% endblock %}
