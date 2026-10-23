@@ -1,3 +1,4 @@
+import payroll_freshness as freshness
 # ==========================================================
 # PAYROLL ENTRY REPOSITORY
 # ==========================================================
@@ -239,13 +240,13 @@ def generate_payroll_entries(
 
     connection = get_connection()
 
-    cursor = connection.cursor(
-        dictionary=True
-    )
+    cursor = None
 
     try:
 
         connection.start_transaction()
+        cursor = connection.cursor(dictionary=True)
+        freshness.lock_guard(cursor)
 
 
         # ==================================================
@@ -467,5 +468,8 @@ def generate_payroll_entries(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()

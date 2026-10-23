@@ -41,7 +41,7 @@ def run(port, data_dir):
     cursor.execute(f"USE {schema}")
     files = ["core", "inventory", "procurement", "finance", "budget", "attendance",
              "leave", "payroll", "payroll_period", "payroll_entries", "payroll_calculation",
-             "payroll_approval", "audit_logs"]
+             "payroll_approval", "payroll_adjustments", "audit_logs"]
     for name in files:
         sql = (ROOT / "database" / f"{name}_schema.sql").read_text()
         sql = re.sub(r"--[^\n]*", "", sql)
@@ -114,8 +114,17 @@ def run(port, data_dir):
             if case.module == "PAYROLL":
                 status = {"SUBMIT": "DRAFT", "RETURN_TO_DRAFT": "PROCESSING", "APPROVE": "PROCESSING", "MARK_PAID": "APPROVED"}[case.action]
                 identifier = f"PAY-SMOKE-{serial}"
-                target_id = sql("INSERT INTO payroll_periods(period_number,period_name,start_date,end_date,pay_date,status,created_by) VALUES (%s,%s,'2026-01-01','2026-01-01','2026-01-02',%s,7)", (identifier, identifier, status))
-                sql("INSERT INTO payroll_entries(payroll_period_id,employee_id,compensation_id,pay_type,basic_rate,status,generated_by,calculated_at) VALUES (%s,9,1,'MONTHLY',1000,%s,7,NOW())", (target_id, "APPROVED" if case.action == "MARK_PAID" else "CALCULATED"))
+                target_id = sql("INSERT INTO payroll_periods(period_number,period_name,start_date,end_date,pay_date,status,created_by) VALUES (%s,%s,'2026-01-01','2026-01-01','2026-01-02','DRAFT',7)", (identifier, identifier))
+                sql("INSERT INTO payroll_entries(payroll_period_id,employee_id,compensation_id,pay_type,basic_rate,status,generated_by) VALUES (%s,9,1,'MONTHLY',1000,'DRAFT',7)", (target_id,))
+                if not sql("SELECT attendance_id FROM attendance_records WHERE employee_id=9 AND attendance_date='2026-01-01'", fetch=True):
+                    erp.create_attendance_record(9, date(2026,1,1), None, None, 'PRESENT', None, 7)
+                # Fixtures must earn evidence through the real calculation;
+                # fabricated CALCULATED/APPROVED rows are deliberately unverified.
+                erp.calculate_monthly_payroll_period(target_id, 7)
+                if status in ('PROCESSING', 'APPROVED'):
+                    erp.submit_payroll_for_approval(target_id, 7)
+                if status == 'APPROVED':
+                    erp.approve_payroll_period(target_id, 7)
             elif case.module == "LEAVE":
                 target_id, identifier = erp.create_leave_request(9, 1, date(2026, 2, 1) + timedelta(days=serial), date(2026, 2, 1) + timedelta(days=serial), 1, SECRETS["reason"], 7)
             elif case.module == "PROCUREMENT":

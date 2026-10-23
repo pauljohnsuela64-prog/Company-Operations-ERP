@@ -133,3 +133,10 @@ CREATE TABLE IF NOT EXISTS users (
         REFERENCES roles(role_id)
         ON DELETE RESTRICT
 );
+
+-- Payroll attendance freshness: additive structures, no legacy evidence backfill.
+CREATE TABLE IF NOT EXISTS payroll_attendance_guard (
+    guard_id TINYINT NOT NULL PRIMARY KEY,
+    CONSTRAINT ck_payroll_attendance_guard_singleton CHECK (guard_id = 1)
+) ENGINE=InnoDB;
+INSERT IGNORE INTO payroll_attendance_guard(guard_id) VALUES(1);

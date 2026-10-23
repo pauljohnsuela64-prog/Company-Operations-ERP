@@ -1,3 +1,4 @@
+import payroll_freshness as freshness
 # ==========================================================
 # PAYROLL PERIOD REPOSITORY
 # ==========================================================
@@ -254,6 +255,7 @@ def create_payroll_period(
 
         connection.start_transaction()
         cursor = connection.cursor()
+        freshness.lock_guard(cursor)
         _lock_nonoverlapping_schedule(cursor, start_date, end_date)
 
 
@@ -373,6 +375,7 @@ def update_payroll_period(
     try:
         connection.start_transaction()
         cursor = connection.cursor()
+        freshness.lock_guard(cursor)
         _lock_nonoverlapping_schedule(cursor, start_date, end_date, payroll_period_id)
 
         cursor.execute(
@@ -441,9 +444,12 @@ def cancel_payroll_period(
 
     connection = get_connection()
 
-    cursor = connection.cursor()
+    cursor = None
 
     try:
+        connection.start_transaction()
+        cursor = connection.cursor()
+        freshness.lock_guard(cursor)
 
         cursor.execute(
             """
@@ -482,5 +488,8 @@ def cancel_payroll_period(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()

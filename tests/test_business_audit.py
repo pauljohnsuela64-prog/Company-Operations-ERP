@@ -223,6 +223,13 @@ class BusinessAuditTests(unittest.TestCase):
                 cursor.fetchone.return_value = row
 
         self.stack.enter_context(patch.object(repository, "get_connection", return_value=business))
+        if case.module in {"LEAVE", "PAYROLL"}:
+            # These narrow mocks verify commit/audit ordering. Dedicated freshness
+            # tests exercise the real schema, guard, generations and evidence.
+            self.stack.enter_context(patch("payroll_freshness.lock_guard"))
+            self.stack.enter_context(patch("payroll_freshness.advance"))
+        if case.module == "PAYROLL":
+            self.stack.enter_context(patch("payroll_freshness.validate"))
         if case.module == "LEAVE":
             # Capability checks are exercised against real disposable MySQL.
             self.stack.enter_context(patch.object(repository, "_check_storage"))

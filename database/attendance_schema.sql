@@ -113,3 +113,12 @@ CREATE TABLE IF NOT EXISTS attendance_records (
         FOREIGN KEY (updated_by)
         REFERENCES users(user_id)
 );
+
+-- Payroll attendance freshness: additive structures, no legacy evidence backfill.
+CREATE TABLE IF NOT EXISTS payroll_attendance_generations (
+    employee_id INT NOT NULL,
+    attendance_date DATE NOT NULL,
+    generation BIGINT NOT NULL DEFAULT 1,
+    PRIMARY KEY (employee_id, attendance_date),
+    CONSTRAINT ck_payroll_attendance_generation_positive CHECK (generation >= 1)
+) ENGINE=InnoDB;

@@ -1,3 +1,4 @@
+import payroll_freshness as freshness
 # ==========================================================
 # PAYROLL WORKFLOW REPOSITORY
 # ==========================================================
@@ -136,66 +137,8 @@ def _validate_payroll_ready(
         )
 
 
-    # ======================================================
-    # CHECK FOR ATTENDANCE CHANGED AFTER CALCULATION
-    #
-    # If HR edits Attendance after Payroll was calculated,
-    # the payroll must be recalculated before approval.
-    # ==========================================================
-
-    cursor.execute(
-        """
-        SELECT
-            COUNT(*) AS stale_count
-
-        FROM payroll_entries pe
-
-        INNER JOIN attendance_records ar
-            ON pe.employee_id
-            = ar.employee_id
-
-        WHERE
-            pe.payroll_period_id = %s
-
-            AND ar.attendance_date
-                BETWEEN %s AND %s
-
-            AND WEEKDAY(
-                ar.attendance_date
-            ) BETWEEN 0 AND 4
-
-            AND ar.updated_at
-                > pe.calculated_at
-        """,
-        (
-            payroll_period_id,
-            start_date,
-            end_date,
-        ),
-    )
-
-
-    stale_result = (
-        cursor.fetchone()
-    )
-
-
-    stale_count = (
-        stale_result["stale_count"]
-        or 0
-    )
-
-
-    if stale_count > 0:
-
-        raise ValueError(
-            (
-                "Attendance was changed after payroll "
-                "was calculated. Return the payroll to "
-                "Draft and calculate it again before approval."
-            )
-        )
-
+    # Durable generations and saved scope replace timestamp comparisons.
+    freshness.validate(cursor, payroll_period_id, start_date, end_date)
 
     return {
         "total_entries":
@@ -222,14 +165,14 @@ def submit_payroll_for_approval(
 
     connection = get_connection()
 
-    cursor = connection.cursor(
-        dictionary=True
-    )
+    cursor = None
 
 
     try:
 
         connection.start_transaction()
+        cursor = connection.cursor(dictionary=True)
+        freshness.lock_guard(cursor, evidence=True)
 
 
         # ==================================================
@@ -327,8 +270,11 @@ def submit_payroll_for_approval(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()
 
 
 # ==========================================================
@@ -344,14 +290,14 @@ def return_payroll_to_draft(
 
     connection = get_connection()
 
-    cursor = connection.cursor(
-        dictionary=True
-    )
+    cursor = None
 
 
     try:
 
         connection.start_transaction()
+        cursor = connection.cursor(dictionary=True)
+        freshness.lock_guard(cursor)
 
 
         cursor.execute(
@@ -422,8 +368,11 @@ def return_payroll_to_draft(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()
 
 
 # ==========================================================
@@ -439,14 +388,14 @@ def approve_payroll_period(
 
     connection = get_connection()
 
-    cursor = connection.cursor(
-        dictionary=True
-    )
+    cursor = None
 
 
     try:
 
         connection.start_transaction()
+        cursor = connection.cursor(dictionary=True)
+        freshness.lock_guard(cursor, evidence=True)
 
 
         # ==================================================
@@ -564,8 +513,11 @@ def approve_payroll_period(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()
 
 
 # ==========================================================
@@ -581,13 +533,13 @@ def mark_payroll_period_as_paid(
 
     connection = get_connection()
 
-    cursor = connection.cursor(
-        dictionary=True
-    )
+    cursor = None
 
     try:
 
         connection.start_transaction()
+        cursor = connection.cursor(dictionary=True)
+        freshness.lock_guard(cursor, evidence=True)
 
 
         # ==================================================
@@ -600,7 +552,9 @@ def mark_payroll_period_as_paid(
                 payroll_period_id,
                 period_number,
                 status,
-                approved_at
+                approved_at,
+                start_date,
+                end_date
 
             FROM payroll_periods
 
@@ -698,6 +652,8 @@ def mark_payroll_period_as_paid(
             )
 
 
+        freshness.validate(cursor, payroll_period_id, period['start_date'], period['end_date'], payment=True)
+
         # ==================================================
         # MARK ENTRIES PAID
         # ==========================================================
@@ -759,5 +715,8 @@ def mark_payroll_period_as_paid(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()

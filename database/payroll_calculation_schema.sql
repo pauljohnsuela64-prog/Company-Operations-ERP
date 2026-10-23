@@ -46,3 +46,19 @@ ALTER TABLE payroll_entries
     ADD CONSTRAINT fk_payroll_entry_calculated_by
         FOREIGN KEY (calculated_by)
         REFERENCES users(user_id);
+
+-- Payroll attendance freshness: additive structures, no legacy evidence backfill.
+ALTER TABLE payroll_entries
+    ADD COLUMN attendance_evidence_version SMALLINT UNSIGNED NULL,
+    ADD COLUMN attendance_scope_start DATE NULL,
+    ADD COLUMN attendance_scope_end DATE NULL;
+CREATE TABLE IF NOT EXISTS payroll_attendance_snapshots (
+    payroll_entry_id INT NOT NULL,
+    attendance_date DATE NOT NULL,
+    employee_id INT NOT NULL,
+    generation BIGINT NOT NULL,
+    PRIMARY KEY (payroll_entry_id, attendance_date),
+    CONSTRAINT ck_payroll_attendance_snapshot_nonnegative CHECK (generation >= 0),
+    CONSTRAINT fk_payroll_attendance_snapshot_entry FOREIGN KEY (payroll_entry_id)
+        REFERENCES payroll_entries(payroll_entry_id) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB;

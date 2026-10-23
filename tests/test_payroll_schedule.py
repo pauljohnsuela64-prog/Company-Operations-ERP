@@ -13,6 +13,8 @@ from security_helpers import csrf_client, stamp_session, user_state
 class PayrollScheduleRepositoryTests(unittest.TestCase):
     def setUp(self):
         self.stack = ExitStack(); self.addCleanup(self.stack.close)
+        self.stack.enter_context(patch('payroll_freshness.lock_guard'))  # Dedicated freshness suites exercise real schema/coordination.
+        self.stack.enter_context(patch('payroll_freshness.advance'))
         self.db = MagicMock(); self.cur = self.db.cursor.return_value
         self.cur.lastrowid = 7
         self.connect = self.stack.enter_context(patch.object(repo, 'get_connection', return_value=self.db))
