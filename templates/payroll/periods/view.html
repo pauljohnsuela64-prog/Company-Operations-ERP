@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Payroll Period
@@ -6,18 +7,18 @@ Payroll Period
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            {{ period.period_number }}
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>{{ period.period_number }}</h1>
 
         <p class="text-muted mb-0">
             {{ period.period_name }}
@@ -305,7 +306,7 @@ Payroll Period
                     Status
                 </div>
 
-                <span class="badge bg-secondary">
+                <span class="badge modern-badge bg-secondary">
                     {{ period.status.title() }}
                 </span>
 
@@ -348,24 +349,24 @@ Payroll Period
         </div>
 
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Payroll View - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table">
 
                 <thead>
 
                     <tr>
-                        <th>Employee</th>
-                        <th>Pay Type</th>
-                        <th>Basic Rate</th>
-                        <th>Attendance</th>
-                        <th>Daily Rate</th>
-                        <th>Regular Pay</th>
-                        <th>Attendance Deduction</th>
-                        <th>Gross Pay</th>
-                        <th>Net Pay</th>
-                        <th>Status</th>
-                        <th>Action</th>
+                        <th scope="col">Employee</th>
+                        <th scope="col">Pay Type</th>
+                        <th scope="col">Basic Rate</th>
+                        <th scope="col">Attendance</th>
+                        <th scope="col">Daily Rate</th>
+                        <th scope="col">Regular Pay</th>
+                        <th scope="col">Attendance Deduction</th>
+                        <th scope="col">Gross Pay</th>
+                        <th scope="col">Net Pay</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Action</th>
                     </tr>
 
                 </thead>
@@ -407,7 +408,7 @@ Payroll Period
 
                         <td>
 
-                            <span class="badge bg-primary">
+                            <span class="badge modern-badge bg-primary">
                                 {{ entry.pay_type.title() }}
                             </span>
 
@@ -416,7 +417,7 @@ Payroll Period
 
                         <!-- # BASIC RATE -->
 
-                        <td>
+                        <td class="workflow-money">
 
                             ₱{{ "{:,.2f}".format(entry.basic_rate) }}
 
@@ -479,7 +480,7 @@ Payroll Period
 
                         <!-- # DAILY RATE -->
 
-                        <td>
+                        <td class="workflow-money">
 
                             ₱{{ "{:,.2f}".format(entry.daily_rate) }}
 
@@ -494,7 +495,7 @@ Payroll Period
 
                         <!-- # REGULAR PAY -->
 
-                        <td>
+                        <td class="workflow-money">
 
                             <strong>
                                 ₱{{ "{:,.2f}".format(entry.regular_pay) }}
@@ -505,7 +506,7 @@ Payroll Period
 
                         <!-- # ATTENDANCE DEDUCTION -->
 
-                        <td>
+                        <td class="workflow-money">
 
                             {% if entry.attendance_deduction > 0 %}
 
@@ -526,7 +527,7 @@ Payroll Period
 
                         <!-- # GROSS PAY -->
 
-                        <td>
+                        <td class="workflow-money">
 
                             ₱{{ "{:,.2f}".format(entry.gross_pay) }}
 
@@ -535,7 +536,7 @@ Payroll Period
 
                         <!-- # NET PAY -->
 
-                        <td>
+                        <td class="workflow-money">
 
                             <strong>
                                 ₱{{ "{:,.2f}".format(entry.net_pay) }}
@@ -552,14 +553,14 @@ Payroll Period
 
                             {% if entry.status == "DRAFT" %}
 
-                            <span class="badge bg-secondary">
+                            <span class="badge modern-badge bg-secondary">
                                 Draft
                             </span>
 
 
                             {% elif entry.status == "CALCULATED" %}
 
-                            <span class="badge bg-primary">
+                            <span class="badge modern-badge bg-primary">
                                 Calculated
                             </span>
 
@@ -575,14 +576,14 @@ Payroll Period
 
                             {% elif entry.status == "APPROVED" %}
 
-                            <span class="badge bg-success">
+                            <span class="badge modern-badge bg-success">
                                 Approved
                             </span>
 
 
                             {% elif entry.status == "PAID" %}
 
-                            <span class="badge bg-dark">
+                            <span class="badge modern-badge bg-dark">
                                 Paid
                             </span>
 
@@ -605,7 +606,7 @@ Payroll Period
 
                         <td>
 
-                            <div class="d-flex gap-2">
+                            <div class="workflow-actions">
 
                                 <a href="{{ url_for(
                 'view_payroll_entry',
@@ -657,4 +658,5 @@ Payroll Period
 
 </div>
 
+</div>
 {% endblock %}

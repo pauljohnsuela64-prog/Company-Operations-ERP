@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 
 {% block title %}
@@ -12,6 +13,7 @@ Edit Department
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <div class="row">
 
@@ -21,9 +23,8 @@ Edit Department
 
             <div class="card-body p-4">
 
-                <h4 class="mb-1">
-                    Edit Department
-                </h4>
+                <p class="workspace-eyebrow">Company operations</p>
+<h1>Edit Department</h1>
 
                 <p class="text-muted mb-4">
                     Update department information.
@@ -35,11 +36,11 @@ Edit Department
 
                     <div class="mb-3">
 
-                        <label class="form-label">
+                        <label class="form-label" for="field-department_code">
                             Department Code
                         </label>
 
-                        <input
+                        <input id="field-department_code"
                             type="text"
                             name="department_code"
                             class="form-control"
@@ -56,11 +57,11 @@ Edit Department
 
                     <div class="mb-3">
 
-                        <label class="form-label">
+                        <label class="form-label" for="field-department_name">
                             Department Name
                         </label>
 
-                        <input
+                        <input id="field-department_name"
                             type="text"
                             name="department_name"
                             class="form-control"
@@ -77,11 +78,11 @@ Edit Department
 
                     <div class="mb-4">
 
-                        <label class="form-label">
+                        <label class="form-label" for="field-description">
                             Description
                         </label>
 
-                        <textarea
+                        <textarea id="field-description"
                             name="description"
                             class="form-control"
                             rows="4"
@@ -94,7 +95,7 @@ Edit Department
                     </div>
 
 
-                    <div class="d-flex gap-2">
+                    <div class="workflow-actions">
 
                         <button
                             type="submit"
@@ -122,4 +123,5 @@ Edit Department
 
 </div>
 
+</div>
 {% endblock %}

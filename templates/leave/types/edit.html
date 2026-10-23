@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Edit Leave Type
@@ -6,10 +7,10 @@ Edit Leave Type
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
-<h2 class="mb-4">
-    Edit Leave Type
-</h2>
+<p class="workspace-eyebrow">Company operations</p>
+<h1>Edit Leave Type</h1>
 
 
 <div class="card shadow-sm border-0">
@@ -21,11 +22,11 @@ Edit Leave Type
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-leave_code">
                     Leave Code
                 </label>
 
-                <input
+                <input id="field-leave_code"
                     type="text"
                     name="leave_code"
                     value="{{ form.leave_code if form.leave_code is not none else '' }}"
@@ -39,11 +40,11 @@ Edit Leave Type
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-leave_name">
                     Leave Name
                 </label>
 
-                <input
+                <input id="field-leave_name"
                     type="text"
                     name="leave_name"
                     value="{{ form.leave_name if form.leave_name is not none else '' }}"
@@ -57,11 +58,11 @@ Edit Leave Type
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-annual_entitlement">
                     Annual Entitlement
                 </label>
 
-                <input
+                <input id="field-annual_entitlement"
                     type="number"
                     name="annual_entitlement"
                     value="{{ form.annual_entitlement if form.annual_entitlement is not none else '' }}"
@@ -79,11 +80,11 @@ Edit Leave Type
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-description">
                     Description
                 </label>
 
-                <textarea
+                <textarea id="field-description"
                     name="description"
                     class="form-control"
                     maxlength="255"
@@ -114,7 +115,7 @@ Edit Leave Type
             </div>
 
 
-            <div class="d-flex gap-2">
+            <div class="workflow-actions">
 
                 <button
                     class="btn btn-primary"
@@ -137,4 +138,5 @@ Edit Leave Type
 
 </div>
 
+</div>
 {% endblock %}

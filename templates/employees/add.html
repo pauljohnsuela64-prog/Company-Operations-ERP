@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Add Employee | Company Operations ERP
@@ -9,6 +10,7 @@ Add Employee
 {% endblock %}
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <div class="row">
 
@@ -18,9 +20,8 @@ Add Employee
 
             <div class="card-body p-4">
 
-                <h4 class="mb-1">
-                    New Employee
-                </h4>
+                <p class="workspace-eyebrow">Company operations</p>
+<h1>New Employee</h1>
 
                 <p class="text-muted mb-4">
                     Add a new employee to the company.
@@ -33,11 +34,11 @@ Add Employee
 
                         <div class="col-md-6 mb-3">
 
-                            <label class="form-label">
+                            <label class="form-label" for="field-employee_number">
                                 Employee Number
                             </label>
 
-                            <input
+                            <input id="field-employee_number"
                                 type="text"
                                 name="employee_number"
                                 class="form-control"
@@ -52,11 +53,11 @@ Add Employee
 
                         <div class="col-md-6 mb-3">
 
-                            <label class="form-label">
+                            <label class="form-label" for="field-department_id">
                                 Department
                             </label>
 
-                            <select
+                            <select id="field-department_id"
                                 name="department_id"
                                 class="form-select"
                             >
@@ -70,11 +71,11 @@ Add Employee
 
                         <div class="col-md-4 mb-3">
 
-                            <label class="form-label">
+                            <label class="form-label" for="field-first_name">
                                 First Name
                             </label>
 
-                            <input
+                            <input id="field-first_name"
                                 type="text"
                                 name="first_name"
                                 maxlength="100"
@@ -88,11 +89,11 @@ Add Employee
 
                         <div class="col-md-4 mb-3">
 
-                            <label class="form-label">
+                            <label class="form-label" for="field-middle_name">
                                 Middle Name
                             </label>
 
-                            <input
+                            <input id="field-middle_name"
                                 type="text"
                                 name="middle_name"
                                 maxlength="100"
@@ -105,11 +106,11 @@ Add Employee
 
                         <div class="col-md-4 mb-3">
 
-                            <label class="form-label">
+                            <label class="form-label" for="field-last_name">
                                 Last Name
                             </label>
 
-                            <input
+                            <input id="field-last_name"
                                 type="text"
                                 name="last_name"
                                 maxlength="100"
@@ -123,11 +124,11 @@ Add Employee
 
                         <div class="col-md-6 mb-3">
 
-                            <label class="form-label">
+                            <label class="form-label" for="field-email">
                                 Email
                             </label>
 
-                            <input
+                            <input id="field-email"
                                 type="email"
                                 name="email"
                                 maxlength="150"
@@ -140,11 +141,11 @@ Add Employee
 
                         <div class="col-md-6 mb-3">
 
-                            <label class="form-label">
+                            <label class="form-label" for="field-phone">
                                 Phone
                             </label>
 
-                            <input
+                            <input id="field-phone"
                                 type="text"
                                 name="phone"
                                 maxlength="30"
@@ -157,11 +158,11 @@ Add Employee
 
                         <div class="col-md-6 mb-3">
 
-                            <label class="form-label">
+                            <label class="form-label" for="field-job_title">
                                 Job Title
                             </label>
 
-                            <input
+                            <input id="field-job_title"
                                 type="text"
                                 name="job_title"
                                 maxlength="100"
@@ -174,11 +175,11 @@ Add Employee
 
                         <div class="col-md-6 mb-4">
 
-                            <label class="form-label">
+                            <label class="form-label" for="field-hire_date">
                                 Hire Date
                             </label>
 
-                            <input
+                            <input id="field-hire_date"
                                 type="date"
                                 name="hire_date"
                                 class="form-control"
@@ -190,7 +191,7 @@ Add Employee
                     </div>
 
 
-                    <div class="d-flex gap-2">
+                    <div class="workflow-actions">
 
                         <button
                             type="submit"
@@ -218,4 +219,5 @@ Add Employee
 
 </div>
 
+</div>
 {% endblock %}

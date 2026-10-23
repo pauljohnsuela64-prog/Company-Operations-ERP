@@ -78,3 +78,46 @@ classes of width. Syntax/whitespace passed; no JS errors or page overflow.
 
 Remaining: HR/Payroll, IT/Help Desk, Admin/auth, final polish/regression.
 No significant blocker. Next: mainline HR, Attendance, Leave and Payroll GUI.
+
+## 3D HR / Attendance / Leave / Payroll — verified, ready for local commit
+
+Previous Finance commit: 67ebfdc. Files: Departments and Employees full pages;
+Attendance form/index (Add/Edit inherit form); all Leave pages; all mainline
+Payroll templates; HR conflict; reusable browser routes/fixtures; this checkpoint.
+
+Workspace styling and hierarchy, associated labels, scroll regions, currency
+cells, badges and recovery presentation. Added the missing Leave Requests page
+heading and rejection-reason label. Preserved original input constraints,
+revision tokens, historical options, approval controls and confidential values.
+No paused branch merged. No payroll calculations/policies changed.
+
+82 targeted Python tests passed (33 HR, 6 employee listing, 19 Attendance,
+24 Leave). Six disposable suites passed: HR validation, HR revision, HR audit,
+employee listing, Attendance, Leave; baseline template contracts passed for
+rendered pages. Original HR, Attendance and Leave Chrome workflows passed with
+native corrections, stale-tab conflicts, calendar/status/approval behavior,
+exports, historical pagination, fresh permission denial and CSRF. The existing
+audit smoke suite's Payroll submit/return/approve/pay and unauthorized/concurrent
+actions passed; its wrapper correctly reported no Payroll template coverage.
+
+New visual suite passed all 26 native HR/Payroll routes at
+1440/1024/768/390/320 with manager, reader and applicable approver roles.
+Baseline form/link/script comparisons passed for all these routes, including
+paid payslips. Snapshot checks proved all stock, employee, department, attendance,
+leave, compensation, payroll, expense and budget fixture records unchanged.
+Unpaid payslips still redirect to the entry page. Screenshots reviewed across
+all four width classes. No page overflow, duplicate IDs, missing labels,
+overlapping filter/action groups or captured JavaScript errors.
+
+Fixture-only failures were resolved: missing required generated_by, occupied
+user ID, missing adjustments table in the base security fixture and a draft
+period used for a paid-only payslip. Existing schema was loaded only in the
+disposable fixture, and separate draft/paid records now test both paths.
+
+Low severity baseline presentation observation: Payroll period entry rows have
+two identical View links in separate cells, but one Actions header (present
+before this branch). No behavioral/security blocker; address as a narrowly
+reviewed presentation correction during Phase 4, preserving the entry endpoint.
+
+Remaining: IT/Help Desk (implementation and verification underway independently),
+Admin/auth, final polish/regression. Next: finish IT/Help Desk.

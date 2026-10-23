@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Add Employee Compensation
@@ -6,12 +7,12 @@ Add Employee Compensation
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <div class="mb-4">
 
-    <h2 class="mb-1">
-        Add Employee Compensation
-    </h2>
+    <p class="workspace-eyebrow">Company operations</p>
+<h1>Add Employee Compensation</h1>
 
     <p class="text-muted mb-0">
         Configure an employee's basic payroll rate.
@@ -32,11 +33,11 @@ Add Employee Compensation
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-employee_id">
                     Employee
                 </label>
 
-                <select
+                <select id="field-employee_id"
                     name="employee_id"
                     class="form-select"
                     required
@@ -76,11 +77,11 @@ Add Employee Compensation
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-pay_type">
                     Pay Type
                 </label>
 
-                <select
+                <select id="field-pay_type"
                     name="pay_type"
                     class="form-select"
                     required
@@ -111,11 +112,11 @@ Add Employee Compensation
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-basic_rate">
                     Basic Rate (PHP)
                 </label>
 
-                <input
+                <input id="field-basic_rate"
                     type="number"
                     name="basic_rate"
                     class="form-control"
@@ -137,11 +138,11 @@ Add Employee Compensation
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-effective_date">
                     Effective Date
                 </label>
 
-                <input
+                <input id="field-effective_date"
                     type="date"
                     name="effective_date"
                     class="form-control"
@@ -156,11 +157,11 @@ Add Employee Compensation
 
             <div class="mb-4">
 
-                <label class="form-label">
+                <label class="form-label" for="field-notes">
                     Notes
                 </label>
 
-                <textarea
+                <textarea id="field-notes"
                     name="notes"
                     class="form-control"
                     maxlength="255"
@@ -172,7 +173,7 @@ Add Employee Compensation
 
             <!-- # BUTTONS -->
 
-            <div class="d-flex gap-2">
+            <div class="workflow-actions">
 
                 <button
                     type="submit"
@@ -197,4 +198,5 @@ Add Employee Compensation
 
 </div>
 
+</div>
 {% endblock %}

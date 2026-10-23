@@ -9,13 +9,16 @@ module.exports=async({send,tab,evaluate,navigate,until,errors,phase,artifacts})=
     await evaluate(t,`(()=>{const f=document.querySelector('form');f.username.value=${JSON.stringify(username)};f.password.value='review-password';f.requestSubmit();})()`);
     await until(t,`location.pathname==='/dashboard'&&document.readyState==='complete'`);return t;
   }
-  const routes={finance:['/finance','/finance/expenses','/finance/expenses/add','/finance/expenses/990','/finance/expenses/990/edit','/finance/budgets','/finance/budgets/add','/finance/budgets/990','/finance/budgets/990/edit','/finance/reports','/finance/expenses?search=NO-GUI-MATCH'],stock:['/inventory/stock','/inventory/stock/in','/inventory/stock/out','/inventory/stock/movements','/inventory/stock/reconciliation','/inventory/stock/movements?q=NO-GUI-MATCH','/inventory/stock/movements?page_size=invalid']};
+  const routes={hr:['/departments','/departments/add','/departments/990/edit','/employees','/employees/add','/employees/990/edit','/attendance','/attendance/add','/attendance/990/edit','/leave/types','/leave/types/add','/leave/types/990/edit','/leave/requests','/leave/requests/add','/leave/requests/990','/leave/balances','/leave/reports','/payroll/periods','/payroll/periods/add','/payroll/periods/990','/payroll/periods/990/edit','/payroll/compensation','/payroll/compensation/add','/payroll/compensation/990/edit','/payroll/entries/990','/payroll/entries/991/payslip'],finance:['/finance','/finance/expenses','/finance/expenses/add','/finance/expenses/990','/finance/expenses/990/edit','/finance/budgets','/finance/budgets/add','/finance/budgets/990','/finance/budgets/990/edit','/finance/reports','/finance/expenses?search=NO-GUI-MATCH'],stock:['/inventory/stock','/inventory/stock/in','/inventory/stock/out','/inventory/stock/movements','/inventory/stock/reconciliation','/inventory/stock/movements?q=NO-GUI-MATCH','/inventory/stock/movements?page_size=invalid']};
   const manager=await login('review-user'),reader=await login('denied-user');
-  for(const [role,t] of [['manager',manager],['reader',reader]]){
+  const approver=(phase==='hr'||phase==='finance'||phase==='all')?await login('gui-approver'):null;
+  for(const [role,t] of [['manager',manager],['reader',reader],...(approver?[['approver',approver]]:[])]){
     for(const w of [1440,1024,768,390,320]){
       await send('Emulation.setDeviceMetricsOverride',{width:w,height:1000,deviceScaleFactor:1,mobile:false},t);
       for(const url of (phase==='all'?Object.values(routes).flat():routes[phase])){
-        if(role==='reader'&&(/\/(in|out|add|edit)$/.test(url)))continue;
+        if(role!=='manager'&&(/\/(in|out|add|edit)$/.test(url)))continue;
+        if(role==='approver'&&!url.startsWith('/finance')&&!url.startsWith('/leave')&&!url.startsWith('/payroll'))continue;
+        if(role==='approver'&&url.startsWith('/leave')&&!/\/(requests|990)$/.test(url))continue;
         await navigate(t,url);
         await evaluate(t,'new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
         const result=await evaluate(t,`(()=>{
@@ -44,6 +47,9 @@ module.exports=async({send,tab,evaluate,navigate,until,errors,phase,artifacts})=
     await until(manager,`document.readyState==='complete'&&document.querySelector('[name=quantity]')?.value==='-1'`);
     assert.equal(await evaluate(manager,`document.querySelector('[name=submission_id]').value`),identity);
     assert(await evaluate(manager,`document.querySelector('.alert-danger')!==null`));
+  }
+  if(phase==='hr'||phase==='all'){
+    assert.equal(await evaluate(manager,`(async()=>new URL((await fetch('/payroll/entries/990/payslip')).url).pathname)()`),'/payroll/entries/990','unpaid payslip guard');
   }
   assert.equal(errors.length,0,JSON.stringify(errors));
   console.log('PASS GUI '+phase+': native manager/reader routes at 1440/1024/768/390/320; labels, unique IDs, contained tables, no page overflow/overlap or JS exceptions');
