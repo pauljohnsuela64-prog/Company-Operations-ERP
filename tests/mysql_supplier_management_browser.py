@@ -37,6 +37,8 @@ def main():
                     cur.execute('SELECT * FROM purchase_orders ORDER BY purchase_order_id');assert cur.fetchall()==assignments
                     cur.execute("SELECT supplier_id,supplier_name,is_active FROM suppliers WHERE supplier_code='SUP-BROWSER'");identity,name,active=cur.fetchone()
                     assert (name,active)==('PRIVATE revised supplier',1)
+                    cur.execute("SELECT email FROM suppliers WHERE supplier_id=%s",(identity,))
+                    assert cur.fetchone()==('Legacy <billing> contact',)
                     cur.execute("SELECT action,description FROM audit_logs WHERE entity_type='SUPPLIER' AND entity_id=%s ORDER BY audit_log_id",(str(identity),));events=cur.fetchall()
                     assert [row[0] for row in events]==['CREATE','UPDATE','DEACTIVATE','ACTIVATE'],events
                     assert all('PRIVATE' not in row[1] and '<img' not in row[1] for row in events)

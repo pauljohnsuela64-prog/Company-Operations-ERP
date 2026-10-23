@@ -22,7 +22,7 @@ class SupplierInputTests(unittest.TestCase):
     def test_fields_required_policy_optional_values_and_boundaries(self):
         from procurement_validation import validate_supplier,SUPPLIER_LIMITS
         self.assertEqual(supplier_fields(' c ',' Name ',' ',' ',' ',' '),('C','Name',None,None,None,None))
-        # Email format is deliberately still a frontend/backend cleanup question.
+        # Historical nonempty email text remains accepted; no format policy.
         validate_supplier('C','Name',email='not-an-email')
         self.assertEqual(supplier_fields('C','Name',address=' Line1\nLine2 ')[-1],'Line1\nLine2')
         for index,(name,limit) in enumerate(SUPPLIER_LIMITS.items()):
@@ -142,6 +142,33 @@ class SupplierRouteTests(unittest.TestCase):
         with patch.object(self.erp,'create_supplier',return_value=2) as write:
             self.assertEqual(self.client.post('/procurement/suppliers/add',data={'supplier_code':'OPTIONAL','supplier_name':'Name'}).status_code,302)
             write.assert_called_once_with('OPTIONAL','Name',None,None,None,None)
+
+    def test_legacy_email_text_is_editable_and_retained_without_native_email_gate(self):
+        from html.parser import HTMLParser
+        class Email(HTMLParser):
+            def __init__(self, html):
+                super().__init__(); self.attrs = None; self.feed(html)
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                if tag == 'input' and attrs.get('name') == 'email': self.attrs = attrs
+        legacy = 'Legacy <billing> contact'
+        self.row['email'] = legacy
+        for path, operation in (('add', 'create_supplier'), ('1/edit', 'update_supplier')):
+            response = self.client.get('/procurement/suppliers/' + path)
+            attrs = Email(response.get_data(as_text=True)).attrs
+            self.assertEqual(attrs['type'], 'text')
+            self.assertEqual(attrs['maxlength'], '150')
+            self.assertNotIn('required', attrs)
+            self.assertNotIn('pattern', attrs)
+            if path != 'add': self.assertEqual(attrs['value'], legacy)
+            with patch.object(self.erp, operation, return_value=2) as write:
+                response = self.client.post('/procurement/suppliers/' + path, data=dict(self.form, email=legacy))
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(write.call_args.args[-3], legacy)
+            response = self.client.post('/procurement/suppliers/' + path, data=dict(self.form, email=legacy, supplier_code=''))
+            html = response.get_data(as_text=True)
+            self.assertEqual(Email(html).attrs['value'], legacy)
+            self.assertNotIn('Legacy <billing>', html)
 
     def test_listing_links_counts_errors_and_viewer_controls(self):
         selected=filters(dict(search='A&B',status='inactive',page='2'));page=dict(records=[],total=51,pages=3,first=26,last=50,filters=selected)

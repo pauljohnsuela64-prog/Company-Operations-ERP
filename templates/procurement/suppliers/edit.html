@@ -13,7 +13,7 @@
     {{ ui.field('supplier-supplier-code', 'supplier_code', 'Supplier Code', request.form.get('supplier_code', supplier.supplier_code or ''), 30, true, 'text', wide=false) }}
     {{ ui.field('supplier-supplier-name', 'supplier_name', 'Supplier Name', request.form.get('supplier_name', supplier.supplier_name or ''), 150, true, 'text', wide=false) }}
     {{ ui.field('supplier-contact-person', 'contact_person', 'Contact Person', request.form.get('contact_person', supplier.contact_person or ''), 100, false, 'text', wide=false) }}
-    {{ ui.field('supplier-email', 'email', 'Email', request.form.get('email', supplier.email or ''), 150, false, 'email', wide=false) }}
+    {{ ui.field('supplier-email', 'email', 'Email', request.form.get('email', supplier.email or ''), 150, false, 'text', wide=false) }}
     {{ ui.field('supplier-phone', 'phone', 'Phone', request.form.get('phone', supplier.phone or ''), 30, false, 'text', wide=false) }}
     {{ ui.field('supplier-address', 'address', 'Address', request.form.get('address', supplier.address or ''), 255, false, 'textarea', wide=true) }}
         </div>

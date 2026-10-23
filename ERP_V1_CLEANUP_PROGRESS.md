@@ -38,3 +38,11 @@ Small correction follows the existing Stock approach: only an internal pre-commi
 Verification: `python -B -m unittest discover -s tests -p test_receiving_safety.py -q`: initially two new regression failures (three calls), then 10 passed. `python -u -B tests/mysql_receiving_smoke.py`: passed on verified disposable MySQL; expanded real-commit acknowledgment faults 2013/1205/1213 each perform exactly one commit, then explicit same-UUID reconciliation preserves exactly one delivery. Existing races, six write-stage rollbacks, CSRF recovery, receiving/cancellation, audit and reference checks pass. Log: `%TEMP%/erp_cleanup_receiving.log`.
 
 C-02 supplier native/email reproduction failed as expected (`email` vs established text contract). Minimal form correction and focused test currently pass (15 supplier tests); Chrome and integration verification pending. Keep this fix in a separate local commit.
+
+### C-02 - P2: Supplier native forms rejected historically accepted email text
+
+Corrected only the two input types to text; code/name requiredness, optional contact fields, max lengths, values, escaping, CSRF, backend validation and schema remain unchanged. Focused supplier suite: 15 passed. Native Chrome Add/Edit now create and retain `Legacy <billing> contact` through requestSubmit, alongside blank optional-field submission and escaped redisplay. Existing Supplier, authentication/CSRF and all 17 IT/Help Desk authorization workflows passed in the composed runner. Manager, viewer, IT Manager and Super Admin exercised; no denied-request mutations or historical-fixture changes.
+
+Command: `python -u -B tests/mysql_supplier_management_browser.py`. Initial sandbox attempt crashed Chrome before assertions (ECONNRESET and locked Crashpad cleanup); rerunning outside the sandbox passed with Chrome 155.0.8059.85. Log `%TEMP%/erp_cleanup_supplier_browser_retry.log`. The initial attempt is not a pass. Disposable MySQL suite batch is now running; receiving is excluded because its expanded suite already passed.
+
+Local receiving repair commit: `5c523a1` (full SHA recorded in final report).
