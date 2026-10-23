@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 
 {% block title %}
@@ -7,19 +8,19 @@ Audit Logs
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 
 <!-- # ========================================== -->
 <!-- # HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            Audit Logs
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>Audit Logs</h1>
 
         <p class="text-muted mb-0">
             Review important activity performed inside the ERP.
@@ -41,18 +42,18 @@ Audit Logs
         <form
             method="GET"
             action="{{ url_for('audit_logs') }}"
-        >
+         class="modern-get-form">
 
             <div class="row g-3">
 
 
                 <div class="col-lg-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-search">
                         Search
                     </label>
 
-                    <input
+                    <input id="field-search"
                         type="text"
                         name="search"
                         maxlength="100"
@@ -66,11 +67,11 @@ Audit Logs
 
                 <div class="col-lg-2">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-module">
                         Module
                     </label>
 
-                    <select
+                    <select id="field-module"
                         name="module"
                         class="form-select"
                     >
@@ -100,11 +101,11 @@ Audit Logs
 
                 <div class="col-lg-2">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-action">
                         Action
                     </label>
 
-                    <select
+                    <select id="field-action"
                         name="action"
                         class="form-select"
                     >
@@ -134,11 +135,11 @@ Audit Logs
 
                 <div class="col-lg-2">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-start_date">
                         From
                     </label>
 
-                    <input
+                    <input id="field-start_date"
                         type="date"
                         name="start_date"
                         class="form-control"
@@ -150,11 +151,11 @@ Audit Logs
 
                 <div class="col-lg-2">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-end_date">
                         To
                     </label>
 
-                    <input
+                    <input id="field-end_date"
                         type="date"
                         name="end_date"
                         class="form-control"
@@ -206,19 +207,19 @@ Audit Logs
 
     <div class="card-body">
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Admin Index - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table">
 
                 <thead>
 
                     <tr>
-                        <th>Date / Time</th>
-                        <th>User</th>
-                        <th>Module</th>
-                        <th>Action</th>
-                        <th>Target</th>
-                        <th>Description</th>
+                        <th scope="col">Date / Time</th>
+                        <th scope="col">User</th>
+                        <th scope="col">Module</th>
+                        <th scope="col">Action</th>
+                        <th scope="col">Target</th>
+                        <th scope="col">Description</th>
                     </tr>
 
                 </thead>
@@ -249,7 +250,7 @@ Audit Logs
 
                             <td>
 
-                                <span class="badge bg-secondary">
+                                <span class="badge modern-badge bg-secondary">
                                     {{ log.module }}
                                 </span>
 
@@ -258,7 +259,7 @@ Audit Logs
 
                             <td>
 
-                                <span class="badge bg-primary">
+                                <span class="badge modern-badge bg-primary">
                                     {{ log.action }}
                                 </span>
 
@@ -335,4 +336,5 @@ Audit Logs
 </div>
 
 
+</div>
 {% endblock %}

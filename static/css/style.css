@@ -372,3 +372,21 @@ button.logout-link { background: transparent; font-family: inherit; cursor: poin
     .modern-page .workflow-actions > .btn { flex: 1 1 auto; }
 }
 .modern-page .workspace-eyebrow { font-size: .65rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 600; color: var(--erp-blue); margin-bottom: var(--erp-space-2); }
+
+/* Authentication and recovery retain the same forms and session behavior. */
+.auth-page { background: var(--erp-navy-deep); min-height: 100vh; padding: 24px; }
+.auth-shell { max-width: 520px; }
+.auth-shell > .row { min-height: calc(100vh - 48px) !important; }
+.auth-shell .card { border: 1px solid var(--erp-border); border-radius: var(--erp-radius); background: var(--erp-surface); box-shadow: 0 20px 60px #0003 !important; }
+.auth-shell .card-body { padding: 32px !important; }
+.auth-title { font-size: clamp(1.35rem, 4vw, 1.75rem); font-weight: 650; color: var(--erp-navy); overflow-wrap: anywhere; }
+.auth-shell .workspace-eyebrow { font-size: .65rem; text-transform: uppercase; letter-spacing: .12em; color: var(--erp-blue); }
+.auth-shell .form-label { font-size: .8125rem; font-weight: 600; }
+.auth-shell .form-control, .auth-shell .btn { min-height: 44px; }
+.auth-shell .alert { overflow-wrap: anywhere; }
+@media (max-width: 575.98px) {
+    .auth-page { padding: 16px; }
+    .auth-shell { padding: 0; }
+    .auth-shell .card-body { padding: 24px !important; }
+    .auth-shell > .row { min-height: calc(100vh - 32px) !important; }
+}

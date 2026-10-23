@@ -146,3 +146,28 @@ reviewed at desktop/tablet/mobile. Syntax and whitespace passed.
 
 Remaining: Admin/auth (independent presentation work underway), Phase 4
 cross-module polish and final regression. No blocker. Next: Admin/auth.
+
+## 3F Administration / authentication / recovery — verified, ready for commit
+
+Previous IT/Help Desk commit: 8aaaf86. Files: seven Admin templates, login,
+CSRF error and logout; scoped auth CSS; browser routes/checks; this checkpoint.
+
+Workspace users/roles/audit tables and forms, unique associated per-user role
+labels, navy/slate login with main landmark and accessible errors, styled
+explicit logout and CSRF recovery. Password handling, required/autofocus fields,
+permissions, self/last-admin safeguards, tokens, retries and POST actions remain.
+
+70 targeted Python tests passed: Admin 5, Audit Logs 21, security 44. Disposable
+Admin integrity, Audit Log reading and session/CSRF security suites passed.
+Original Admin and Audit Log Chrome suites passed with exact changed-account
+audits, original memberships/passwords/history preserved, last-admin/self
+controls, read-only audit traversal and permission/CSRF denials. All rendered
+baseline control/link/script contracts passed. New native layout checks passed
+manager/audit-reader at 1440/1024/768/390/320, plus anonymous login, invalid
+credentials, safe GET logout and invalid-token recovery screenshots at every
+width. Reviewed desktop login, tablet users, mobile login/errors/recovery.
+No captured JS errors, page overflow, label/ID issues or control overlap.
+Syntax/whitespace passed. No security policy or production grant changes.
+
+Remaining: Phase 4 polish, combined visual checks, final Python/JS regression,
+final report and diff audit. No blocker. Next: Phase 4.

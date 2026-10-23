@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Create User
@@ -6,6 +7,7 @@ Create User
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
@@ -13,9 +15,8 @@ Create User
 
 <div class="mb-4">
 
-    <h2 class="mb-1">
-        Create User
-    </h2>
+    <p class="workspace-eyebrow">Company operations</p>
+<h1>Create User</h1>
 
     <p class="text-muted mb-0">
         Create a new ERP application account.
@@ -38,11 +39,11 @@ Create User
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-employee_id">
                     Employee
                 </label>
 
-                <select
+                <select id="field-employee_id"
                     name="employee_id"
                     class="form-select"
                 >
@@ -86,11 +87,11 @@ Create User
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-username">
                     Username
                 </label>
 
-                <input
+                <input id="field-username"
                     type="text"
                     name="username"
                     class="form-control"
@@ -107,11 +108,11 @@ Create User
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-role_id">
                     Role
                 </label>
 
-                <select
+                <select id="field-role_id"
                     name="role_id"
                     class="form-select"
                     required
@@ -142,11 +143,11 @@ Create User
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-password">
                     Password
                 </label>
 
-                <input
+                <input id="field-password"
                     type="password"
                     name="password"
                     class="form-control"
@@ -167,11 +168,11 @@ Create User
 
             <div class="mb-4">
 
-                <label class="form-label">
+                <label class="form-label" for="field-confirm_password">
                     Confirm Password
                 </label>
 
-                <input
+                <input id="field-confirm_password"
                     type="password"
                     name="confirm_password"
                     class="form-control"
@@ -186,7 +187,7 @@ Create User
             <!-- # BUTTONS -->
             <!-- # ====================================== -->
 
-            <div class="d-flex gap-2">
+            <div class="workflow-actions">
 
                 <button
                     type="submit"
@@ -211,4 +212,5 @@ Create User
 
 </div>
 
+</div>
 {% endblock %}

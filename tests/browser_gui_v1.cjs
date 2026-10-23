@@ -9,14 +9,15 @@ module.exports=async({send,tab,evaluate,navigate,until,errors,phase,artifacts})=
     await evaluate(t,`(()=>{const f=document.querySelector('form');f.username.value=${JSON.stringify(username)};f.password.value='review-password';f.requestSubmit();})()`);
     await until(t,`location.pathname==='/dashboard'&&document.readyState==='complete'`);return t;
   }
-  const routes={it:['/it/assets','/it/assets/add','/it/assets/990','/it/assets/990/edit','/it/assets/991','/it/assets/990/maintenance/add','/it/assets/categories','/it/assets/categories/add','/it/assets/categories/990/edit','/it/assets/reports','/it/help-desk','/it/help-desk/add','/it/help-desk/990','/it/help-desk/991','/it/help-desk/reports'],hr:['/departments','/departments/add','/departments/990/edit','/employees','/employees/add','/employees/990/edit','/attendance','/attendance/add','/attendance/990/edit','/leave/types','/leave/types/add','/leave/types/990/edit','/leave/requests','/leave/requests/add','/leave/requests/990','/leave/balances','/leave/reports','/payroll/periods','/payroll/periods/add','/payroll/periods/990','/payroll/periods/990/edit','/payroll/compensation','/payroll/compensation/add','/payroll/compensation/990/edit','/payroll/entries/990','/payroll/entries/991/payslip'],finance:['/finance','/finance/expenses','/finance/expenses/add','/finance/expenses/990','/finance/expenses/990/edit','/finance/budgets','/finance/budgets/add','/finance/budgets/990','/finance/budgets/990/edit','/finance/reports','/finance/expenses?search=NO-GUI-MATCH'],stock:['/inventory/stock','/inventory/stock/in','/inventory/stock/out','/inventory/stock/movements','/inventory/stock/reconciliation','/inventory/stock/movements?q=NO-GUI-MATCH','/inventory/stock/movements?page_size=invalid']};
+  const routes={admin:['/admin/users','/admin/users/add','/admin/users/2/reset-password','/admin/roles','/admin/roles/1/permissions','/admin/audit-logs','/logout'],it:['/it/assets','/it/assets/add','/it/assets/990','/it/assets/990/edit','/it/assets/991','/it/assets/990/maintenance/add','/it/assets/categories','/it/assets/categories/add','/it/assets/categories/990/edit','/it/assets/reports','/it/help-desk','/it/help-desk/add','/it/help-desk/990','/it/help-desk/991','/it/help-desk/reports'],hr:['/departments','/departments/add','/departments/990/edit','/employees','/employees/add','/employees/990/edit','/attendance','/attendance/add','/attendance/990/edit','/leave/types','/leave/types/add','/leave/types/990/edit','/leave/requests','/leave/requests/add','/leave/requests/990','/leave/balances','/leave/reports','/payroll/periods','/payroll/periods/add','/payroll/periods/990','/payroll/periods/990/edit','/payroll/compensation','/payroll/compensation/add','/payroll/compensation/990/edit','/payroll/entries/990','/payroll/entries/991/payslip'],finance:['/finance','/finance/expenses','/finance/expenses/add','/finance/expenses/990','/finance/expenses/990/edit','/finance/budgets','/finance/budgets/add','/finance/budgets/990','/finance/budgets/990/edit','/finance/reports','/finance/expenses?search=NO-GUI-MATCH'],stock:['/inventory/stock','/inventory/stock/in','/inventory/stock/out','/inventory/stock/movements','/inventory/stock/reconciliation','/inventory/stock/movements?q=NO-GUI-MATCH','/inventory/stock/movements?page_size=invalid']};
   const manager=await login('review-user'),reader=await login('denied-user');
   const approver=(phase==='hr'||phase==='finance'||phase==='all')?await login('gui-approver'):null;
   for(const [role,t] of [['manager',manager],['reader',reader],...(approver?[['approver',approver]]:[])]){
     for(const w of [1440,1024,768,390,320]){
       await send('Emulation.setDeviceMetricsOverride',{width:w,height:1000,deviceScaleFactor:1,mobile:false},t);
       for(const url of (phase==='all'?Object.values(routes).flat():routes[phase])){
-        if(role!=='manager'&&(/\/(in|out|add|edit)$/.test(url)))continue;
+        if(role!=='manager'&&(/\/(in|out|add|edit|reset-password)$/.test(url)))continue;
+        if(role==='reader'&&url.startsWith('/admin/')&&!url.startsWith('/admin/audit-logs'))continue;
         if(role==='approver'&&!url.startsWith('/finance')&&!url.startsWith('/leave')&&!url.startsWith('/payroll'))continue;
         if(role==='approver'&&url.startsWith('/leave')&&!/\/(requests|990)$/.test(url))continue;
         await navigate(t,url);
@@ -34,9 +35,32 @@ module.exports=async({send,tab,evaluate,navigate,until,errors,phase,artifacts})=
           if(region.max>0)assert(await evaluate(t,`(()=>{const e=document.querySelectorAll('.workspace-table-scroll')[${region.i}];e.focus();e.scrollLeft=20;return e.scrollLeft>0})()`),'table does not scroll');
         }
         await evaluate(t,'window.scrollTo(0,0)');
-        const {data}=await send('Page.captureScreenshot',{format:'png'},t);
+        const {contentSize}=await send('Page.getLayoutMetrics',{},t);
+        const {data}=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,width:w,height:Math.min(contentSize.height,2400),scale:1}},t);
         fs.writeFileSync(path.join(artifacts,`${phase}-${role}-${w}-${url.replace(/[^a-z0-9]/gi,'_')}.png`),Buffer.from(data,'base64'));
       }
+    }
+  }
+  if(phase==='admin'||phase==='all'){
+    const {browserContextId}=await send('Target.createBrowserContext');const anonymous=await tab(browserContextId);
+    for(const w of [1440,1024,768,390,320]){
+      for(const t of [anonymous,manager])await send('Emulation.setDeviceMetricsOverride',{width:w,height:1000,deviceScaleFactor:1,mobile:false},t);
+      await navigate(anonymous,'/login');
+      for(const invalid of [false,true]){
+        if(invalid){
+          await evaluate(anonymous,`(()=>{const f=document.querySelector('form');f.username.value='gui-invalid';f.password.value='synthetic-invalid';f.requestSubmit()})()`);
+          await until(anonymous,`document.readyState==='complete'&&document.body.textContent.includes('Invalid username or password.')`);
+        }
+        assert(await evaluate(anonymous,`document.documentElement.scrollWidth<=innerWidth&&document.querySelectorAll('h1').length===1&&[...document.querySelectorAll('input:not([type=hidden])')].every(e=>[...document.querySelectorAll('label')].some(l=>l.htmlFor===e.id))`));
+        const {data}=await send('Page.captureScreenshot',{format:'png'},anonymous);
+        fs.writeFileSync(path.join(artifacts,`login-${invalid?'error':'empty'}-${w}.png`),Buffer.from(data,'base64'));
+      }
+      await navigate(manager,'/logout');
+      await evaluate(manager,`(()=>{const f=document.querySelector('main form');f.csrf_token.value='invalid';f.requestSubmit()})()`);
+      await until(manager,`document.readyState==='complete'&&document.body.textContent.includes('Submission not processed')`);
+      assert(await evaluate(manager,`document.documentElement.scrollWidth<=innerWidth&&document.querySelectorAll('main h1').length===1`));
+      const {data}=await send('Page.captureScreenshot',{format:'png'},manager);
+      fs.writeFileSync(path.join(artifacts,`csrf-error-${w}.png`),Buffer.from(data,'base64'));
     }
   }
   // Forged invalid stock quantity must retain the idempotency identity and values.
