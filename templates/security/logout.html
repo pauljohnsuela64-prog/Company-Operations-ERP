@@ -1,12 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Confirm logout | Company Operations ERP{% endblock %}
 {% block content %}
+<div class="workspace-page workflow-page modern-page workflow-form">
 <div class="card"><div class="card-body">
-    <h2>Log out?</h2>
+    <p class="workspace-eyebrow">Company operations</p>
+<h1>Log out?</h1>
     <p>Opening this page has not logged you out.</p>
     <form method="POST" action="{{ url_for('logout') }}">
         {% include 'partials/csrf_field.html' %}
         <button type="submit" class="btn btn-primary">Logout</button>
     </form>
 </div></div>
+</div>
 {% endblock %}

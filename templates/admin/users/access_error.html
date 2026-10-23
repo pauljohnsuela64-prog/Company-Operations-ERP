@@ -1,7 +1,10 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% block title %}Account change not confirmed{% endblock %}
 {% block content %}
-<h2>Account change not confirmed</h2>
+<div class="workspace-page workflow-page modern-page">
+<p class="workspace-eyebrow">Company operations</p>
+<h1>Account change not confirmed</h1>
 <p>{{ message }}</p>
 <a class="btn btn-outline-primary" href="{{ url_for('admin_users') }}">Reload user list</a>
+</div>
 {% endblock %}

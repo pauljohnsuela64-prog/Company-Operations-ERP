@@ -12,11 +12,12 @@ Inventory Stock
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
-        <h2 class="mb-1">Inventory Stock</h2>
+        <h1>Inventory Stock</h1>
 
         <p class="text-muted mb-0">
             View item quantities across company warehouses. Active items without a balance or movement history show zero. Missing balances with recorded movements need reconciliation.
@@ -24,7 +25,7 @@ Inventory Stock
     </div>
 
     {% if has_permission('inventory.stock.manage') %}
-        <div class="d-flex gap-2">
+        <div class="workflow-actions">
 
             <a
                     href="{{ url_for('inventory_stock_in') }}"
@@ -51,18 +52,18 @@ Inventory Stock
 
     <div class="card-body">
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Inventory Stock - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Stock balances</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Item</th>
-                        <th>Warehouse</th>
-                        <th>Quantity</th>
-                        <th>Reorder Level</th>
-                        <th>Stock Status</th>
+                        <th scope="col">Item</th>
+                        <th scope="col">Warehouse</th>
+                        <th scope="col">Quantity</th>
+                        <th scope="col">Reorder Level</th>
+                        <th scope="col">Stock Status</th>
                     </tr>
 
                 </thead>
@@ -109,19 +110,19 @@ Inventory Stock
 
                                 {% if stock.quantity <= 0 %}
 
-                                    <span class="badge text-bg-danger">
+                                    <span class="badge modern-badge text-bg-danger">
                                         Out of Stock
                                     </span>
 
                                 {% elif stock.quantity <= stock.reorder_level %}
 
-                                    <span class="badge text-bg-warning">
+                                    <span class="badge modern-badge text-bg-warning">
                                         Low Stock
                                     </span>
 
                                 {% else %}
 
-                                    <span class="badge text-bg-success">
+                                    <span class="badge modern-badge text-bg-success">
                                         In Stock
                                     </span>
 
@@ -156,4 +157,5 @@ Inventory Stock
 
 </div>
 
+</div>
 {% endblock %}

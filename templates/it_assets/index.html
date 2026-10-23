@@ -6,24 +6,25 @@ IT Assets
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            IT Assets
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>IT Assets</h1>
 
         <p class="text-muted mb-0">
             Track company computers, devices, and IT equipment.
         </p>
+    </div>
 
-    <div>
+    <div class="workflow-actions">
 
     <a
         href="{{ url_for('it_asset_categories') }}"
@@ -51,7 +52,7 @@ IT Assets
     {% endif %}
 
 </div>
-
+</div>
 
 <!-- # ========================================== -->
 <!-- # ASSET SUMMARY -->
@@ -136,17 +137,17 @@ IT Assets
 
     <div class="card-body">
 
-        <form method="GET">
+        <form method="GET" class="modern-get-form">
 
             <div class="row g-3 align-items-end">
 
                 <div class="col-md-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-search">
                         Search
                     </label>
 
-                    <input
+                    <input id="field-search"
                         type="text"
                         name="search"
                         value="{{ search_text }}"
@@ -159,11 +160,11 @@ IT Assets
 
                 <div class="col-md-2">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-status">
                         Status
                     </label>
 
-                    <select
+                    <select id="field-status"
                         name="status"
                         class="form-select"
                     >
@@ -198,11 +199,11 @@ IT Assets
 
                 <div class="col-md-2">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-category_id">
                         Category
                     </label>
 
-                    <select
+                    <select id="field-category_id"
                         name="category_id"
                         class="form-select"
                     >
@@ -234,11 +235,11 @@ IT Assets
 
                 <div class="col-md-2">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-department_id">
                         Department
                     </label>
 
-                    <select
+                    <select id="field-department_id"
                         name="department_id"
                         class="form-select"
                     >
@@ -303,23 +304,23 @@ IT Assets
 
     <div class="card-body">
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="IT Assets - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">IT Assets</caption>
 
                 <!-- # TABLE HEADER -->
 
                 <thead>
 
                     <tr>
-                        <th>Asset Tag</th>
-                        <th>Asset</th>
-                        <th>Category</th>
-                        <th>Department</th>
-                        <th>Assigned To</th>
-                        <th>Status</th>
-                        <th>Condition</th>
-                        <th>Actions</th>
+                        <th scope="col">Asset Tag</th>
+                        <th scope="col">Asset</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Assigned To</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Condition</th>
+                        <th scope="col">Actions</th>
                     </tr>
 
                 </thead>
@@ -391,31 +392,31 @@ IT Assets
 
                                 {% if asset.status == "AVAILABLE" %}
 
-                                    <span class="badge bg-success">
+                                    <span class="badge modern-badge bg-success">
                                         Available
                                     </span>
 
                                 {% elif asset.status == "ASSIGNED" %}
 
-                                    <span class="badge bg-primary">
+                                    <span class="badge modern-badge bg-primary">
                                         Assigned
                                     </span>
 
                                 {% elif asset.status == "MAINTENANCE" %}
 
-                                    <span class="badge bg-warning text-dark">
+                                    <span class="badge modern-badge bg-warning text-dark">
                                         Maintenance
                                     </span>
 
                                 {% elif asset.status == "RETIRED" %}
 
-                                    <span class="badge bg-secondary">
+                                    <span class="badge modern-badge bg-secondary">
                                         Retired
                                     </span>
 
                                 {% else %}
 
-                                    <span class="badge bg-danger">
+                                    <span class="badge modern-badge bg-danger">
                                         Lost
                                     </span>
 
@@ -489,4 +490,5 @@ IT Assets
 
 </div>
 
+</div>
 {% endblock %}

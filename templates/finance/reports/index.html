@@ -6,19 +6,19 @@ Finance Reports
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 <p class="text-muted small">Totals include all matching expense states; only PAID expenses count as spending.</p>
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER / YEAR FILTER -->
 <!-- # ========================================== -->
 
-<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            Finance Reports
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>Finance Reports</h1>
 
         <p class="text-muted mb-0">
             Review yearly expense activity and financial summaries.
@@ -30,16 +30,16 @@ Finance Reports
     <form
         method="GET"
         action="{{ url_for('finance_reports') }}"
-        class="d-flex flex-wrap align-items-end gap-2"
+        class="d-flex flex-wrap align-items-end gap-2 modern-get-form"
     >
 
         <div>
 
-            <label class="form-label mb-1">
+            <label class="form-label mb-1" for="field-year">
                 Year
             </label>
 
-            <select
+            <select id="field-year"
                 name="year"
                 class="form-select"
             >
@@ -232,16 +232,16 @@ Finance Reports
             Monthly Paid Expenses - {{ selected_year }}
         </h5>
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Finance Reports - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Finance Reports</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Month</th>
-                        <th>Paid Expenses</th>
-                        <th>Total Amount</th>
+                        <th scope="col">Month</th>
+                        <th scope="col">Paid Expenses</th>
+                        <th scope="col">Total Amount</th>
                     </tr>
 
                 </thead>
@@ -260,7 +260,7 @@ Finance Reports
                                 {{ month.expense_count }}
                             </td>
 
-                            <td>
+                            <td class="workflow-money">
                                 ₱{{ "{:,.2f}".format(
                                     month.total_amount
                                 ) }}
@@ -307,16 +307,16 @@ Finance Reports
             Paid Expenses by Category - {{ selected_year }}
         </h5>
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Finance Reports - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Finance Reports</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Category</th>
-                        <th>Paid Expenses</th>
-                        <th>Total Amount</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Paid Expenses</th>
+                        <th scope="col">Total Amount</th>
                     </tr>
 
                 </thead>
@@ -337,7 +337,7 @@ Finance Reports
                                 {{ category.expense_count }}
                             </td>
 
-                            <td>
+                            <td class="workflow-money">
                                 ₱{{ "{:,.2f}".format(
                                     category.total_amount
                                 ) }}
@@ -384,21 +384,21 @@ Finance Reports
             Expense Records - {{ selected_year }}
         </h5>
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Finance Reports - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Finance Reports</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Expense No.</th>
-                        <th>Date</th>
-                        <th>Category</th>
-                        <th>Department</th>
-                        <th>Description</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Action</th>
+                        <th scope="col">Expense No.</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Amount</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Action</th>
                     </tr>
 
                 </thead>
@@ -429,7 +429,7 @@ Finance Reports
                                 {{ expense.description }}
                             </td>
 
-                            <td>
+                            <td class="workflow-money">
                                 ₱{{ "{:,.2f}".format(
                                     expense.amount
                                 ) }}
@@ -439,25 +439,25 @@ Finance Reports
 
                                 {% if expense.status == "PAID" %}
 
-                                    <span class="badge bg-success">
+                                    <span class="badge modern-badge bg-success">
                                         Paid
                                     </span>
 
                                 {% elif expense.status == "APPROVED" %}
 
-                                    <span class="badge bg-primary">
+                                    <span class="badge modern-badge bg-primary">
                                         Approved
                                     </span>
 
                                 {% elif expense.status == "CANCELLED" %}
 
-                                    <span class="badge bg-danger">
+                                    <span class="badge modern-badge bg-danger">
                                         Cancelled
                                     </span>
 
                                 {% else %}
 
-                                    <span class="badge bg-secondary">
+                                    <span class="badge modern-badge bg-secondary">
                                         Draft
                                     </span>
 
@@ -507,4 +507,5 @@ Finance Reports
 
 </div>
 
+</div>
 {% endblock %}

@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Submission not processed | Company Operations ERP{% endblock %}
 {% block content %}
+<div class="workspace-page workflow-page modern-page workflow-form">
 <div class="card"><div class="card-body">
-    <h2>Submission not processed</h2>
+    <p class="workspace-eyebrow">Company operations</p>
+<h1>Submission not processed</h1>
     <p>Your form's security token is missing, invalid, or expired. {{ reason }}</p>
     <p>This request did not run the requested transaction. Nothing will be repeated automatically.</p>
     {% if retry_fields is not none %}
@@ -25,4 +27,5 @@
     {% endif %}
     <a href="{{ url_for('login') }}" class="btn btn-outline-secondary mt-3">Return to sign in</a>
 </div></div>
+</div>
 {% endblock %}

@@ -6,12 +6,12 @@ Edit Payroll Period
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <div class="mb-4">
 
-    <h2 class="mb-1">
-        Edit Payroll Period
-    </h2>
+    <p class="workspace-eyebrow">Company operations</p>
+<h1>Edit Payroll Period</h1>
 
     <p class="text-muted mb-0">
         {{ period.period_number }}
@@ -32,11 +32,11 @@ Edit Payroll Period
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-period_name">
                     Period Name
                 </label>
 
-                <input
+                <input id="field-period_name"
                     type="text"
                     name="period_name"
                     class="form-control"
@@ -55,11 +55,11 @@ Edit Payroll Period
 
                 <div class="col-md-4 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-start_date">
                         Start Date
                     </label>
 
-                    <input
+                    <input id="field-start_date"
                         type="date"
                         name="start_date"
                         class="form-control"
@@ -74,11 +74,11 @@ Edit Payroll Period
 
                 <div class="col-md-4 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-end_date">
                         End Date
                     </label>
 
-                    <input
+                    <input id="field-end_date"
                         type="date"
                         name="end_date"
                         class="form-control"
@@ -93,11 +93,11 @@ Edit Payroll Period
 
                 <div class="col-md-4 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-pay_date">
                         Pay Date
                     </label>
 
-                    <input
+                    <input id="field-pay_date"
                         type="date"
                         name="pay_date"
                         class="form-control"
@@ -114,11 +114,11 @@ Edit Payroll Period
 
             <div class="mb-4">
 
-                <label class="form-label">
+                <label class="form-label" for="field-notes">
                     Notes
                 </label>
 
-                <textarea
+                <textarea id="field-notes"
                     name="notes"
                     class="form-control"
                     maxlength="255"
@@ -130,7 +130,7 @@ Edit Payroll Period
 
             <!-- # BUTTONS -->
 
-            <div class="d-flex gap-2">
+            <div class="workflow-actions">
 
                 <button
                     type="submit"
@@ -155,4 +155,5 @@ Edit Payroll Period
 
 </div>
 
+</div>
 {% endblock %}

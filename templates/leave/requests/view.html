@@ -6,18 +6,18 @@ Leave Request
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            {{ leave_request.request_number }}
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>{{ leave_request.request_number }}</h1>
 
         <p class="text-muted mb-0">
             Leave Request Details
@@ -100,13 +100,13 @@ Leave Request
 
                     {% if leave_request.is_paid %}
 
-                        <span class="badge bg-success ms-2">
+                        <span class="badge modern-badge bg-success ms-2">
                             Paid
                         </span>
 
                     {% else %}
 
-                        <span class="badge bg-secondary ms-2">
+                        <span class="badge modern-badge bg-secondary ms-2">
                             Unpaid
                         </span>
 
@@ -129,25 +129,25 @@ Leave Request
 
                     {% if leave_request.status == "PENDING" %}
 
-                        <span class="badge bg-warning text-dark">
+                        <span class="badge modern-badge bg-warning text-dark">
                             Pending
                         </span>
 
                     {% elif leave_request.status == "APPROVED" %}
 
-                        <span class="badge bg-success">
+                        <span class="badge modern-badge bg-success">
                             Approved
                         </span>
 
                     {% elif leave_request.status == "REJECTED" %}
 
-                        <span class="badge bg-danger">
+                        <span class="badge modern-badge bg-danger">
                             Rejected
                         </span>
 
                     {% else %}
 
-                        <span class="badge bg-secondary">
+                        <span class="badge modern-badge bg-secondary">
                             Cancelled
                         </span>
 
@@ -386,8 +386,9 @@ Leave Request
                             >
                     {% include 'partials/csrf_field.html' %}
 
-                                <textarea
-                                    name="rejection_reason"
+                                <label class="form-label" for="leave-rejection-reason">Rejection reason</label>
+<textarea
+                                    id="leave-rejection-reason" name="rejection_reason"
                                     class="form-control mb-3"
                                     maxlength="500"
                                     rows="3"
@@ -461,4 +462,5 @@ Leave Request
 
 {% endif %}
 
+</div>
 {% endblock %}

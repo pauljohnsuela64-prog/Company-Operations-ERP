@@ -6,10 +6,10 @@ New Leave Request
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
-<h2 class="mb-4">
-    New Leave Request
-</h2>
+<p class="workspace-eyebrow">Company operations</p>
+<h1>New Leave Request</h1>
 
 
 <div class="card shadow-sm border-0">
@@ -22,11 +22,11 @@ New Leave Request
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-employee_id">
                     Employee
                 </label>
 
-                <select
+                <select id="field-employee_id"
                     name="employee_id"
                     class="form-select"
                     required
@@ -57,11 +57,11 @@ New Leave Request
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-leave_type_id">
                     Leave Type
                 </label>
 
-                <select
+                <select id="field-leave_type_id"
                     name="leave_type_id"
                     class="form-select"
                     required
@@ -91,11 +91,11 @@ New Leave Request
 
                 <div class="col-md-6 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-start_date">
                         Start Date
                     </label>
 
-                    <input
+                    <input id="field-start_date"
                         type="date"
                         name="start_date"
                         value="{{ form.start_date }}"
@@ -108,11 +108,11 @@ New Leave Request
 
                 <div class="col-md-6 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-end_date">
                         End Date
                     </label>
 
-                    <input
+                    <input id="field-end_date"
                         type="date"
                         name="end_date"
                         value="{{ form.end_date }}"
@@ -127,11 +127,11 @@ New Leave Request
 
             <div class="mb-4">
 
-                <label class="form-label">
+                <label class="form-label" for="field-reason">
                     Reason
                 </label>
 
-                <textarea
+                <textarea id="field-reason"
                     name="reason"
                     class="form-control"
                     maxlength="500"
@@ -142,7 +142,7 @@ New Leave Request
             </div>
 
 
-            <div class="d-flex gap-2">
+            <div class="workflow-actions">
 
                 <button
                     class="btn btn-primary"
@@ -165,4 +165,5 @@ New Leave Request
 
 </div>
 
+</div>
 {% endblock %}

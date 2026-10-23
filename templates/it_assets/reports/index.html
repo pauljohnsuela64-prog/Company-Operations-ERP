@@ -6,18 +6,18 @@ IT Asset Reports
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            IT Asset Reports
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>IT Asset Reports</h1>
 
         <p class="text-muted mb-0">
             Summary and reporting for company IT assets.
@@ -210,21 +210,21 @@ IT Asset Reports
         </h5>
 
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="It Assets Reports - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle">
+            <table class="table table-hover align-middle workspace-table"><caption class="visually-hidden">It Assets Reports</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Category</th>
-                        <th>Total</th>
-                        <th>Available</th>
-                        <th>Assigned</th>
-                        <th>Maintenance</th>
-                        <th>Retired</th>
-                        <th>Lost</th>
-                        <th>Purchase Value</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Available</th>
+                        <th scope="col">Assigned</th>
+                        <th scope="col">Maintenance</th>
+                        <th scope="col">Retired</th>
+                        <th scope="col">Lost</th>
+                        <th scope="col">Purchase Value</th>
                     </tr>
 
                 </thead>
@@ -272,7 +272,7 @@ IT Asset Reports
                                 {{ category.lost_count }}
                             </td>
 
-                            <td>
+                            <td class="workflow-money">
                                 ₱{{ "{:,.2f}".format(
                                     category.total_purchase_cost
                                 ) }}
@@ -306,21 +306,21 @@ IT Asset Reports
         </h5>
 
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="It Assets Reports - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle">
+            <table class="table table-hover align-middle workspace-table"><caption class="visually-hidden">It Assets Reports</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Department</th>
-                        <th>Total</th>
-                        <th>Available</th>
-                        <th>Assigned</th>
-                        <th>Maintenance</th>
-                        <th>Retired</th>
-                        <th>Lost</th>
-                        <th>Purchase Value</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Available</th>
+                        <th scope="col">Assigned</th>
+                        <th scope="col">Maintenance</th>
+                        <th scope="col">Retired</th>
+                        <th scope="col">Lost</th>
+                        <th scope="col">Purchase Value</th>
                     </tr>
 
                 </thead>
@@ -360,7 +360,7 @@ IT Asset Reports
                                 {{ department.lost_count }}
                             </td>
 
-                            <td>
+                            <td class="workflow-money">
                                 ₱{{ "{:,.2f}".format(
                                     department.total_purchase_cost
                                 ) }}
@@ -407,22 +407,22 @@ IT Asset Reports
         </h5>
 
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="It Assets Reports - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle">
+            <table class="table table-hover align-middle workspace-table"><caption class="visually-hidden">It Assets Reports</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Asset Tag</th>
-                        <th>Asset</th>
-                        <th>Category</th>
-                        <th>Department</th>
-                        <th>Assigned To</th>
-                        <th>Status</th>
-                        <th>Condition</th>
-                        <th>Purchase Cost</th>
-                        <th>Action</th>
+                        <th scope="col">Asset Tag</th>
+                        <th scope="col">Asset</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Assigned To</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Condition</th>
+                        <th scope="col">Purchase Cost</th>
+                        <th scope="col">Action</th>
                     </tr>
 
                 </thead>
@@ -478,7 +478,7 @@ IT Asset Reports
                                 {{ asset.condition_status.title() }}
                             </td>
 
-                            <td>
+                            <td class="workflow-money">
 
                                 {% if asset.purchase_cost is not none %}
 
@@ -536,4 +536,5 @@ IT Asset Reports
 
 </div>
 
+</div>
 {% endblock %}

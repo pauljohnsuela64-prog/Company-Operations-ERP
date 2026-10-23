@@ -12,6 +12,7 @@ Edit Expense
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 {% from 'finance/partials/expense_selection.html' import unavailable_option with context %}
 {% include 'finance/partials/expense_selection_errors.html' %}
 
@@ -20,13 +21,12 @@ Edit Expense
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            Edit {{ expense.expense_number }}
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>Edit {{ expense.expense_number }}</h1>
 
         <p class="text-muted mb-0">
             Update this draft expense.
@@ -65,11 +65,11 @@ Edit Expense
 
                 <div class="col-md-6 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-expense_date">
                         Expense Date
                     </label>
 
-                    <input
+                    <input id="field-expense_date"
                         type="date"
                         name="expense_date"
                         class="form-control"
@@ -87,11 +87,11 @@ Edit Expense
 
                 <div class="col-md-6 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-category_id">
                         Expense Category
                     </label>
 
-                    <select
+                    <select id="field-category_id"
                         name="category_id"
                         class="form-select"
                         required
@@ -121,11 +121,11 @@ Edit Expense
 
                 <div class="col-md-6 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-department_id">
                         Department
                     </label>
 
-                    <select
+                    <select id="field-department_id"
                         name="department_id"
                         class="form-select"
                     >
@@ -155,11 +155,11 @@ Edit Expense
 
                 <div class="col-md-6 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-supplier_id">
                         Supplier
                     </label>
 
-                    <select
+                    <select id="field-supplier_id"
                         name="supplier_id"
                         class="form-select"
                     >
@@ -189,11 +189,11 @@ Edit Expense
 
                 <div class="col-md-6 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-purchase_order_id">
                         Purchase Order
                     </label>
 
-                    <select
+                    <select id="field-purchase_order_id"
                         name="purchase_order_id"
                         class="form-select"
                     >
@@ -223,11 +223,11 @@ Edit Expense
 
                 <div class="col-md-6 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-payment_method">
                         Payment Method
                     </label>
 
-                    <select name="payment_method" class="form-select">
+                    <select id="field-payment_method" name="payment_method" class="form-select">
                         <option value="" {% if not form_selections.payment_method %}selected{% endif %}>Not specified</option>
                         {{ unavailable_option('payment_method') }}
                         {% for method in ['CASH', 'BANK_TRANSFER', 'CHECK', 'CARD', 'OTHER'] %}
@@ -242,11 +242,11 @@ Edit Expense
 
                 <div class="col-12 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-description">
                         Description
                     </label>
 
-                    <input
+                    <input id="field-description"
                         type="text"
                         name="description"
                         class="form-control"
@@ -265,11 +265,11 @@ Edit Expense
 
                 <div class="col-md-6 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-amount">
                         Amount
                     </label>
 
-                    <input
+                    <input id="field-amount"
                         type="number"
                         name="amount" max="9999999999.99"
                         class="form-control"
@@ -289,11 +289,11 @@ Edit Expense
 
                 <div class="col-md-6 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-reference_number">
                         Reference Number
                     </label>
 
-                    <input
+                    <input id="field-reference_number"
                         type="text"
                         name="reference_number"
                         class="form-control"
@@ -311,11 +311,11 @@ Edit Expense
 
                 <div class="col-12 mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-notes">
                         Notes
                     </label>
 
-                    <textarea
+                    <textarea id="field-notes"
                         name="notes"
                         class="form-control"
                         rows="3"
@@ -346,4 +346,5 @@ Edit Expense
 </div>
 
 
+</div>
 {% endblock %}

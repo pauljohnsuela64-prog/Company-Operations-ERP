@@ -327,3 +327,80 @@ button.logout-link { background: transparent; font-family: inherit; cursor: poin
 @media (min-width: 1200px) {
     .catalog-item-filters { grid-template-columns: minmax(160px, 2fr) minmax(160px, 2fr) minmax(120px, 1fr) minmax(120px, 1fr) auto; }
 }
+
+/* Remaining mainline modules opt into the established workspace foundation. */
+.modern-page .workspace-heading { flex-wrap: wrap; }
+.modern-page .workspace-heading > * { min-width: 0; }
+.modern-page .workspace-heading p { margin-bottom: 0; }
+.modern-page .workspace-heading h1 { margin-bottom: 8px; }
+.modern-page .form-select { text-overflow: ellipsis; }
+.modern-page .workspace-table-scroll { margin-bottom: 16px; }
+.modern-page .workspace-table:has(tbody > tr:only-child > td[colspan]:only-child) { min-width: 0; }
+.modern-page .workspace-table td[colspan] { white-space: normal; overflow-wrap: anywhere; }
+.modern-report-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
+.modern-report-filters > div { min-width: 0; }
+.modern-badge { border-radius: 20px; font-weight: 600; padding: 7px 10px; white-space: normal; line-height: 1.4; }
+.modern-page .workspace-pagination { background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: var(--erp-radius); }
+@media (max-width: 1199.98px) {
+    .modern-report-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 767.98px) {
+    .modern-report-filters { grid-template-columns: minmax(0, 1fr); }
+}
+@media print {
+    .modern-page .workspace-table-scroll { overflow: visible; border: 0; }
+    .modern-page .workspace-table { min-width: 0; table-layout: auto; font-size: 9pt; }
+    .modern-page .workspace-table td, .modern-page .workspace-table th { min-width: 0; padding: 5px; }
+    .modern-page .workspace-filters, .modern-page .workflow-actions, .modern-page .workspace-pagination { display: none; }
+    .modern-page .card { box-shadow: none !important; break-inside: auto; }
+    .modern-page thead { display: table-header-group; }
+    .modern-page tr { break-inside: avoid; }
+}
+
+/* Filter layouts retain the existing domain-specific groups and field order. */
+.modern-page .modern-get-form { min-width: 0; max-width: 100%; gap: 16px !important; }
+.modern-page .workspace-heading > .modern-get-form { flex: 1 1 100%; }
+.modern-page .modern-get-form > div:not(.row) { min-width: 0; flex: 1 1 160px; }
+.modern-page .modern-get-form > .row { row-gap: 16px; }
+.modern-page .badge { font-size: .75rem !important; line-height: 1.4; white-space: normal; }
+.modern-page td, .modern-page dd, .modern-page code { overflow-wrap: anywhere; }
+.modern-page .form-label { overflow-wrap: anywhere; }
+@media (max-width: 767.98px) {
+    .modern-page .modern-get-form { display: flex; flex-wrap: wrap; }
+    .modern-page .modern-get-form > div:not(.row), .modern-page .modern-get-form > .btn { flex-basis: 100%; width: 100%; }
+    .modern-page .workflow-actions { width: 100%; }
+    .modern-page .workflow-actions > .btn { flex: 1 1 auto; }
+}
+.modern-page .workspace-eyebrow { font-size: .65rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 600; color: var(--erp-blue); margin-bottom: var(--erp-space-2); }
+
+/* Authentication and recovery retain the same forms and session behavior. */
+.auth-page { background: var(--erp-navy-deep); min-height: 100vh; padding: 24px; }
+.auth-shell { max-width: 520px; }
+.auth-shell > .row { min-height: calc(100vh - 48px) !important; }
+.auth-shell .card { border: 1px solid var(--erp-border); border-radius: var(--erp-radius); background: var(--erp-surface); box-shadow: 0 20px 60px #0003 !important; }
+.auth-shell .card-body { padding: 32px !important; }
+.auth-title { font-size: clamp(1.35rem, 4vw, 1.75rem); font-weight: 650; color: var(--erp-navy); overflow-wrap: anywhere; }
+.auth-shell .workspace-eyebrow { font-size: .65rem; text-transform: uppercase; letter-spacing: .12em; color: var(--erp-blue); }
+.auth-shell .form-label { font-size: .8125rem; font-weight: 600; }
+.auth-shell .form-control, .auth-shell .btn { min-height: 44px; }
+.auth-shell .alert { overflow-wrap: anywhere; }
+@media (max-width: 575.98px) {
+    .auth-page { padding: 16px; }
+    .auth-shell { padding: 0; }
+    .auth-shell .card-body { padding: 24px !important; }
+    .auth-shell > .row { min-height: calc(100vh - 32px) !important; }
+}
+
+/* Final readability polish stays scoped to the newly modernized modules. */
+.modern-page .badge { white-space: nowrap; }
+.modern-page .workspace-table .btn { min-height: 40px; white-space: nowrap; }
+.modern-page .workspace-table { min-width: 0; }
+.modern-page .workspace-table:has(thead th:nth-child(4)) { min-width: 1000px; }
+.modern-page .workspace-table:has(tbody > tr:only-child > td[colspan]:only-child) { min-width: 0; }
+@media print {
+    .modern-page .workspace-table:has(thead th:nth-child(4)) { min-width: 0; }
+    .modern-page .badge { white-space: normal; }
+}
+
+/* Empty/error placeholders are read without scrolling through unused columns. */
+.modern-page .workspace-table:has(tbody > tr:only-child > td[colspan]:only-child) thead { display: none; }

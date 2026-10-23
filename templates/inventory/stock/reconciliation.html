@@ -1,13 +1,15 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 {% block title %}Stock reconciliation | Company Operations ERP{% endblock %}
 {% block page_title %}Stock Reconciliation{% endblock %}
 {% block content %}
-<h2>Balances versus recorded movements</h2>
+<div class="workspace-page workflow-page modern-page">
+{{ ui.page_header('Stock Reconciliation', 'Balances versus recorded movements') }}
 <div class="alert alert-warning">This read-only comparison uses all recorded movement history. Opening balances and historical coverage are not verified. A difference requires investigation; it is not proof that stock is wrong. A match does not prove history is complete. No quantities are changed.</div>
 <p>IN and ADJUSTMENT_IN add quantity; OUT and ADJUSTMENT_OUT subtract it. Only item/warehouse pairs with a stored balance or movement are listed. <a href="{{ url_for('inventory_stock') }}">Back to stock balances</a></p>
 {% include 'inventory/stock/report_filters.html' %}
-<div class="table-responsive"><table class="table table-hover align-middle">
-<thead><tr><th>Item</th><th>Warehouse</th><th>Stored balance</th><th>Signed movement total</th><th>Difference</th><th>History</th><th>Comparison</th></tr></thead>
+<div class="workspace-table-scroll" role="region" aria-label="Inventory Stock Reconciliation - scroll to see all columns" tabindex="0"><table class="table table-hover align-middle workspace-table"><caption class="visually-hidden">Balance comparison</caption>
+<thead><tr><th scope="col">Item</th><th scope="col">Warehouse</th><th scope="col">Stored balance</th><th scope="col">Signed movement total</th><th scope="col">Difference</th><th scope="col">History</th><th scope="col">Comparison</th></tr></thead>
 <tbody>{% for row in report.rows %}<tr>
 <td>{{ row.item_code or ('Missing item #' ~ row.item_id) }}<div class="small text-muted">{{ row.item_name or '' }}</div></td>
 <td>{{ row.warehouse_code or ('Missing warehouse #' ~ row.warehouse_id) }}</td>
@@ -19,4 +21,5 @@
 </tr>{% else %}<tr><td colspan="7" class="text-muted text-center">No balance or movement records match these filters.</td></tr>{% endfor %}</tbody>
 </table></div>
 {% include 'inventory/stock/report_pagination.html' %}
+</div>
 {% endblock %}

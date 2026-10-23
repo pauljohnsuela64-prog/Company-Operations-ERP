@@ -1,7 +1,10 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 {% block title %}Record not saved | Company Operations ERP{% endblock %}
 {% block page_title %}Record not saved{% endblock %}
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
+{{ ui.page_header('Record not saved', 'Reload current data before making another edit.') }}
 <div class="card shadow-sm border-0">
     <div class="card-body">
         <div class="alert alert-warning" role="alert">{{ message }}</div>
@@ -16,5 +19,6 @@
         {% endif %}
         <a class="btn btn-primary" href="{{ reload_url }}">Reload current data</a>
     </div>
+</div>
 </div>
 {% endblock %}

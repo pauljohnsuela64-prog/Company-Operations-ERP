@@ -12,11 +12,13 @@ Employees
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-4">
 
     <div>
-        <h2 class="mb-1">Employees</h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>Employees</h1>
 
         <p class="text-muted mb-0">
             Manage company employees and department assignments.
@@ -40,7 +42,7 @@ Employees
     <div class="card-body">
 
         {% if listing_error %}<div class="alert alert-danger" role="alert">{{ listing_error }}</div>{% endif %}
-        <form method="GET" action="{{ url_for('employees') }}" class="row g-2 align-items-end mb-3">
+        <form method="GET" action="{{ url_for('employees') }}" class="row g-2 align-items-end mb-3 modern-get-form">
             <div class="col-12 col-md-6">
                 <label for="employee-search" class="form-label">Employee number or name starts with</label>
                 <input id="employee-search" name="search" type="search" maxlength="100" value="{{ search }}" class="form-control">
@@ -61,29 +63,29 @@ Employees
         {% if not listing_error %}
         <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
             <p class="text-muted mb-0" aria-live="polite">{{ total }} matching employee{{ '' if total == 1 else 's' }}. Page {{ page }} of {{ pages }}.</p>
-            <nav aria-label="Employee pages" class="d-flex gap-2">
+            <nav aria-label="Employee pages" class="workspace-pagination">
                 {% if page > 1 %}<a rel="prev" class="btn btn-sm btn-outline-primary" href="{{ url_for('employees',search=search,page_size=page_size,page=page-1) }}">Previous</a>{% else %}<span class="btn btn-sm btn-outline-secondary disabled" aria-disabled="true">Previous</span>{% endif %}
                 {% if page < pages %}<a rel="next" class="btn btn-sm btn-outline-primary" href="{{ url_for('employees',search=search,page_size=page_size,page=page+1) }}">Next</a>{% else %}<span class="btn btn-sm btn-outline-secondary disabled" aria-disabled="true">Next</span>{% endif %}
             </nav>
         </div>
         {% endif %}
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Employees - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Employees</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Employee No.</th>
-                        <th>Name</th>
-                        <th>Department</th>
-                        <th>Job Title</th>
-                        <th>Email</th>
-                        <th>Status</th>
+                        <th scope="col">Employee No.</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Job Title</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Status</th>
 
                         {% if has_permission('employees.edit') %}
-                            <th class="text-end">
+                            <th scope="col" class="text-end">
                                 Actions
                             </th>
                         {% endif %}
@@ -144,13 +146,13 @@ Employees
 
                                 {% if employee.employment_status == 'Active' %}
 
-                                    <span class="badge text-bg-success">
+                                    <span class="badge modern-badge text-bg-success">
                                         Active
                                     </span>
 
                                 {% else %}
 
-                                    <span class="badge text-bg-secondary">
+                                    <span class="badge modern-badge text-bg-secondary">
                                         {{ employee.employment_status }}
                                     </span>
 
@@ -203,4 +205,5 @@ Employees
 
 </div>
 
+</div>
 {% endblock %}

@@ -6,26 +6,24 @@ Payroll Entry
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-
-            {{ entry.first_name }}
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>{{ entry.first_name }}
 
             {% if entry.middle_name %}
                 {{ entry.middle_name }}
             {% endif %}
 
-            {{ entry.last_name }}
-
-        </h2>
+            {{ entry.last_name }}</h1>
 
         <p class="text-muted mb-0">
 
@@ -286,11 +284,11 @@ Payroll Entry
 
                     <div class="col-md-2">
 
-                        <label class="form-label">
+                        <label class="form-label" for="field-adjustment_type">
                             Type
                         </label>
 
-                        <select
+                        <select id="field-adjustment_type"
                             name="adjustment_type"
                             class="form-select"
                             required
@@ -313,11 +311,11 @@ Payroll Entry
 
                     <div class="col-md-3">
 
-                        <label class="form-label">
+                        <label class="form-label" for="field-adjustment_name">
                             Name
                         </label>
 
-                        <input
+                        <input id="field-adjustment_name"
                             type="text"
                             name="adjustment_name"
                             class="form-control"
@@ -333,11 +331,11 @@ Payroll Entry
 
                     <div class="col-md-2">
 
-                        <label class="form-label">
+                        <label class="form-label" for="field-amount">
                             Amount
                         </label>
 
-                        <input
+                        <input id="field-amount"
                             type="number"
                             name="amount"
                             class="form-control"
@@ -353,11 +351,11 @@ Payroll Entry
 
                     <div class="col-md-3">
 
-                        <label class="form-label">
+                        <label class="form-label" for="field-notes">
                             Notes
                         </label>
 
-                        <input
+                        <input id="field-notes"
                             type="text"
                             name="notes"
                             class="form-control"
@@ -403,19 +401,19 @@ Payroll Entry
         </h5>
 
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Payroll Entries - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Payroll Entries</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Type</th>
-                        <th>Name</th>
-                        <th>Amount</th>
-                        <th>Notes</th>
-                        <th>Added By</th>
-                        <th>Action</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Amount</th>
+                        <th scope="col">Notes</th>
+                        <th scope="col">Added By</th>
+                        <th scope="col">Action</th>
                     </tr>
 
                 </thead>
@@ -432,13 +430,13 @@ Payroll Entry
 
                                 {% if adjustment.adjustment_type == "EARNING" %}
 
-                                    <span class="badge bg-success">
+                                    <span class="badge modern-badge bg-success">
                                         Earning
                                     </span>
 
                                 {% else %}
 
-                                    <span class="badge bg-danger">
+                                    <span class="badge modern-badge bg-danger">
                                         Deduction
                                     </span>
 
@@ -456,7 +454,7 @@ Payroll Entry
                             </td>
 
 
-                            <td>
+                            <td class="workflow-money">
 
                                 {% if adjustment.adjustment_type == "EARNING" %}
 
@@ -491,7 +489,7 @@ Payroll Entry
                             </td>
 
 
-                            <td>
+                            <td class="workflow-money">
 
                                 {% if (
                                     entry.period_status == "DRAFT"
@@ -555,4 +553,5 @@ Payroll Entry
 
 </div>
 
+</div>
 {% endblock %}

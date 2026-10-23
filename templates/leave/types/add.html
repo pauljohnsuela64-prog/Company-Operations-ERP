@@ -6,6 +6,7 @@ Add Leave Type
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
@@ -13,9 +14,8 @@ Add Leave Type
 
 <div class="mb-4">
 
-    <h2 class="mb-1">
-        Add Leave Type
-    </h2>
+    <p class="workspace-eyebrow">Company operations</p>
+<h1>Add Leave Type</h1>
 
     <p class="text-muted mb-0">
         Create a new company leave category.
@@ -36,11 +36,11 @@ Add Leave Type
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-leave_code">
                     Leave Code
                 </label>
 
-                <input
+                <input id="field-leave_code"
                     type="text"
                     name="leave_code"
                     value="{{ form.leave_code if form.leave_code is not none else '' }}"
@@ -56,11 +56,11 @@ Add Leave Type
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-leave_name">
                     Leave Name
                 </label>
 
-                <input
+                <input id="field-leave_name"
                     type="text"
                     name="leave_name"
                     value="{{ form.leave_name if form.leave_name is not none else '' }}"
@@ -76,11 +76,11 @@ Add Leave Type
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-annual_entitlement">
                     Annual Entitlement
                 </label>
 
-                <input
+                <input id="field-annual_entitlement"
                     type="number"
                     name="annual_entitlement"
                     value="{{ form.annual_entitlement if form.annual_entitlement is not none else '' }}"
@@ -100,11 +100,11 @@ Add Leave Type
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-description">
                     Description
                 </label>
 
-                <textarea
+                <textarea id="field-description"
                     name="description"
                     class="form-control"
                     maxlength="255"
@@ -139,7 +139,7 @@ Add Leave Type
 
             <!-- # BUTTONS -->
 
-            <div class="d-flex gap-2">
+            <div class="workflow-actions">
 
                 <button
                     type="submit"
@@ -164,4 +164,5 @@ Add Leave Type
 
 </div>
 
+</div>
 {% endblock %}

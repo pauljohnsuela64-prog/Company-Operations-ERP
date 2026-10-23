@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Leave Requests
@@ -6,8 +7,10 @@ Leave Requests
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
+{{ ui.page_header("Leave Requests", "Review requests, approval status and recorded leave.") }}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
@@ -37,7 +40,7 @@ Leave Requests
 </div>
 
 
-<form method="GET" class="row g-2 mb-3">
+<form method="GET" class="row g-2 mb-3 modern-get-form">
     <div class="col-md-3"><label class="form-label" for="leave-search">Search</label><input id="leave-search" name="search" class="form-control" maxlength="100" value="{{ filters.search or '' }}" placeholder="Request, employee or leave type"></div>
     <div class="col-md-2"><label class="form-label" for="leave-status">Status</label><select id="leave-status" name="status" class="form-select"><option value="">All statuses</option>{% for status in ['PENDING','APPROVED','REJECTED','CANCELLED'] %}<option value="{{ status }}" {% if filters.status == status %}selected{% endif %}>{{ status }}</option>{% endfor %}</select></div>
     <div class="col-md-2"><label class="form-label" for="leave-type">Leave type</label><select id="leave-type" name="leave_type_id" class="form-select"><option value="">All types</option>{% for type in leave_types %}<option value="{{ type.leave_type_id }}" {% if filters.leave_type_id|string == type.leave_type_id|string %}selected{% endif %}>{{ type.leave_name }}{% if not type.is_active %} (Inactive){% endif %}</option>{% endfor %}</select></div>
@@ -55,20 +58,20 @@ Leave Requests
 
     <div class="card-body">
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Leave Requests - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Leave Requests</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Request</th>
-                        <th>Employee</th>
-                        <th>Leave Type</th>
-                        <th>Dates</th>
-                        <th>Days</th>
-                        <th>Status</th>
-                        <th>Action</th>
+                        <th scope="col">Request</th>
+                        <th scope="col">Employee</th>
+                        <th scope="col">Leave Type</th>
+                        <th scope="col">Dates</th>
+                        <th scope="col">Days</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Action</th>
                     </tr>
 
                 </thead>
@@ -122,25 +125,25 @@ Leave Requests
 
                             {% if request.status == "PENDING" %}
 
-                            <span class="badge bg-warning text-dark">
+                            <span class="badge modern-badge bg-warning text-dark">
                                 Pending
                             </span>
 
                             {% elif request.status == "APPROVED" %}
 
-                            <span class="badge bg-success">
+                            <span class="badge modern-badge bg-success">
                                 Approved
                             </span>
 
                             {% elif request.status == "REJECTED" %}
 
-                            <span class="badge bg-danger">
+                            <span class="badge modern-badge bg-danger">
                                 Rejected
                             </span>
 
                             {% else %}
 
-                            <span class="badge bg-secondary">
+                            <span class="badge modern-badge bg-secondary">
                                 Cancelled
                             </span>
 
@@ -186,10 +189,11 @@ Leave Requests
 </div>
 
 {% if pagination %}
-<nav class="d-flex justify-content-between align-items-center mt-3" aria-label="Leave request pages">
+<nav class="workspace-pagination" aria-label="Leave request pages">
     <span>Page {{ pagination.page }} of {{ pagination.pages }} | {{ pagination.summary.total }} requests</span>
     <div>{% if pagination.page > 1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ leave_page_url(pagination.page - 1) }}">Previous</a>{% endif %}
     {% if pagination.page < pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ leave_page_url(pagination.page + 1) }}">Next</a>{% endif %}</div>
 </nav>
 {% endif %}
+</div>
 {% endblock %}

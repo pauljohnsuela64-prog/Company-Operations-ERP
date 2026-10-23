@@ -6,18 +6,18 @@ Leave Reports
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            Leave Reports
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>Leave Reports</h1>
 
         <p class="text-muted mb-0">
             Analyze employee leave requests and approved leave usage.
@@ -72,17 +72,17 @@ Leave Reports
 
         <form
             method="GET"
-            class="row g-3 align-items-end"
+            class="row g-3 align-items-end modern-get-form"
         >
 
 
             <div class="col-md-2">
 
-                <label class="form-label">
+                <label class="form-label" for="field-year">
                     Year
                 </label>
 
-                <input
+                <input id="field-year"
                     type="number"
                     name="year"
                     class="form-control"
@@ -96,11 +96,11 @@ Leave Reports
 
             <div class="col-md-2">
 
-                <label class="form-label">
+                <label class="form-label" for="field-status">
                     Status
                 </label>
 
-                <select
+                <select id="field-status"
                     name="status"
                     class="form-select"
                 >
@@ -135,11 +135,11 @@ Leave Reports
 
             <div class="col-md-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-employee_id">
                     Employee
                 </label>
 
-                <select
+                <select id="field-employee_id"
                     name="employee_id"
                     class="form-select"
                 >
@@ -174,11 +174,11 @@ Leave Reports
 
             <div class="col-md-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-leave_type_id">
                     Leave Type
                 </label>
 
-                <select
+                <select id="field-leave_type_id"
                     name="leave_type_id"
                     class="form-select"
                 >
@@ -208,7 +208,7 @@ Leave Reports
 
             <div class="col-md-2">
 
-                <div class="d-flex gap-2">
+                <div class="workflow-actions">
 
                     <button
                         class="btn btn-primary"
@@ -291,20 +291,20 @@ Leave Reports
         </h5>
 
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Leave Reports - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Leave Reports</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Leave Type</th>
-                        <th>Total</th>
-                        <th>Pending</th>
-                        <th>Approved</th>
-                        <th>Rejected</th>
-                        <th>Cancelled</th>
-                        <th>Approved Days</th>
+                        <th scope="col">Leave Type</th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Pending</th>
+                        <th scope="col">Approved</th>
+                        <th scope="col">Rejected</th>
+                        <th scope="col">Cancelled</th>
+                        <th scope="col">Approved Days</th>
                     </tr>
 
                 </thead>
@@ -394,22 +394,22 @@ Leave Reports
         </h5>
 
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Leave Reports - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Leave Reports</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Request</th>
-                        <th>Employee</th>
-                        <th>Department</th>
-                        <th>Leave Type</th>
-                        <th>Dates</th>
-                        <th>Days</th>
-                        <th>Status</th>
-                        <th>Reviewed By</th>
-                        <th>Action</th>
+                        <th scope="col">Request</th>
+                        <th scope="col">Employee</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Leave Type</th>
+                        <th scope="col">Dates</th>
+                        <th scope="col">Days</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Reviewed By</th>
+                        <th scope="col">Action</th>
                     </tr>
 
                 </thead>
@@ -514,4 +514,5 @@ Leave Reports
 
 </div>
 
+</div>
 {% endblock %}

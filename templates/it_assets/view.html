@@ -6,18 +6,18 @@ IT Asset Details
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            {{ asset.asset_tag }}
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>{{ asset.asset_tag }}</h1>
 
         <p class="text-muted mb-0">
             {{ asset.asset_name }}
@@ -60,31 +60,31 @@ IT Asset Details
 
     {% if asset.status == "AVAILABLE" %}
 
-        <span class="badge bg-success">
+        <span class="badge modern-badge bg-success">
             Available
         </span>
 
     {% elif asset.status == "ASSIGNED" %}
 
-        <span class="badge bg-primary">
+        <span class="badge modern-badge bg-primary">
             Assigned
         </span>
 
     {% elif asset.status == "MAINTENANCE" %}
 
-        <span class="badge bg-warning text-dark">
+        <span class="badge modern-badge bg-warning text-dark">
             Maintenance
         </span>
 
     {% elif asset.status == "RETIRED" %}
 
-        <span class="badge bg-secondary">
+        <span class="badge modern-badge bg-secondary">
             Retired
         </span>
 
     {% else %}
 
-        <span class="badge bg-danger">
+        <span class="badge modern-badge bg-danger">
             Lost
         </span>
 
@@ -340,6 +340,7 @@ IT Asset Details
             {% endif %}
 
         {% else %}
+            <p class="text-muted">Currently unassigned.</p>
 
             {% if has_permission('it_assets.manage') and asset.status == 'AVAILABLE' and not (assignment_history | selectattr('returned_at', 'none') | list) %}
             <form
@@ -355,11 +356,11 @@ IT Asset Details
 
                     <div class="col-md-6">
 
-                        <label class="form-label">
+                        <label class="form-label" for="field-employee_id">
                             Assign Employee
                         </label>
 
-                        <select
+                        <select id="field-employee_id"
                             name="employee_id"
                             class="form-select"
                             required
@@ -413,7 +414,10 @@ IT Asset Details
 
 
 
-        <!-- # ========================================== -->
+        </div>
+</div>
+
+<!-- # ========================================== -->
 <!-- # MAINTENANCE HISTORY -->
 <!-- # ========================================== -->
 
@@ -446,21 +450,21 @@ IT Asset Details
         </div>
 
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Maintenance History - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Maintenance History</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Type</th>
-                        <th>Description</th>
-                        <th>Start</th>
-                        <th>Completed</th>
-                        <th>Vendor</th>
-                        <th>Cost</th>
-                        <th>Status</th>
-                        <th>Action</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Start</th>
+                        <th scope="col">Completed</th>
+                        <th scope="col">Vendor</th>
+                        <th scope="col">Cost</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Action</th>
                     </tr>
 
                 </thead>
@@ -492,7 +496,7 @@ IT Asset Details
                                 {{ maintenance.vendor or "-" }}
                             </td>
 
-                            <td>
+                            <td class="workflow-money">
 
                                 {% if maintenance.cost is not none %}
 
@@ -512,19 +516,19 @@ IT Asset Details
 
                                 {% if maintenance.status == "OPEN" %}
 
-                                    <span class="badge bg-warning text-dark">
+                                    <span class="badge modern-badge bg-warning text-dark">
                                         Open
                                     </span>
 
                                 {% elif maintenance.status == "COMPLETED" %}
 
-                                    <span class="badge bg-success">
+                                    <span class="badge modern-badge bg-success">
                                         Completed
                                     </span>
 
                                 {% else %}
 
-                                    <span class="badge bg-secondary">
+                                    <span class="badge modern-badge bg-secondary">
                                         Cancelled
                                     </span>
 
@@ -544,11 +548,12 @@ IT Asset Details
                                             'complete_it_asset_maintenance_route',
                                             maintenance_id=maintenance.maintenance_id
                                         ) }}"
-                                        class="d-flex gap-2"
+                                        class="workflow-actions"
                                     >
                     {% include 'partials/csrf_field.html' %}
 
-                                        <input
+                                        <label class="visually-hidden" for="maintenance-completed-{{ maintenance.maintenance_id }}">Completion date for {{ maintenance.maintenance_type }}</label>
+                                        <input id="maintenance-completed-{{ maintenance.maintenance_id }}"
                                             type="date"
                                             name="completed_date"
                                             class="form-control form-control-sm"
@@ -601,11 +606,6 @@ IT Asset Details
 
 </div>
 
-    </div>
-
-</div>
-
-
 <!-- # ========================================== -->
 <!-- # ASSIGNMENT HISTORY -->
 <!-- # ========================================== -->
@@ -619,20 +619,20 @@ IT Asset Details
         </h5>
 
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Assignment History - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Assignment History</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Employee</th>
-                        <th>Department</th>
-                        <th>Assigned</th>
-                        <th>Returned</th>
-                        <th>Assigned By</th>
-                        <th>Returned By</th>
-                        <th>Status</th>
+                        <th scope="col">Employee</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Assigned</th>
+                        <th scope="col">Returned</th>
+                        <th scope="col">Assigned By</th>
+                        <th scope="col">Returned By</th>
+                        <th scope="col">Status</th>
                     </tr>
 
                 </thead>
@@ -700,13 +700,13 @@ IT Asset Details
 
                                 {% if assignment.returned_at %}
 
-                                    <span class="badge bg-secondary">
+                                    <span class="badge modern-badge bg-secondary">
                                         Returned
                                     </span>
 
                                 {% else %}
 
-                                    <span class="badge bg-primary">
+                                    <span class="badge modern-badge bg-primary">
                                         Active
                                     </span>
 
@@ -742,4 +742,5 @@ IT Asset Details
 
 </div>
 
+</div>
 {% endblock %}

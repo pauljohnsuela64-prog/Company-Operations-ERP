@@ -6,13 +6,13 @@ Leave Types
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
-        <h2 class="mb-1">
-            Leave Types
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>Leave Types</h1>
 
         <p class="text-muted mb-0">
             Manage company leave categories.
@@ -38,18 +38,18 @@ Leave Types
 
     <div class="card-body">
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Leave Types - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Leave Types</caption>
 
                 <thead>
                     <tr>
-                        <th>Code</th>
-                        <th>Leave Type</th>
-                        <th>Entitlement</th>
-                        <th>Paid</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th scope="col">Code</th>
+                        <th scope="col">Leave Type</th>
+                        <th scope="col">Entitlement</th>
+                        <th scope="col">Paid</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
                     </tr>
                 </thead>
 
@@ -104,13 +104,13 @@ Leave Types
 
                                 {% if leave_type.is_paid %}
 
-                                    <span class="badge bg-success">
+                                    <span class="badge modern-badge bg-success">
                                         Paid
                                     </span>
 
                                 {% else %}
 
-                                    <span class="badge bg-secondary">
+                                    <span class="badge modern-badge bg-secondary">
                                         Unpaid
                                     </span>
 
@@ -123,13 +123,13 @@ Leave Types
 
                                 {% if leave_type.is_active %}
 
-                                    <span class="badge bg-success">
+                                    <span class="badge modern-badge bg-success">
                                         Active
                                     </span>
 
                                 {% else %}
 
-                                    <span class="badge bg-secondary">
+                                    <span class="badge modern-badge bg-secondary">
                                         Inactive
                                     </span>
 
@@ -142,7 +142,7 @@ Leave Types
 
                                 {% if has_permission("leave.manage") %}
 
-                                    <div class="d-flex gap-2">
+                                    <div class="workflow-actions">
 
                                         <a
                                             href="{{ url_for(
@@ -204,4 +204,5 @@ Leave Types
 
 </div>
 
+</div>
 {% endblock %}

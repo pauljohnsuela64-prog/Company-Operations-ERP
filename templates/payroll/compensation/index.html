@@ -6,18 +6,18 @@ Employee Compensation
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            Employee Compensation
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>Employee Compensation</h1>
 
         <p class="text-muted mb-0">
             Configure employee basic payroll rates.
@@ -49,20 +49,20 @@ Employee Compensation
 
     <div class="card-body">
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Payroll Compensation - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Payroll Compensation</caption>
 
                 <thead>
 
                     <tr>
-                        <th>Employee</th>
-                        <th>Department</th>
-                        <th>Job Title</th>
-                        <th>Pay Type</th>
-                        <th>Basic Rate</th>
-                        <th>Effective Date</th>
-                        <th>Action</th>
+                        <th scope="col">Employee</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Job Title</th>
+                        <th scope="col">Pay Type</th>
+                        <th scope="col">Basic Rate</th>
+                        <th scope="col">Effective Date</th>
+                        <th scope="col">Action</th>
                     </tr>
 
                 </thead>
@@ -113,7 +113,7 @@ Employee Compensation
 
                         <td>
 
-                            <span class="badge bg-primary">
+                            <span class="badge modern-badge bg-primary">
                                 {{ record.pay_type.title() }}
                             </span>
 
@@ -122,7 +122,7 @@ Employee Compensation
 
                         <!-- # BASIC RATE -->
 
-                        <td>
+                        <td class="workflow-money">
 
                             <strong>
                                 ₱{{ "{:,.2f}".format(record.basic_rate) }}
@@ -195,4 +195,5 @@ Employee Compensation
 
 </div>
 
+</div>
 {% endblock %}

@@ -6,20 +6,20 @@ Budget Details
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            {{ budget.department_name }}
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>{{ budget.department_name }}
             -
-            {{ budget.budget_year }} Budget
-        </h2>
+            {{ budget.budget_year }} Budget</h1>
 
         <p class="text-muted mb-0">
             View budget allocation and paid expenses.
@@ -222,23 +222,23 @@ Budget Details
         </h5>
 
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Finance Budgets - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Finance Budgets</caption>
 
                 <!-- # TABLE HEADER -->
 
                 <thead>
 
                     <tr>
-                        <th>Expense No.</th>
-                        <th>Date</th>
-                        <th>Category</th>
-                        <th>Description</th>
-                        <th>Supplier</th>
-                        <th>PO</th>
-                        <th>Amount</th>
-                        <th>Action</th>
+                        <th scope="col">Expense No.</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Supplier</th>
+                        <th scope="col">PO</th>
+                        <th scope="col">Amount</th>
+                        <th scope="col">Action</th>
                     </tr>
 
                 </thead>
@@ -276,7 +276,7 @@ Budget Details
                                 {{ expense.po_number or "-" }}
                             </td>
 
-                            <td>
+                            <td class="workflow-money">
                                 ₱{{ "{:,.2f}".format(
                                     expense.amount
                                 ) }}
@@ -323,4 +323,5 @@ Budget Details
 
 </div>
 
+</div>
 {% endblock %}

@@ -12,6 +12,7 @@ Finance Summary
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 <p class="text-muted small">Totals include all matching expense states; only PAID expenses count as spending.</p>
 
 
@@ -19,13 +20,12 @@ Finance Summary
 <!-- # PAGE HEADER / YEAR FILTER -->
 <!-- # ========================================== -->
 
-<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            Finance Summary
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>Finance Summary</h1>
 
         <p class="text-muted mb-0">
             Overview of company expense activity.
@@ -39,16 +39,16 @@ Finance Summary
     <form
         method="GET"
         action="{{ url_for('finance_summary') }}"
-        class="d-flex flex-wrap align-items-end gap-2"
+        class="d-flex flex-wrap align-items-end gap-2 modern-get-form"
     >
 
         <div>
 
-            <label class="form-label mb-1">
+            <label class="form-label mb-1" for="field-year">
                 Year
             </label>
 
-            <select
+            <select id="field-year"
                 name="year"
                 class="form-select"
             >
@@ -266,9 +266,9 @@ Finance Summary
 
     <div class="card-body">
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Finance - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Finance</caption>
 
 
                 <!-- # TABLE HEADER -->
@@ -277,15 +277,15 @@ Finance Summary
 
                     <tr>
 
-                        <th>
+                        <th scope="col">
                             Month
                         </th>
 
-                        <th class="text-center">
+                        <th scope="col" class="text-center">
                             Expenses
                         </th>
 
-                        <th class="text-end">
+                        <th scope="col" class="text-end">
                             Total Paid
                         </th>
 
@@ -310,7 +310,7 @@ Finance Summary
                                 {{ month.expense_count }}
                             </td>
 
-                            <td class="text-end">
+                            <td class="text-end workflow-money">
 
                                 ₱{{ "{:,.2f}".format(
                                     month.total_amount
@@ -364,9 +364,9 @@ Finance Summary
 
     <div class="card-body">
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Finance - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Finance</caption>
 
 
                 <!-- # TABLE HEADER -->
@@ -375,15 +375,15 @@ Finance Summary
 
                     <tr>
 
-                        <th>
+                        <th scope="col">
                             Category
                         </th>
 
-                        <th class="text-center">
+                        <th scope="col" class="text-center">
                             Expenses
                         </th>
 
-                        <th class="text-end">
+                        <th scope="col" class="text-end">
                             Total Paid
                         </th>
 
@@ -416,7 +416,7 @@ Finance Summary
                                 {{ category.expense_count }}
                             </td>
 
-                            <td class="text-end">
+                            <td class="text-end workflow-money">
 
                                 ₱{{ "{:,.2f}".format(
                                     category.total_amount
@@ -454,4 +454,5 @@ Finance Summary
 </div>
 
 
+</div>
 {% endblock %}

@@ -6,18 +6,18 @@ Leave Balances
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            Leave Balances
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>Leave Balances</h1>
 
         <p class="text-muted mb-0">
             View employee leave entitlement, usage, and remaining balance.
@@ -46,7 +46,7 @@ Leave Balances
 
         <form
             method="GET"
-            class="row g-3 align-items-end"
+            class="row g-3 align-items-end modern-get-form"
         >
 
 
@@ -54,11 +54,11 @@ Leave Balances
 
             <div class="col-md-6">
 
-                <label class="form-label">
+                <label class="form-label" for="field-employee_id">
                     Employee
                 </label>
 
-                <select
+                <select id="field-employee_id"
                     name="employee_id"
                     class="form-select"
                     required
@@ -96,11 +96,11 @@ Leave Balances
 
             <div class="col-md-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-year">
                     Year
                 </label>
 
-                <input
+                <input id="field-year"
                     type="number"
                     name="year"
                     class="form-control"
@@ -204,19 +204,19 @@ Leave Balances
 
         <div class="card-body">
 
-            <div class="table-responsive">
+            <div class="workspace-table-scroll" role="region" aria-label="Leave Balances - scroll to see all columns" tabindex="0">
 
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Leave Balances</caption>
 
                     <thead>
 
                         <tr>
-                            <th>Leave Type</th>
-                            <th>Paid / Unpaid</th>
-                            <th>Entitlement</th>
-                            <th>Used</th>
-                            <th>Remaining</th>
-                            <th>Status</th>
+                            <th scope="col">Leave Type</th>
+                            <th scope="col">Paid / Unpaid</th>
+                            <th scope="col">Entitlement</th>
+                            <th scope="col">Used</th>
+                            <th scope="col">Remaining</th>
+                            <th scope="col">Status</th>
                         </tr>
 
                     </thead>
@@ -250,13 +250,13 @@ Leave Balances
 
                                     {% if balance.is_paid %}
 
-                                        <span class="badge bg-success">
+                                        <span class="badge modern-badge bg-success">
                                             Paid
                                         </span>
 
                                     {% else %}
 
-                                        <span class="badge bg-secondary">
+                                        <span class="badge modern-badge bg-secondary">
                                             Unpaid
                                         </span>
 
@@ -331,13 +331,13 @@ Leave Balances
 
                                     {% if balance.is_active %}
 
-                                        <span class="badge bg-success">
+                                        <span class="badge modern-badge bg-success">
                                             Active
                                         </span>
 
                                     {% else %}
 
-                                        <span class="badge bg-secondary">
+                                        <span class="badge modern-badge bg-secondary">
                                             Inactive
                                         </span>
 
@@ -384,4 +384,5 @@ Leave Balances
 
 {% endif %}
 
+</div>
 {% endblock %}

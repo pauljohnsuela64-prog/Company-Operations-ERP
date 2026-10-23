@@ -6,12 +6,12 @@ Edit Employee Compensation
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <div class="mb-4">
 
-    <h2 class="mb-1">
-        Edit Employee Compensation
-    </h2>
+    <p class="workspace-eyebrow">Company operations</p>
+<h1>Edit Employee Compensation</h1>
 
     <p class="text-muted mb-0">
         Update an employee's basic payroll rate.
@@ -56,11 +56,11 @@ Edit Employee Compensation
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-pay_type">
                     Pay Type
                 </label>
 
-                <select
+                <select id="field-pay_type"
                     name="pay_type"
                     class="form-select"
                     required
@@ -104,11 +104,11 @@ Edit Employee Compensation
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-basic_rate">
                     Basic Rate (PHP)
                 </label>
 
-                <input
+                <input id="field-basic_rate"
                     type="number"
                     name="basic_rate"
                     class="form-control"
@@ -125,11 +125,11 @@ Edit Employee Compensation
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="field-effective_date">
                     Effective Date
                 </label>
 
-                <input
+                <input id="field-effective_date"
                     type="date"
                     name="effective_date"
                     class="form-control"
@@ -144,11 +144,11 @@ Edit Employee Compensation
 
             <div class="mb-4">
 
-                <label class="form-label">
+                <label class="form-label" for="field-notes">
                     Notes
                 </label>
 
-                <textarea
+                <textarea id="field-notes"
                     name="notes"
                     class="form-control"
                     maxlength="255"
@@ -160,7 +160,7 @@ Edit Employee Compensation
 
             <!-- # BUTTONS -->
 
-            <div class="d-flex gap-2">
+            <div class="workflow-actions">
 
                 <button
                     type="submit"
@@ -185,4 +185,5 @@ Edit Employee Compensation
 
 </div>
 
+</div>
 {% endblock %}

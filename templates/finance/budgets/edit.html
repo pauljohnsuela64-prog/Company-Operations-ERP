@@ -6,6 +6,7 @@ Edit Department Budget
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
@@ -13,9 +14,8 @@ Edit Department Budget
 
 <div class="mb-4">
 
-    <h2 class="mb-1">
-        Edit Department Budget
-    </h2>
+    <p class="workspace-eyebrow">Company operations</p>
+<h1>Edit Department Budget</h1>
 
     <p class="text-muted mb-0">
         Update the annual budget for a department.
@@ -45,11 +45,11 @@ Edit Department Budget
 
                 <div class="col-md-6">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-department_id">
                         Department
                     </label>
 
-                    <select name="department_id" class="form-select" required>
+                    <select id="field-department_id" name="department_id" class="form-select" required>
 
                         {% if unlisted_department %}<option value="{{ budget_form.department_id }}" selected>Selected Department (not in current list)</option>{% endif %}
                         {% for department in departments %}
@@ -70,11 +70,11 @@ Edit Department Budget
 
                 <div class="col-md-6">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-budget_year">
                         Budget Year
                     </label>
 
-                    <input type="text" inputmode="numeric" name="budget_year" class="form-control" value="{{ budget_form.budget_year }}" pattern="[0-9]{4}" required>
+                    <input id="field-budget_year" type="text" inputmode="numeric" name="budget_year" class="form-control" value="{{ budget_form.budget_year }}" pattern="[0-9]{4}" required>
 
                 </div>
 
@@ -83,11 +83,11 @@ Edit Department Budget
 
                 <div class="col-md-6">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-budget_amount">
                         Budget Amount
                     </label>
 
-                    <input type="text" inputmode="decimal" name="budget_amount" max="999999999999.99" class="form-control" value="{{ budget_form.budget_amount }}"
+                    <input id="field-budget_amount" type="text" inputmode="decimal" name="budget_amount" max="999999999999.99" class="form-control" value="{{ budget_form.budget_amount }}"
                         min="0.01" step="0.01" required>
 
                 </div>
@@ -97,11 +97,11 @@ Edit Department Budget
 
                 <div class="col-12">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-notes">
                         Notes
                     </label>
 
-                    <textarea name="notes" class="form-control" rows="3"
+                    <textarea id="field-notes" name="notes" class="form-control" rows="3"
                         maxlength="255">{{ budget_form.notes }}</textarea>
 
                 </div>
@@ -129,4 +129,5 @@ Edit Department Budget
 
 </div>
 
+</div>
 {% endblock %}
