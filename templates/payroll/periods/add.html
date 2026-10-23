@@ -39,6 +39,7 @@ New Payroll Period
                 <input id="field-period_name"
                     type="text"
                     name="period_name"
+                    value="{{ request.form.get('period_name', '') }}"
                     class="form-control"
                     maxlength="100"
                     placeholder="Example: October 1-15, 2026"
@@ -62,6 +63,7 @@ New Payroll Period
                     <input id="field-start_date"
                         type="date"
                         name="start_date"
+                        value="{{ request.form.get('start_date', '') }}"
                         class="form-control"
                         required
                     >
@@ -80,6 +82,7 @@ New Payroll Period
                     <input id="field-end_date"
                         type="date"
                         name="end_date"
+                        value="{{ request.form.get('end_date', '') }}"
                         class="form-control"
                         required
                     >
@@ -98,6 +101,7 @@ New Payroll Period
                     <input id="field-pay_date"
                         type="date"
                         name="pay_date"
+                        value="{{ request.form.get('pay_date', '') }}"
                         class="form-control"
                         required
                     >
@@ -120,7 +124,7 @@ New Payroll Period
                     class="form-control"
                     maxlength="255"
                     rows="3"
-                ></textarea>
+                >{{ request.form.get('notes', '') }}</textarea>
 
             </div>
 
