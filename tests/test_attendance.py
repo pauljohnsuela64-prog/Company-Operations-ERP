@@ -59,6 +59,8 @@ class AttendanceValidationTests(unittest.TestCase):
 class AttendanceRepositoryTests(unittest.TestCase):
     def setUp(self):
         self.safety=ExitStack();self.addCleanup(self.safety.close)
+        self.safety.enter_context(patch('payroll_freshness.lock_guard'))  # Dedicated freshness suites exercise real schema/coordination.
+        self.safety.enter_context(patch('payroll_freshness.advance'))
         self.safety.enter_context(patch('dotenv.load_dotenv',return_value=False))
         self.safety.enter_context(patch('mysql.connector.connect',side_effect=AssertionError('Company DB forbidden')))
         self.repo=importlib.import_module('attendance_repository')

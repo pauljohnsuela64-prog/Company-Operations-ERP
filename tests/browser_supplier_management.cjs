@@ -28,7 +28,7 @@ module.exports=async({send,tab,evaluate,navigate,until})=>{
   assert.equal(await evaluate(manager,`document.body.textContent.includes('No suppliers match these filters.')`),true);
   const invalid=await evaluate(manager,`(async()=>{const results=[];for(const q of ['status=bad','page_size=500','search=x&search=y']){const r=await fetch('/procurement/suppliers?'+q);results.push([r.status,(await r.text()).includes('Suppliers were not loaded.')]);}return results;})()`);
   for(const result of invalid)assert.deepEqual(result,[400,true]);
-  const data={supplier_code:'SUP-BROWSER',supplier_name:'PRIVATE supplier name',contact_person:'PRIVATE contact',email:'private@example.test',phone:'PRIVATE phone',address:'PRIVATE <img src=x onerror=alert(1)>'};
+  const data={supplier_code:'SUP-BROWSER',supplier_name:'PRIVATE supplier name',contact_person:'PRIVATE contact',email:'Legacy <billing> contact',phone:'PRIVATE phone',address:'PRIVATE <img src=x onerror=alert(1)>'};
   async function submit(values,forged=false){
     await evaluate(manager,`(()=>{const f=document.querySelector('main form');for(const [key,value] of Object.entries(${JSON.stringify(values)}))f.elements.namedItem(key).value=value;${forged?'HTMLFormElement.prototype.submit.call(f)':'f.requestSubmit()'};})()`);
   }
@@ -37,13 +37,17 @@ module.exports=async({send,tab,evaluate,navigate,until})=>{
   assert.equal(await evaluate(manager,`document.querySelector('[name="address"]').value.length`),256);
   assert.equal(await evaluate(manager,`document.querySelector('[name="supplier_name"]').value`),data.supplier_name);
   assert.equal(await evaluate(manager,`document.querySelector('main img[src="x"]')===null`),true);
+  assert.equal(await evaluate(manager,`document.querySelector('[name="email"]').validity.typeMismatch`),false);
   await submit(data);await until(manager,`location.pathname==='/procurement/suppliers' && document.readyState==='complete'`);
   await navigate(manager,'/procurement/suppliers/add');await submit(data);
   await until(manager,`document.readyState==='complete' && document.body.textContent.includes('already exists')`);
   assert.equal(await evaluate(manager,`document.querySelector('[name="address"]').value`),data.address);
   await navigate(manager,'/procurement/suppliers?search=SUP-BROWSER');
   const edit=await evaluate(manager,`document.querySelector('main tbody a').getAttribute('href')`);
-  await navigate(manager,edit);await submit(data);
+  await navigate(manager,edit);
+  assert.equal(await evaluate(manager,`document.querySelector('[name="email"]').value`),data.email);
+  assert.equal(await evaluate(manager,`document.querySelector('main billing')===null`),true);
+  await submit(data);
   await until(manager,`location.pathname==='/procurement/suppliers' && document.body.textContent.includes('No supplier changes were needed.')`);
   await navigate(manager,edit);await submit({...data,supplier_name:'PRIVATE revised supplier'});
   await until(manager,`location.pathname==='/procurement/suppliers' && document.readyState==='complete'`);

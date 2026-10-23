@@ -7,6 +7,18 @@ required by this review. Part 3 adds verification code and this report only.
 No schemas, seeded permissions, business repositories or company records changed.
 No commit, push, merge, reset, clean or branch switch was performed.
 
+## Current mainline status (Assignment 2, 2026-10-23)
+
+The review below is a historical checkpoint, not the current outstanding-issue
+list. IT/Help Desk writes now require their respective manage permissions (see
+[IT_AUTHORIZATION.md](IT_AUTHORIZATION.md)), and Procurement navigation uses its
+own view permission (see [NAVIGATION_DASHBOARD_RELIABILITY.md](NAVIGATION_DASHBOARD_RELIABILITY.md)).
+Merged receiving integration and Procurement audit coverage are also tested.
+The signed-cookie revocation, best-effort audit and deployment limitations remain.
+Consult [ERP_V1_CLEANUP_REPORT.md](ERP_V1_CLEANUP_REPORT.md) for current findings,
+including the verified Payroll freshness development fix and remaining production
+rollout, salary-policy and APPROVED recovery approvals.
+
 ## Scope and findings
 
 All 83 Part 2 files were reviewed. For the 64 original POST-form templates,

@@ -229,6 +229,10 @@ class ReceiptResult(tuple):
         return result
 
 
+class _RetryableReceiptError(Exception):
+    """A pre-commit lock failure followed by a confirmed rollback only."""
+
+
 def _existing_submission(cursor, submission_id, purchase_order_id, warehouse_id,
                          received_by, received_items, notes):
     cursor.execute(
@@ -264,6 +268,10 @@ def create_goods_receipt(purchase_order_id, warehouse_id, received_by, received_
         try:
             return _create_goods_receipt_transaction(
                 purchase_order_id, warehouse_id, received_by, received_items, notes, submission_id)
+        except _RetryableReceiptError as error:
+            if attempt < 2:
+                continue
+            raise ValueError("Goods receipt could not be confirmed. Retry with the same submission identifier to check whether it was saved; if the problem persists, contact an administrator.") from error
         except mysql.connector.Error as error:
             if error.errno == 1062:
                 # Cross-PO reuse of a token may race past the initial lookup.
@@ -277,8 +285,6 @@ def create_goods_receipt(purchase_order_id, warehouse_id, received_by, received_
                             return existing
                     finally:
                         cursor.close()
-            if error.errno in (1205, 1213) and attempt < 2:
-                continue  # Entire failed transaction has already been rolled back.
             if error.errno in (1054, 1146):
                 raise ValueError("Goods receiving schema is unavailable. Ask an administrator to verify the receiving migration before retrying.") from error
             raise ValueError("Goods receipt could not be confirmed. Retry with the same submission identifier to check whether it was saved; if the problem persists, contact an administrator.") from error
@@ -293,9 +299,11 @@ def _create_goods_receipt_transaction(
     submission_id,
 ):
     connection = get_connection()
-    cursor = connection.cursor(dictionary=True)
+    cursor = None
+    committing = False
 
     try:
+        cursor = connection.cursor(dictionary=True)
 
         # ==================================================
         # START TRANSACTION
@@ -334,6 +342,7 @@ def _create_goods_receipt_transaction(
         existing = _existing_submission(cursor, submission_id, purchase_order_id,
                                         warehouse_id, received_by, received_items, notes)
         if existing:
+            committing = True
             connection.commit()
             return existing
 
@@ -800,6 +809,7 @@ def _create_goods_receipt_transaction(
         # COMMIT TRANSACTION
         # ==================================================
 
+        committing = True
         connection.commit()
 
         return ReceiptResult(receipt_id, receipt_number, new_status, created=True)
@@ -810,9 +820,11 @@ def _create_goods_receipt_transaction(
     # ROLLBACK EVERYTHING
     # ======================================================
 
-    except Exception:
+    except Exception as error:
 
         connection.rollback()
+        if not committing and isinstance(error, mysql.connector.Error) and error.errno in (1205, 1213):
+            raise _RetryableReceiptError() from error
         raise
 
 
@@ -822,8 +834,11 @@ def _create_goods_receipt_transaction(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()
 
 
 

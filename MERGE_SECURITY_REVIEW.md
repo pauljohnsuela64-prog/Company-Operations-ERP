@@ -2,6 +2,15 @@
 
 Reviewed 2026-10-17 on feature/purchase-orders. Merge from main remains in progress; no merge commit created.
 
+## Current mainline status (Assignment 2, 2026-10-23)
+
+This document records the earlier merge checkpoint. Its IT write-permission and
+Procurement navigation limitations were subsequently fixed by the merged
+authorization/navigation work. They are not current unresolved vulnerabilities.
+Best-effort audit durability and deployment HTTPS/proxy limitations still apply.
+See [ERP_V1_CLEANUP_REPORT.md](ERP_V1_CLEANUP_REPORT.md) for the current audit and
+the verified development fix for Payroll freshness and remaining rollout/policy gates.
+
 ## Resolution
 
 - app.py retains Decimal validation plus centralized CSRF/session/fresh authorization imports.

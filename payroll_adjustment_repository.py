@@ -1,3 +1,4 @@
+import payroll_freshness as freshness
 # ==========================================================
 # PAYROLL ADJUSTMENT REPOSITORY
 # ==========================================================
@@ -318,13 +319,13 @@ def add_payroll_adjustment(
 
     connection = get_connection()
 
-    cursor = connection.cursor(
-        dictionary=True
-    )
+    cursor = None
 
     try:
 
         connection.start_transaction()
+        cursor = connection.cursor(dictionary=True)
+        freshness.lock_guard(cursor)
 
 
         # ==================================================
@@ -429,8 +430,11 @@ def add_payroll_adjustment(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()
 
 
 # ==========================================================
@@ -444,13 +448,13 @@ def delete_payroll_adjustment(
 
     connection = get_connection()
 
-    cursor = connection.cursor(
-        dictionary=True
-    )
+    cursor = None
 
     try:
 
         connection.start_transaction()
+        cursor = connection.cursor(dictionary=True)
+        freshness.lock_guard(cursor)
 
 
         # ==================================================
@@ -547,5 +551,8 @@ def delete_payroll_adjustment(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()

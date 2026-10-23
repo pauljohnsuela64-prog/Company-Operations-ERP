@@ -59,6 +59,8 @@ class LeaveValidationTests(unittest.TestCase):
 class LeaveRepositoryTests(unittest.TestCase):
     def setUp(self):
         self.stack = ExitStack(); self.addCleanup(self.stack.close)
+        self.stack.enter_context(patch('payroll_freshness.lock_guard'))  # Dedicated freshness suites exercise real schema/coordination.
+        self.stack.enter_context(patch('payroll_freshness.advance'))
         self.stack.enter_context(patch('dotenv.load_dotenv', return_value=False))
         self.stack.enter_context(patch('mysql.connector.connect', side_effect=AssertionError('Company DB forbidden')))
         self.repo = importlib.import_module('leave_repository')

@@ -63,6 +63,7 @@ from leave_export import (
 )
 
 from payroll_period_repository import (
+    PayrollScheduleError,
     cancel_payroll_period,
     create_payroll_period,
     get_all_payroll_periods,
@@ -4979,7 +4980,9 @@ def add_payroll_period():
                 created_by=session["user_id"],
             )
 
-
+        except PayrollScheduleError as error:
+            flash(str(error), 'danger')
+            return render_template('payroll/periods/add.html'), error.status_code
         except Exception as error:
 
             if getattr(
@@ -5299,7 +5302,11 @@ def edit_payroll_period(
                 )
             )
 
-
+        except PayrollScheduleError as error:
+            flash(str(error), 'danger')
+            submitted_period = dict(period, period_name=period_name, start_date=start_date_value,
+                                    end_date=end_date_value, pay_date=pay_date_value, notes=notes)
+            return render_template('payroll/periods/edit.html', period=submitted_period), error.status_code
         except Exception as error:
 
             if getattr(

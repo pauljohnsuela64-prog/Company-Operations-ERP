@@ -35,12 +35,13 @@ rejected and existing database uniqueness remains the supplier-code authority.
 Names do not become unique. Existing Jinja-escaped raw values remain visible on
 validation, duplicate and unconfirmed write errors.
 
-Frontend/backend consistency question for final cleanup: the existing optional
-`type=email` input applies browser email syntax validation, while the backend only
-validates type, length, Unicode and controls. Malformed nonempty email strings may
-therefore be stored by direct/API callers but rejected by a native form submission.
-This difference is documented, not resolved through an unapproved format policy.
-Both forms' required-field attributes are checked by regression tests.
+Assignment 2 resolves the frontend/backend mismatch by rendering optional Email
+as a text input on Add/Edit. The established backend contract validates type,
+length, Unicode and controls, without imposing email syntax. Existing nonempty
+legacy contact text can therefore be retained and submitted through native forms.
+The 150-character limit, escaping, field name and requiredness are unchanged.
+Regression tests cover legacy values, validation redisplay, native browser
+submission and optional blanks; no stricter contact/email policy is introduced.
 
 ## Transactions, status and audits
 

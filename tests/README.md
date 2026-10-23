@@ -1,5 +1,24 @@
 # ERP testing and continuous integration
 
+## Assignment 2 release-blocker audit gate
+
+The ordinary unit/smoke suites do not certify Payroll source freshness.
+Run this additional explicit gate before any release-readiness claim:
+
+```powershell
+.venv/Scripts/python.exe -u -B tests/mysql_payroll_freshness_audit.py
+```
+
+It uses actual calculation and Attendance writers on verified disposable MySQL.
+The approved development fix now passes this unchanged gate. CI also discovers
+mysql_payroll_freshness_smoke.py (15 scenarios, ordered races and failure tests)
+and mysql_payroll_freshness_migration_smoke.py (legacy/partial/fresh structures).
+Run tests/mysql_payroll_freshness_browser.py for real Chrome role/CSRF and stale
+submit/approve/pay checks. All use verified disposable synthetic data only.
+See [PAYROLL_ATTENDANCE_FRESHNESS.md](../PAYROLL_ATTENDANCE_FRESHNESS.md) for the
+contract and production/recovery approval limits. A passing gate does not authorize
+production rollout or certify salary policy.
+
 ## GitHub Actions CI
 
 [ERP CI](../.github/workflows/erp-ci.yml) runs on pull requests targeting `main`,
@@ -11,7 +30,7 @@ The workflow has three independent jobs:
 | --- | --- | --- |
 | Python unit tests and syntax | Ubuntu 24.04, Python 3.14 | Install `requirements.txt`; `pip check`; compile tracked Python; parse Jinja templates; complete unittest discovery |
 | JavaScript tests and syntax | Ubuntu 24.04, Node 24 | `node --check` for tracked JS/CJS files; navigation tests; no npm install |
-| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 32 suites |
+| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 38 suites |
 
 Python, Node and runner labels select supported release lines, not immutable OS
 images. Official checkout/setup Actions are pinned to full commit SHAs with release
@@ -24,8 +43,10 @@ The helper discovers `mysqld` through PATH or the ProgramFiles MySQL installatio
 there are no developer-specific absolute paths in the workflow. It checks the
 actual executable version and rejects MariaDB/versions below MySQL 8.0.16. Image
 changes or a missing/incompatible executable fail the job rather than skip tests.
-The first hosted run is still required to establish runner compatibility; a local
-pass is not a GitHub Actions result.
+PR #29's hosted ERP CI run 39892236332 passed all three jobs, establishing that
+runner compatibility at the GUI completion commit. Local cleanup results are not
+new hosted results; Assignment 2 requires separate hosted checks for its published
+HEAD. Publishing a feature branch alone does not establish those results.
 
 ### Reading results
 
@@ -33,7 +54,7 @@ Open the pull request's Checks tab or the repository's Actions tab and inspect a
 three job results for the current commit. Each named step identifies its check;
 MySQL suites have separate log groups. Exceptions, nonzero child exit statuses and
 five-minute integration-suite timeouts fail the job. Job limits are 15 minutes
-for Python, 10 for JavaScript and 35 for MySQL. A failed integration run stops at
+for Python, 10 for JavaScript and 60 for MySQL. A failed integration run stops at
 the failing suite; later suites are not claimed as passed. Cancelled, skipped,
 missing or pending checks are not passes. New runs cancel superseded runs for the
 same ref. Required branch-protection checks need separate repository-owner setup;

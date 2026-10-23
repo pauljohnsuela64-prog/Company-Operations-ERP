@@ -5,10 +5,10 @@ No connection, migration, grant or configuration loading occurs on import.
 import re
 from dataclasses import dataclass
 
-MANIFEST_VERSION = 'erp-main-hr-revisions-v1'
+MANIFEST_VERSION = 'erp-main-attendance-evidence-v1'
 CAPABILITIES = ('mysql-enforced-checks', 'hr-revisions-008',
                 'receiving-idempotency-001', 'stock-idempotency-002',
-                'it-helpdesk-permission-codes-003')
+                'it-helpdesk-permission-codes-003', 'payroll-attendance-evidence-010')
 INNODB_TABLES = ('roles', 'permissions', 'role_permissions', 'users', 'employees', 'departments',
                  'inventory_categories', 'warehouses', 'inventory_items', 'inventory_stock',
                  'stock_movements', 'suppliers', 'purchase_requests', 'purchase_request_items',
@@ -145,4 +145,17 @@ def inspect_schema(connection, expected_database):
         for code in PERMISSIONS:
             if code not in found:
                 issues.append(f'Authorization permission code missing: {code}; operator review required, no grants applied.')
+        # Optional modules remain optional. Once installed, their participating
+        # writers require migration 010; do not grant a legacy/testing bypass.
+        import payroll_freshness as freshness
+        cursor.execute("SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('attendance_records','payroll_entries')")
+        optional = {row['TABLE_NAME'] for row in cursor.fetchall()}
+        try:
+            freshness.inspect_structure(cursor, attendance='attendance_records' in optional,
+                                        evidence='payroll_entries' in optional)
+            cursor.execute('SELECT guard_id FROM payroll_attendance_guard WHERE guard_id=1')
+            if cursor.fetchone() is None:
+                issues.append('Payroll attendance coordination row missing; migration 010 operator review required.')
+        except freshness.FreshnessError as error:
+            issues.append(str(error))
     return Inspection(tuple(issues))

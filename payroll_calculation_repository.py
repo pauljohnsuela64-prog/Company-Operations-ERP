@@ -1,3 +1,4 @@
+import payroll_freshness as freshness
 # ==========================================================
 # PAYROLL CALCULATION REPOSITORY
 # ==========================================================
@@ -89,14 +90,14 @@ def calculate_monthly_payroll_period(
 
     connection = get_connection()
 
-    cursor = connection.cursor(
-        dictionary=True
-    )
+    cursor = None
 
 
     try:
 
         connection.start_transaction()
+        cursor = connection.cursor(dictionary=True)
+        freshness.lock_guard(cursor, evidence=True)
 
 
         # ==================================================
@@ -230,6 +231,9 @@ def calculate_monthly_payroll_period(
                 )
             )
 
+
+        if any(entry['status'] in ('APPROVED', 'PAID') for entry in payroll_entries):
+            raise ValueError('Approved or paid Payroll entries cannot be recalculated.')
 
         calculated_count = 0
 
@@ -754,6 +758,8 @@ def calculate_monthly_payroll_period(
                 ),
             )
 
+            freshness.save(cursor, entry['payroll_entry_id'], employee_id, period['start_date'], period['end_date'])
+
             calculated_count += 1
 
             total_unrecorded_days += (
@@ -788,5 +794,8 @@ def calculate_monthly_payroll_period(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()

@@ -164,6 +164,7 @@ def _rollback_attendance(connection):
 
 
 def _write_attendance(raw, actor, attendance_id=None):
+    import payroll_freshness as freshness
     from attendance_validation import values, identifier, AttendanceError
     from mysql.connector import Error
     data = values(raw)
@@ -175,10 +176,13 @@ def _write_attendance(raw, actor, attendance_id=None):
     try:
         connection.start_transaction()
         cursor = connection.cursor(dictionary=True)
+        freshness.lock_guard(cursor, attendance=True)
         _check_storage(cursor)
+        previous = None
         if attendance_id is not None:
-            cursor.execute('SELECT attendance_id FROM attendance_records WHERE attendance_id=%s FOR UPDATE', (attendance_id,))
-            if cursor.fetchone() is None:
+            cursor.execute('SELECT attendance_id,employee_id,attendance_date FROM attendance_records WHERE attendance_id=%s FOR UPDATE', (attendance_id,))
+            previous = cursor.fetchone()
+            if previous is None:
                 raise AttendanceError('Attendance record not found.', 404)
         # Reference existence is checked inside the write transaction. No new
         # employee-status eligibility policy is inferred from employment status.
@@ -190,8 +194,15 @@ def _write_attendance(raw, actor, attendance_id=None):
             attendance_id = cursor.lastrowid
         else:
             cursor.execute('UPDATE attendance_records SET employee_id=%s,attendance_date=%s,time_in=%s,time_out=%s,status=%s,notes=%s,updated_by=%s WHERE attendance_id=%s', (*data.values(), actor, attendance_id))
+        keys = [(data['employee_id'], data['attendance_date'])]
+        if previous:
+            keys.append((previous['employee_id'], previous['attendance_date']))
+        freshness.advance(cursor, keys)
         connection.commit()
         return attendance_id
+    except freshness.FreshnessError as error:
+        _rollback_attendance(connection)
+        raise AttendanceError(str(error), error.status_code) from error
     except Error as error:
         _rollback_attendance(connection)
         if error.errno == 1062:

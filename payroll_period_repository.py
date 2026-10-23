@@ -1,3 +1,4 @@
+import payroll_freshness as freshness
 # ==========================================================
 # PAYROLL PERIOD REPOSITORY
 # ==========================================================
@@ -5,6 +6,34 @@
 import uuid
 
 from database import get_connection
+
+
+class PayrollScheduleError(ValueError):
+    """Safe feedback for the existing nonoverlapping-period invariant."""
+    def __init__(self, message, status_code=409):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+def _lock_nonoverlapping_schedule(cursor, start_date, end_date, exclude_id=None):
+    # Reuse a stable existing row as a writer gate, without changing any grants.
+    # All schedule creates/edits acquire it before period locks. Other payroll
+    # operations lock periods only, and never acquire this gate in reverse order.
+    cursor.execute("SELECT ENGINE FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='payroll_periods'")
+    row = cursor.fetchone()
+    if not row or row[0] != 'InnoDB':
+        raise PayrollScheduleError('Payroll scheduling is temporarily unavailable. Contact an administrator.', 503)
+    cursor.execute("SELECT permission_id FROM permissions WHERE permission_code='payroll.process' FOR UPDATE")
+    if cursor.fetchone() is None:
+        raise PayrollScheduleError('Payroll scheduling is temporarily unavailable. Contact an administrator.', 503)
+    # A current read sees a writer that committed while this transaction waited,
+    # including under REPEATABLE READ. Route preflight checks remain early feedback.
+    cursor.execute("SELECT payroll_period_id FROM payroll_periods WHERE status<>'CANCELLED' "
+                   "AND start_date<=%s AND end_date>=%s "
+                   "AND (%s IS NULL OR payroll_period_id<>%s) LIMIT 1 FOR UPDATE",
+                   (end_date, start_date, exclude_id, exclude_id))
+    if cursor.fetchone() is not None:
+        raise PayrollScheduleError('This payroll period overlaps another active period. Reload and review the schedule.')
 
 
 # ==========================================================
@@ -220,11 +249,14 @@ def create_payroll_period(
 
     connection = get_connection()
 
-    cursor = connection.cursor()
+    cursor = None
 
     try:
 
         connection.start_transaction()
+        cursor = connection.cursor()
+        freshness.lock_guard(cursor)
+        _lock_nonoverlapping_schedule(cursor, start_date, end_date)
 
 
         # ==================================================
@@ -313,8 +345,11 @@ def create_payroll_period(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()
 
 
 # ==========================================================
@@ -335,9 +370,13 @@ def update_payroll_period(
 
     connection = get_connection()
 
-    cursor = connection.cursor()
+    cursor = None
 
     try:
+        connection.start_transaction()
+        cursor = connection.cursor()
+        freshness.lock_guard(cursor)
+        _lock_nonoverlapping_schedule(cursor, start_date, end_date, payroll_period_id)
 
         cursor.execute(
             """
@@ -385,8 +424,11 @@ def update_payroll_period(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()
 
 
 # ==========================================================
@@ -402,9 +444,12 @@ def cancel_payroll_period(
 
     connection = get_connection()
 
-    cursor = connection.cursor()
+    cursor = None
 
     try:
+        connection.start_transaction()
+        cursor = connection.cursor()
+        freshness.lock_guard(cursor)
 
         cursor.execute(
             """
@@ -443,5 +488,8 @@ def cancel_payroll_period(
 
     finally:
 
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()

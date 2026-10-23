@@ -164,9 +164,20 @@ def update_leave_type(leave_type_id, leave_code, leave_name, description, annual
     identity = identifier(leave_type_id, 'Leave type')
     data = type_values(dict(leave_code=leave_code, leave_name=leave_name, description=description, annual_entitlement=annual_entitlement, is_paid=is_paid))
     with _transaction() as cursor:
-        cursor.execute('SELECT leave_type_id FROM leave_types WHERE leave_type_id=%s FOR UPDATE', (identity,))
-        if cursor.fetchone() is None:
+        cursor.execute('SELECT leave_type_id,is_paid FROM leave_types WHERE leave_type_id=%s FOR UPDATE', (identity,))
+        previous = cursor.fetchone()
+        if previous is None:
             raise LeaveError('Leave type not found.', 404)
+        if bool(previous['is_paid']) != data['is_paid']:
+            import payroll_freshness as freshness
+            freshness.inspect_structure(cursor, attendance=True)
+            # Paid/unpaid classification is already a calculation input. Preserve
+            # its existing edit policy, but invalidate affected calculation evidence.
+            cursor.execute("SELECT employee_id,start_date,end_date FROM leave_requests WHERE leave_type_id=%s AND status='APPROVED' ORDER BY employee_id,start_date,leave_request_id FOR UPDATE", (identity,))
+            keys = set()
+            for request in cursor.fetchall():
+                keys.update((request['employee_id'], day) for day in freshness.work_dates(request['start_date'], request['end_date']))
+            freshness.advance(cursor, keys)
         cursor.execute('UPDATE leave_types SET leave_code=%s,leave_name=%s,description=%s,annual_entitlement=%s,is_paid=%s WHERE leave_type_id=%s', (*data.values(), identity))
 
 
@@ -1039,14 +1050,19 @@ def get_leave_report_records(
 
 @contextmanager
 def _transaction(attendance=False):
+    import payroll_freshness as freshness
     connection = get_connection()  # Existing global schema admission remains active.
     cursor = None
     try:
         connection.start_transaction()
         cursor = connection.cursor(dictionary=True)
+        freshness.lock_guard(cursor, attendance=attendance)
         _check_storage(cursor, attendance)
         yield cursor
         connection.commit()
+    except freshness.FreshnessError as error:
+        _rollback(connection)
+        raise LeaveError(str(error), error.status_code) from error
     except Error as error:
         _rollback(connection)
         if error.errno == 1062:
@@ -1180,6 +1196,10 @@ def approve_leave_request(leave_request_id, reviewed_by):
                 missing.append(day)
         for day in missing:
             cursor.execute("INSERT INTO attendance_records(employee_id,attendance_date,time_in,time_out,status,notes,created_by) VALUES(%s,%s,NULL,NULL,'ON_LEAVE',%s,%s)", (row['employee_id'], day, f"Approved leave {row['request_number']} - {leave_type['leave_name']}", actor))
+        import payroll_freshness as freshness
+        # Approval changes the existing Leave classification used by calculation,
+        # including already-present ON_LEAVE rows; capture all covered weekdays.
+        freshness.advance(cursor, [(row['employee_id'], day) for day in freshness.work_dates(start, end)])
         cursor.execute("UPDATE leave_requests SET status='APPROVED',reviewed_by=%s,reviewed_at=NOW(),rejection_reason=NULL WHERE leave_request_id=%s", (actor, identity))
 
 

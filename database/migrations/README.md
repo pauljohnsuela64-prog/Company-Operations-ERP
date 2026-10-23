@@ -141,3 +141,15 @@ No new central audit events are introduced in Step 2.
 
 Run `tests/mysql_stock_smoke.py` for disposable migration/idempotency and mixed
 receiving tests. No development or production migration is applied by those tests.
+
+
+## 010 ? Payroll Attendance freshness (development approval only)
+
+Explicit additive migration: 010_payroll_attendance_freshness.py. Required CLI
+arguments are --host, --port, --user and --database; password is prompted. No
+application defaults or import-time DDL. Under current approval execute only in
+verified disposable MySQL with synthetic data. Existing generations are preserved;
+legacy Payroll evidence remains NULL and statuses/amounts/history are untouched.
+Missing/incompatible runtime structures fail closed rather than being repaired.
+See [the integrity contract and rollout limits](../../PAYROLL_ATTENDANCE_FRESHNESS.md).
+Production rollout and APPROVED recovery require separate owner approval.
