@@ -41,6 +41,12 @@ files contain the guard, generations, snapshots and three nullable evidence/scop
 columns. Existing installations require explicit migration 010; runtime/import and
 readiness inspection never create or repair these structures.
 
+Schema admission is shared across the application. Missing or incompatible
+freshness structures can therefore make database-backed requests, including login,
+temporarily unavailable, rather than affecting Payroll writes alone. Plan a drained
+maintenance window; do not start new workers against an unmigrated database. The
+bounded admission lease is not permission to run mixed application versions.
+
 The migration requires explicit host, port, user and database and prompts for a
 password. It does not read application connection defaults. For this approval,
 execute it only inside the verified synthetic disposable harness. It preflights

@@ -1,5 +1,57 @@
 # ERP v1 cleanup progress
 
+## Final publication review - 2026-10-23
+
+Reviewed the eight original cleanup/freshness commits in their exact order against
+origin/main ee7e49b061a43891d9593f251fcf868004e85e2d, including merged GUI completion
+1f8d47c4dcd4a5549dfd748a5c7aa33bf44eea5c. No significant security, Payroll integrity
+or migration compatibility blocker was found in the reviewed scope. The initial
+working tree was clean. A separate documentation-only review commit corrects stale
+security summaries, records the cumulative scope and clarifies application-wide
+schema unavailability; the final publication therefore contains nine commits.
+
+Actual cumulative scope is **48 changed files against origin/main**. The earlier
+29-file manifest describes only the freshness continuation after 27bf6cf; it is
+not the cumulative Assignment 2 count. All 48 files were reviewed and are cleanup
+repairs, approved Payroll integration, focused tests or documentation.
+
+Previously passing results were checked against the available actual logs and
+assertions: 543 Python tests, 11 navigation tests, 38 smoke suites, unchanged C-05
+probe, 15 scenarios, sixteen RR/RC ordered races, fault tests and affected Chrome
+workflows. No runtime change was needed and successful expensive suites were not
+rerun for this documentation-only review. Whitespace and manifest/ancestry checks
+are repeated before publication. Disposable isolation verifies loopback, actual
+server datadir and held-child PID; migration tests build legacy schemas without
+freshness structures and preserve old columns/values before repeated upgrades.
+
+Deployment remains unapproved. Drain every participating writer; verify backups,
+target/version/engines and additive migration 010; deploy all new workers together;
+verify schema admission before resuming writes. Missing/incompatible structures
+can block application-wide database-backed requests, including login. DDL commits
+implicitly; partial upgrades require operator inspection, and reverting to old
+writers forfeits the integrity guarantee. No company data or production migration
+was used in this review. APPROVED recovery remains a proposal, with no bypass or
+automatic reopening. PAID history and Payroll arithmetic are preserved.
+
+Outstanding owner decisions remain D-01 Purchase Request self-approval, D-02
+historical UOM semantics/conversion restrictions, D-03 salary/cutoff/lifecycle
+certification, APPROVED/PAID recovery and production rollout. Physical devices,
+manual screen readers, other browsers, production TLS/proxy/restore and capacity
+remain unverified. Publication authorizes only the feature branch for manual PR
+review; it does not authorize production readiness, PR creation/merge or Assignment 3.
+
+Reviewed original eight full SHAs, in order:
+
+- 5c523a1a7164c2d0a688a3c6a9a62ec5a40a6871 Prevent automatic receiving retries after uncertain commit or rollback
+- 8b529d472c02e797eb9bdb32d25614a80c3b2764 Align Supplier email forms with historical validation contract
+- d2893958facc0dd5e3849a09265943ce743fc876 Enforce existing Payroll period nonoverlap inside write transactions
+- 9ddf30fab297f2b7127f418a80819d5fa42d828e Close authentication connections when cursor setup or cleanup fails
+- 27bf6cf06aadd8e3943892d049ffbc42cb70d7f7 Record ERP v1 audit results and unresolved Payroll freshness release gate
+- 7cac7b2bc124e313fd900b2fad72697349530723 Persist and enforce scoped Payroll Attendance freshness
+- a2824b231607cfa4cc40eac91225fa32ac36b5ef Verify Payroll freshness migrations, races and Chrome workflows
+- 5ddab3bfb3124c08984f60ea8838134aeddf3637 Document verified Payroll freshness and rollout approval limits
+
+
 ## Current approved implementation checkpoint ? 2026-10-23
 
 C-05 is resolved in development: durable source generations, persisted calculation

@@ -16,7 +16,8 @@ own view permission (see [NAVIGATION_DASHBOARD_RELIABILITY.md](NAVIGATION_DASHBO
 Merged receiving integration and Procurement audit coverage are also tested.
 The signed-cookie revocation, best-effort audit and deployment limitations remain.
 Consult [ERP_V1_CLEANUP_REPORT.md](ERP_V1_CLEANUP_REPORT.md) for current findings,
-including the unresolved Payroll freshness release blocker.
+including the verified Payroll freshness development fix and remaining production
+rollout, salary-policy and APPROVED recovery approvals.
 
 ## Scope and findings
 

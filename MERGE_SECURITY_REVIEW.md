@@ -9,7 +9,7 @@ Procurement navigation limitations were subsequently fixed by the merged
 authorization/navigation work. They are not current unresolved vulnerabilities.
 Best-effort audit durability and deployment HTTPS/proxy limitations still apply.
 See [ERP_V1_CLEANUP_REPORT.md](ERP_V1_CLEANUP_REPORT.md) for the current audit and
-the unresolved Payroll freshness release blocker.
+the verified development fix for Payroll freshness and remaining rollout/policy gates.
 
 ## Resolution
 

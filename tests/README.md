@@ -45,7 +45,8 @@ actual executable version and rejects MariaDB/versions below MySQL 8.0.16. Image
 changes or a missing/incompatible executable fail the job rather than skip tests.
 PR #29's hosted ERP CI run 39892236332 passed all three jobs, establishing that
 runner compatibility at the GUI completion commit. Local cleanup results are not
-new hosted results; Assignment 2 has not been pushed.
+new hosted results; Assignment 2 requires separate hosted checks for its published
+HEAD. Publishing a feature branch alone does not establish those results.
 
 ### Reading results
 
