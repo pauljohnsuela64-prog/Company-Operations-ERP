@@ -327,3 +327,32 @@ button.logout-link { background: transparent; font-family: inherit; cursor: poin
 @media (min-width: 1200px) {
     .catalog-item-filters { grid-template-columns: minmax(160px, 2fr) minmax(160px, 2fr) minmax(120px, 1fr) minmax(120px, 1fr) auto; }
 }
+
+/* Remaining mainline modules opt into the established workspace foundation. */
+.modern-page .workspace-heading { flex-wrap: wrap; }
+.modern-page .workspace-heading > * { min-width: 0; }
+.modern-page .workspace-heading p { margin-bottom: 0; }
+.modern-page .workspace-heading h1 { margin-bottom: 8px; }
+.modern-page .form-select { text-overflow: ellipsis; }
+.modern-page .workspace-table-scroll { margin-bottom: 16px; }
+.modern-page .workspace-table:has(tbody > tr:only-child > td[colspan]) { min-width: 0; }
+.modern-page .workspace-table td[colspan] { white-space: normal; overflow-wrap: anywhere; }
+.modern-report-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
+.modern-report-filters > div { min-width: 0; }
+.modern-badge { border-radius: 20px; font-weight: 600; padding: 7px 10px; white-space: normal; line-height: 1.4; }
+.modern-page .workspace-pagination { background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: var(--erp-radius); }
+@media (max-width: 1199.98px) {
+    .modern-report-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 767.98px) {
+    .modern-report-filters { grid-template-columns: minmax(0, 1fr); }
+}
+@media print {
+    .modern-page .workspace-table-scroll { overflow: visible; border: 0; }
+    .modern-page .workspace-table { min-width: 0; table-layout: auto; font-size: 9pt; }
+    .modern-page .workspace-table td, .modern-page .workspace-table th { min-width: 0; padding: 5px; }
+    .modern-page .workspace-filters, .modern-page .workflow-actions, .modern-page .workspace-pagination { display: none; }
+    .modern-page .card { box-shadow: none !important; break-inside: auto; }
+    .modern-page thead { display: table-header-group; }
+    .modern-page tr { break-inside: avoid; }
+}
