@@ -1,175 +1,126 @@
-# Company Operations ERP System
+# Company Operations ERP
 
-A modular Enterprise Resource Planning (ERP) system built with Python, Flask, MySQL, Bootstrap, and JavaScript.
+Flask/MySQL ERP with a responsive navy/slate workspace. Assignments 1 (GUI) and
+2 (cleanup/integrity) are merged. Assignment 3 independently verifies baseline
+4b927555c5e76aa236bf9924895daec4c27198df. Readiness is assessed separately for
+isolated synthetic demos, internal pilots and production; this is not production
+certification or deployment authorization.
 
-The system is designed to centralize several company operations into one application, including human resources, inventory, procurement, IT asset management, expenses, reporting, user management, and audit logging.
+## Implemented modules
 
-## Planned Modules
+- Authentication, users/roles/permissions, dashboard and central audit viewing.
+- Departments, Employees/revision conflicts, Attendance, Leave/balances and HR reports.
+- Inventory categories/items, Warehouses, Stock In/Out, movements, reconciliation
+  and reports with Decimal transactions and UUID duplicate protection.
+- Suppliers, Purchase Requests/items/approval, Purchase Orders and partial/full
+  Goods Receiving connected to stock.
+- Finance expense categories, expenses, budgets, approvals/payments and exports.
+- Payroll compensation, periods, entries, monthly calculation, adjustments,
+  submit/return/approve/pay, paid payslips and reports. Salary/cutoff/pay-type and
+  employment lifecycle policies are not certified for real salary processing.
+- IT Assets registration/custody/return/maintenance/lifecycle/reports and Help Desk
+  ticket creation/assignment/progression/resolution/closure with histories.
 
-- User Authentication
-- Roles and Permissions
-- Dashboard
-- Departments
-- Employee Management
-- Attendance Management
-- Leave Management
-- Inventory Management
-- Warehouse Management
-- Supplier Management
-- Purchase Requests
-- Purchase Orders
-- IT Asset Management
-- Help Desk Ticketing
-- Expense Management
-- Reports and Analytics
-- Audit Logs
+## Technology and safe synthetic verification
 
-## Technology Stack
-
-- Python
-- Flask
-- MySQL
-- HTML
-- Bootstrap
-- CSS
-- JavaScript
-- Chart.js
-- openpyxl
-
-## Project Status
-
-🚧 Currently under development.
-
-## Session security and deployment
-
-Authenticated application requests load the active user, current role and current
-permissions with one joined MySQL query. Decorators and navigation share this
-request-local state. Cookie permissions are ignored and removed. Anonymous
-requests and static assets do not trigger this query. Authorization query failure
-returns HTTP 503 and cannot authorize a business operation using cached rights.
-
-Session inactivity expires after 30 minutes and absolute login age after 8 hours.
-Configure positive integer seconds with `ERP_SESSION_IDLE_SECONDS` and
-`ERP_SESSION_ABSOLUTE_SECONDS`. Activity refreshes only the idle timestamp; it does
-not move the login time. Cookies remain browser-session cookies. Legacy sessions
-without the new security metadata require a one-time reauthentication. All workers
-must run the new code and use the same stable signing secret and synchronized clocks.
-No permission names, seeded role assignments or business policies were changed.
-
-An HMAC credential marker binds each session to its user ID and stored password
-hash. The password hash is never included in the cookie or logs. Password changes
-invalidate all existing sessions on their next application request. Disabled or
-deleted accounts are rejected, and committed role/permission changes apply to the
-next authorization lookup. This is not a transaction-level revocation guarantee:
-a request authorized before a concurrent revocation may still finish.
-
-Set the following explicitly in the deployment environment (see `.env.example`):
-
-| Setting | Local HTTP development | Production HTTPS |
-| --- | --- | --- |
-| `ERP_ENV` | `development` | `production` |
-| `ERP_DEBUG` | `false`, or explicit `true` for local debugging | `false` required |
-| Session `Secure` cookie | Disabled | Enforced |
-| Session `HttpOnly` cookie | Enabled | Enabled |
-| Session `SameSite` cookie | `Lax` | `Lax` |
-
-`ERP_ENV` defaults to development; do not rely on this default in deployment.
-Production refuses debug mode and missing/short/example signing keys. Generate a
-random `SECRET_KEY` with at least 32 bytes of entropy, store it outside source
-control, and supply it consistently to every worker. The minimum-length check is
-not an entropy guarantee. Changing the signing key invalidates existing cookies.
-Do not expose `python app.py` or Flask's development server as a production server;
-use a supported WSGI server behind verified HTTPS termination. External hosting
-must not override production DEBUG settings or enable a debugger.
-
-TLS, public host restrictions, proxy topology, HSTS and WSGI settings cannot be
-verified from this repository. No `ProxyFix` trust is enabled automatically; if a
-reverse proxy is used, configure only its verified forwarded-header hop counts.
-Production Secure cookies will not work over plain HTTP. Local HTTP testing should
-retain the development/testing profile. No database migration is required.
-
-Logout now requires a valid CSRF-protected POST and retains the best-effort audit
-helper. GET /logout only renders confirmation and does not refresh, clear, or
-otherwise change authentication metadata. During an authorization outage, POST
-logout may clear the local session without fresh permissions;
-this exception grants no business access, and audit storage failure cannot prevent
-logout. Server-side individual-session revocation is not provided: a copied valid
-cookie can remain usable until expiry or credential change, and disabling then
-reactivating an account can make an unexpired copied cookie usable again. Browser
-session restore may retain cookies; server-side idle/absolute limits still apply.
-
-Run the automated checks without using company database settings:
+Python 3.14, Flask/Jinja, MySQL 8.0.16+ with enforced CHECKs and InnoDB, Bootstrap
+5.3.8, CSS/JavaScript and openpyxl. Requirements are pinned in requirements.txt.
+Node 24 runs navigation/CDP checks without npm dependencies. Local release checks
+used MySQL Community 8.0.46 and Windows; see the test report for exact versions.
 
 ```powershell
-.venv\Scripts\python.exe -m unittest discover -s tests -q
+py -3.14 -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements.txt
+.venv/Scripts/python.exe -m pip check
+.venv/Scripts/python.exe -B -m unittest discover -s tests -q
 node --test tests/horizontal_navigation.test.cjs
-.venv\Scripts\python.exe tests/mysql_audit_smoke.py
-.venv\Scripts\python.exe tests/mysql_security_smoke.py
+.venv/Scripts/python.exe -B scripts/ci_checks.py python
+.venv/Scripts/python.exe -B scripts/ci_checks.py javascript
+.venv/Scripts/python.exe -B scripts/ci_checks.py mysql
+.venv/Scripts/python.exe -B tests/mysql_payroll_freshness_audit.py
+.venv/Scripts/python.exe -B tests/mysql_release_rehearsal.py
+.venv/Scripts/python.exe -B tests/mysql_payroll_freshness_browser.py
 ```
 
-Each MySQL runner creates and verifies its own disposable server and synthetic
-records. No development/production schema or records are used. Browser verification
-still needs to confirm real HTTPS cookie behavior, local HTTP login, multiple-tab
-expiry/re-login, and the actual WSGI/proxy configuration before deployment.
+MySQL runners create --no-defaults servers on dynamic loopback ports, verify their
+selected datadir and held-child PID, seed synthetic records and stop only their own
+server. They do not use company settings in .env. Investigate identity/cleanup
+failures; never fall back to an existing server. scripts/ci_checks.py mysql
+accepts --mysqld for an explicit installed executable, never a database endpoint.
 
+Visual/accessibility suites require ERP_GUI_BOOTSTRAP_CSS pointing to trusted local
+Bootstrap 5.3.8 CSS; visual suites also use ERP_GUI_SCREENSHOTS. They serve that
+cached CSS and block other external resources. See ERP_V1_TEST_REPORT.md for
+browser commands and coverage. Synthetic root/no-password connections and fixture
+passwords are test-only. Do not run setup/connection-check scripts against
+workstation defaults as a substitute for isolated tests.
 
-## Application-wide CSRF protection (Security Part 2)
+For a separately authorized persistent development instance, provision a dedicated
+synthetic database with explicit configuration and the reviewed schema/migrations.
+The disposable runners demonstrate reproducible setup, not production provisioning.
+Flask's development server is only suitable for an isolated local target.
 
-Install the pinned requirements before starting the application:
+## Security and integrity contracts
 
-```powershell
-.venv\Scripts\python.exe -m pip install -r requirements.txt
-```
+Supply SECRET_KEY and DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME explicitly.
+ERP_ENV defaults to development; production must be explicit with ERP_DEBUG=false.
+Production startup rejects missing/example/short signing keys and debug mode;
+minimum length does not prove entropy. All workers need one stable secret and
+synchronized clocks. Never put secrets or company data in Git.
 
-Flask-WTF `CSRFProtect` protects POST, PUT, PATCH and DELETE globally. No business
-routes or blueprints are exempt. All 86 original POST forms include the shared
-`templates/partials/csrf_field.html`, including standalone login. New navigation,
-logout confirmation and explicit recovery forms also include it (89 source forms
-in total). GET forms remain read-only. Logout adds the 87th POST-capable route;
-all original URL paths and business permission checks are retained. No database
-migration is needed. All business repositories and the separate procurement
-feature branch are unchanged.
+Signed sessions use an HMAC credential marker rather than exposing password hashes.
+Committed password/role/permission/active-status changes apply on the next request;
+this is not retroactive cancellation of an in-flight authorized transaction.
+Defaults: 30-minute idle and eight-hour absolute expiry, configurable via
+ERP_SESSION_IDLE_SECONDS and ERP_SESSION_ABSOLUTE_SECONDS. Cookies are
+HttpOnly/SameSite=Lax; production enforces Secure.
 
-Tokens expire after one hour, remain usable across tabs, and are tied to the
-current session. Successful login and logout clear the old session seed. HTML
-responses and token-refresh responses are marked `Cache-Control: no-store`.
-A missing, invalid or expired token produces HTTP 400 with no execution of the
-business view. Authorization still runs first: invalid authentication can redirect
-to login, and authorization outages can return 503, before CSRF validation runs.
-Neither path authorizes a business mutation.
+CSRF protects unsafe methods including login/logout. GET logout is confirmation;
+POST requires a token. One-hour tokens support explicit signed expired-form
+recovery without automatic business replay. Permitted values/UUIDs are retained;
+password/secret/file forms do not receive payload-preserving recovery. Receiving
+UUIDs and CSRF tokens serve different purposes: reconciliation retains the original
+receiving identity and must not replay an uncertain payment or delivery automatically.
 
-Expired forms are not automatically replayed. An explicit recovery form is offered
-only after verifying that the expired token's signature and session seed still
-match. It preserves all submitted values, duplicate fields and any opaque
-`submission_id`, replacing only `csrf_token`. Password/secret-bearing and file
-upload forms do not get payload-preserving recovery. Missing, malformed or
-other-session tokens cannot get that recovery. The user must review the original
-values and deliberately submit again. Recovery payloads are not persisted server-side or logged.
+Explicit migration 010 adds durable Attendance generations and saved calculation
+evidence under a shared Attendance/Leave/Payroll transaction guard. Stale/unknown
+submit/approve/pay rejects; legacy evidence is not fabricated, APPROVED is not
+automatically reopened and PAID history is preserved. Missing/incompatible structures
+can block database-backed requests application-wide, including login. Startup never
+automatically runs migrations.
 
-The receiving UUID and CSRF token are separate fields with separate purposes.
-Middleware recovery is tested with a fixed delivery UUID and an idempotent test
-handler. The actual feature/purchase-orders implementation is not on this branch;
-its full integration must still be tested when the branches are combined. Keep its
-submission UUID unchanged across retries; do not replace it while renewing CSRF.
-Session expiry or reauthentication invalidates old CSRF tokens and requires user
-recovery; do not automatically reopen/replay receiving as a new delivery when an
-earlier result is uncertain.
+Known limits: no per-device server-side session revocation, no automatic login rate
+limiter/MFA, best-effort central audit durability, pinned external CDN CSS, and no
+physical-device/full WCAG/production-capacity certification. See the known-issues
+register for sensitive-data, authorization, deployment and policy boundaries.
 
-There are no current fetch/XHR mutation calls. Future same-origin clients can read
-`meta[name="csrf-token"]` and send `X-CSRFToken` (or `X-CSRF-Token`) on unsafe
-requests. `GET /auth/csrf-token` returns a renewed signed token for the current
-session as JSON, without invalidating other still-valid tab tokens. It is read-only
-with respect to business data; it may create the session's CSRF seed. Do not send
-tokens to external origins, enable cross-origin credential access, or globally
-patch fetch. JSON failures return `error=csrf_failed` and HTTP 400; refreshing the
-token must never automatically repeat an uncertain payment, approval or delivery.
-HTTPS requests also retain Flask-WTF's same-origin Referer check. Verify the real
-public origin and trusted proxy configuration rather than disabling that check.
+## Deployment and release evidence
 
-Tests use real Flask-WTF-signed tokens, with CSRF enabled. Existing workflow
-fixtures now attach valid token headers; rejection tests use raw browser-style
-clients. Both disposable MySQL suites must continue to run with CSRF enabled.
-Before deployment, test real HTTP/HTTPS cookies, two open tabs, expired-form
-recovery, password re-entry, POST logout during an outage, and the receiving UUID
-integration after combining branches. Forms opened before this rollout may need
-to be reopened because they contain no CSRF field.
+Do not expose Flask's development server/debugger publicly. An approved WSGI host,
+verified TLS/proxy/host controls, managed secrets, least-privilege DB credentials,
+backups/restore, monitoring and owner UAT are prerequisites. ProxyFix trust,
+HSTS/CSP and public host controls are not enabled automatically. Production Secure
+cookies do not work over plain HTTP.
+
+Migration 010 requires approved backups, drained writers, schema validation,
+explicit migration, coordinated worker deployment, readiness proof and deliberate
+resumption. Mixed old/new/direct SQL writers are unsupported. DDL implicitly commits;
+old-code rollback forfeits the new guarantee. APPROVED recovery, PAID correction,
+salary/lifecycle, PR self-approval and historical UOM remain owner decisions.
+
+- [Release readiness](ERP_V1_RELEASE_READINESS.md)
+- [Final test report](ERP_V1_TEST_REPORT.md)
+- [Known issues and decisions](ERP_V1_KNOWN_ISSUES.md)
+- [Deployment checklist - not authorization](ERP_V1_DEPLOYMENT_CHECKLIST.md)
+- [Development changelog](ERP_V1_CHANGELOG.md)
+- [Progress and workflow matrix](ERP_V1_RELEASE_VERIFICATION_PROGRESS.md)
+- [Route/permission inventory](docs/ERP_V1_ROUTE_PERMISSION_INVENTORY.csv)
+- [Payroll freshness](PAYROLL_ATTENDANCE_FRESHNESS.md)
+- [Migrations](database/migrations/README.md)
+- [CI and focused tests](tests/README.md)
+
+CI runs Python tests/syntax/dependencies, JavaScript syntax/navigation and discovered
+MySQL smoke suites. Chrome/Edge visual/accessibility checks, the explicit original
+freshness audit and new backup/restore rehearsal are separate local checks. Green
+CI does not certify those checks or authorize deployment, release tags or company
+migrations.
