@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Help Desk Reports
@@ -6,18 +7,18 @@ Help Desk Reports
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            Help Desk Reports
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>Help Desk Reports</h1>
 
         <p class="text-muted mb-0">
             Ticket statistics and IT support performance overview.
@@ -159,20 +160,20 @@ Help Desk Reports
             Tickets by Category
         </h5>
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Help Desk Index - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table">
 
                 <thead>
 
                     <tr>
-                        <th>Category</th>
-                        <th>Total</th>
-                        <th>Open</th>
-                        <th>In Progress</th>
-                        <th>Resolved</th>
-                        <th>Closed</th>
-                        <th>Cancelled</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Open</th>
+                        <th scope="col">In Progress</th>
+                        <th scope="col">Resolved</th>
+                        <th scope="col">Closed</th>
+                        <th scope="col">Cancelled</th>
                     </tr>
 
                 </thead>
@@ -246,20 +247,20 @@ Help Desk Reports
             Tickets by Technician
         </h5>
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Help Desk Index - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table">
 
                 <thead>
 
                     <tr>
-                        <th>Technician</th>
-                        <th>Total</th>
-                        <th>Open</th>
-                        <th>In Progress</th>
-                        <th>Resolved</th>
-                        <th>Closed</th>
-                        <th>Cancelled</th>
+                        <th scope="col">Technician</th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Open</th>
+                        <th scope="col">In Progress</th>
+                        <th scope="col">Resolved</th>
+                        <th scope="col">Closed</th>
+                        <th scope="col">Cancelled</th>
                     </tr>
 
                 </thead>
@@ -338,22 +339,22 @@ Help Desk Reports
             Ticket Register
         </h5>
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Help Desk Index - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table">
 
                 <thead>
 
                     <tr>
-                        <th>Ticket</th>
-                        <th>Employee</th>
-                        <th>Category</th>
-                        <th>Subject</th>
-                        <th>Priority</th>
-                        <th>Status</th>
-                        <th>Technician</th>
-                        <th>Created</th>
-                        <th>Action</th>
+                        <th scope="col">Ticket</th>
+                        <th scope="col">Employee</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Subject</th>
+                        <th scope="col">Priority</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Technician</th>
+                        <th scope="col">Created</th>
+                        <th scope="col">Action</th>
                     </tr>
 
                 </thead>
@@ -397,25 +398,25 @@ Help Desk Reports
 
                                 {% if ticket.priority == "URGENT" %}
 
-                                    <span class="badge bg-danger">
+                                    <span class="badge modern-badge bg-danger">
                                         Urgent
                                     </span>
 
                                 {% elif ticket.priority == "HIGH" %}
 
-                                    <span class="badge bg-warning text-dark">
+                                    <span class="badge modern-badge bg-warning text-dark">
                                         High
                                     </span>
 
                                 {% elif ticket.priority == "MEDIUM" %}
 
-                                    <span class="badge bg-primary">
+                                    <span class="badge modern-badge bg-primary">
                                         Medium
                                     </span>
 
                                 {% else %}
 
-                                    <span class="badge bg-secondary">
+                                    <span class="badge modern-badge bg-secondary">
                                         Low
                                     </span>
 
@@ -481,4 +482,5 @@ Help Desk Reports
 
 </div>
 
+</div>
 {% endblock %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 IT Asset Categories
@@ -6,18 +7,18 @@ IT Asset Categories
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            IT Asset Categories
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>IT Asset Categories</h1>
 
         <p class="text-muted mb-0">
             Manage categories used by company IT assets.
@@ -45,18 +46,18 @@ IT Asset Categories
 
     <div class="card-body">
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="It Assets Index - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table">
 
                 <thead>
 
                     <tr>
-                        <th>Code</th>
-                        <th>Category</th>
-                        <th>Description</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th scope="col">Code</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
                     </tr>
 
                 </thead>
@@ -86,13 +87,13 @@ IT Asset Categories
 
                                 {% if category.is_active %}
 
-                                    <span class="badge bg-success">
+                                    <span class="badge modern-badge bg-success">
                                         Active
                                     </span>
 
                                 {% else %}
 
-                                    <span class="badge bg-secondary">
+                                    <span class="badge modern-badge bg-secondary">
                                         Inactive
                                     </span>
 
@@ -179,4 +180,5 @@ IT Asset Categories
 
 </div>
 
+</div>
 {% endblock %}

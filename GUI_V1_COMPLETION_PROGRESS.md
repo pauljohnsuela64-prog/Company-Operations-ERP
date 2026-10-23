@@ -121,3 +121,28 @@ reviewed presentation correction during Phase 4, preserving the entry endpoint.
 
 Remaining: IT/Help Desk (implementation and verification underway independently),
 Admin/auth, final polish/regression. Next: finish IT/Help Desk.
+
+## 3E IT Assets / Help Desk — verified, ready for local commit
+
+Previous HR/Payroll commit: b60b128. Files: all 9 full IT Asset pages and
+4 Help Desk pages; reusable browser fixture/routes; this checkpoint.
+
+Corporate workspace headers/cards, accessible labels (including unique per-row
+maintenance completion dates), badges, named scroll regions and report forms.
+Existing lifecycle, assignment/return tokens, historical categories, maintenance,
+technician eligibility and ticket-state forms remain unchanged.
+
+65 targeted Python tests passed (37 IT, 28 Help Desk). All seven disposable
+suites passed: IT authorization, asset validation, category validation, lifecycle,
+reporting, audit and Help Desk. Baseline form/link/script comparisons passed.
+The original Help Desk + composed IT browser workflows passed: all 17 management
+route denials/CSRF checks, lifecycle recovery and maintenance, report exports,
+revocation, Help Desk create/assign/start/resolve/close, pagination and historical
+snapshots/audits. New visual suite passed manager/reader across 15 native routes
+at 1440/1024/768/390/320, including open maintenance and in-progress tickets.
+Business snapshots unchanged; no browser JS errors, page overflow, missing
+labels, duplicate IDs or filter/action overlaps. Representative screenshots
+reviewed at desktop/tablet/mobile. Syntax and whitespace passed.
+
+Remaining: Admin/auth (independent presentation work underway), Phase 4
+cross-module polish and final regression. No blocker. Next: Admin/auth.

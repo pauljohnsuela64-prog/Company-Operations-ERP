@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Create Help Desk Ticket
@@ -6,6 +7,7 @@ Create Help Desk Ticket
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
@@ -13,9 +15,8 @@ Create Help Desk Ticket
 
 <div class="mb-4">
 
-    <h2 class="mb-1">
-        Create Help Desk Ticket
-    </h2>
+    <p class="workspace-eyebrow">Company operations</p>
+<h1>Create Help Desk Ticket</h1>
 
     <p class="text-muted mb-0">
         Record a new employee IT support request.
@@ -43,11 +44,11 @@ Create Help Desk Ticket
 
                 <div class="col-md-6">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-employee_id">
                         Employee
                     </label>
 
-                    <select
+                    <select id="field-employee_id"
                         name="employee_id"
                         class="form-select"
                         required
@@ -80,11 +81,11 @@ Create Help Desk Ticket
 
                 <div class="col-md-6">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-category_id">
                         Category
                     </label>
 
-                    <select
+                    <select id="field-category_id"
                         name="category_id"
                         class="form-select"
                         required
@@ -114,11 +115,11 @@ Create Help Desk Ticket
 
                 <div class="col-md-4">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-priority">
                         Priority
                     </label>
 
-                    <select
+                    <select id="field-priority"
                         name="priority"
                         class="form-select"
                     >
@@ -149,11 +150,11 @@ Create Help Desk Ticket
 
                 <div class="col-md-8">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-subject">
                         Subject
                     </label>
 
-                    <input
+                    <input id="field-subject"
                         type="text"
                         name="subject"
                         value="{{ form.subject }}"
@@ -170,11 +171,11 @@ Create Help Desk Ticket
 
                 <div class="col-12">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-description">
                         Description
                     </label>
 
-                    <textarea
+                    <textarea id="field-description"
                         name="description"
                         class="form-control"
                         rows="5"
@@ -216,4 +217,5 @@ Create Help Desk Ticket
 
 </div>
 
+</div>
 {% endblock %}

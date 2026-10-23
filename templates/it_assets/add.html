@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Add IT Asset
@@ -6,6 +7,7 @@ Add IT Asset
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 {% from 'it_assets/partials/form_state.html' import unavailable_option with context %}
 {% if invalid_options %}<div class="alert alert-danger" role="alert">One or more selections are unavailable. Your values have been retained; review them before resubmitting.</div>{% endif %}
 
@@ -15,9 +17,8 @@ Add IT Asset
 
 <div class="mb-4">
 
-    <h2 class="mb-1">
-        Add IT Asset
-    </h2>
+    <p class="workspace-eyebrow">Company operations</p>
+<h1>Add IT Asset</h1>
 
     <p class="text-muted mb-0">
         Register new company IT equipment.
@@ -45,11 +46,11 @@ Add IT Asset
 
                 <div class="col-md-4">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-asset_tag">
                         Asset Tag
                     </label>
 
-                    <input
+                    <input id="field-asset_tag"
                         type="text"
                         name="asset_tag"
                         class="form-control"
@@ -66,11 +67,11 @@ Add IT Asset
 
                 <div class="col-md-4">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-asset_name">
                         Asset Name
                     </label>
 
-                    <input
+                    <input id="field-asset_name"
                         type="text"
                         name="asset_name"
                         class="form-control"
@@ -87,11 +88,11 @@ Add IT Asset
 
                 <div class="col-md-4">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-category_id">
                         Category
                     </label>
 
-                    <select
+                    <select id="field-category_id"
                         name="category_id"
                         class="form-select"
                         required
@@ -121,11 +122,11 @@ Add IT Asset
 
                 <div class="col-md-4">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-brand">
                         Brand
                     </label>
 
-                    <input
+                    <input id="field-brand"
                         type="text"
                         name="brand"
                         class="form-control"
@@ -141,11 +142,11 @@ Add IT Asset
 
                 <div class="col-md-4">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-model">
                         Model
                     </label>
 
-                    <input
+                    <input id="field-model"
                         type="text"
                         name="model"
                         class="form-control"
@@ -161,11 +162,11 @@ Add IT Asset
 
                 <div class="col-md-4">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-serial_number">
                         Serial Number
                     </label>
 
-                    <input
+                    <input id="field-serial_number"
                         type="text"
                         name="serial_number"
                         class="form-control"
@@ -180,11 +181,11 @@ Add IT Asset
 
                 <div class="col-md-6">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-department_id">
                         Department
                     </label>
 
-                    <select
+                    <select id="field-department_id"
                         name="department_id"
                         class="form-select"
                     >
@@ -211,11 +212,11 @@ Add IT Asset
 
                 <div class="col-md-6">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-assigned_employee_id">
                         Assigned Employee
                     </label>
 
-                    <select
+                    <select id="field-assigned_employee_id"
                         name="assigned_employee_id"
                         class="form-select"
                     >
@@ -247,11 +248,11 @@ Add IT Asset
 
                 <div class="col-md-4">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-purchase_date">
                         Purchase Date
                     </label>
 
-                    <input
+                    <input id="field-purchase_date"
                         type="date" min="1000-01-01" max="9999-12-31"
                         name="purchase_date"
                         class="form-control"
@@ -265,11 +266,11 @@ Add IT Asset
 
                 <div class="col-md-4">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-purchase_cost">
                         Purchase Cost
                     </label>
 
-                    <input
+                    <input id="field-purchase_cost"
                         type="number" max="9999999999.99"
                         name="purchase_cost"
                         class="form-control"
@@ -286,11 +287,11 @@ Add IT Asset
 
                 <div class="col-md-4">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-warranty_expiry">
                         Warranty Expiry
                     </label>
 
-                    <input
+                    <input id="field-warranty_expiry"
                         type="date" min="1000-01-01" max="9999-12-31"
                         name="warranty_expiry"
                         class="form-control"
@@ -304,11 +305,11 @@ Add IT Asset
 
                 <div class="col-md-4">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-condition_status">
                         Condition
                     </label>
 
-                    <select
+                    <select id="field-condition_status"
                         name="condition_status"
                         class="form-select"
                     >
@@ -343,11 +344,11 @@ Add IT Asset
 
                 <div class="col-12">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-notes">
                         Notes
                     </label>
 
-                    <textarea
+                    <textarea id="field-notes"
                         name="notes"
                         class="form-control"
                         rows="3"
@@ -388,4 +389,5 @@ Add IT Asset
 
 </div>
 
+</div>
 {% endblock %}

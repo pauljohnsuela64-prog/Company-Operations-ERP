@@ -65,9 +65,14 @@ def main():
                 cur.execute("INSERT INTO roles(role_id,role_name) VALUES(990,'GUI approver')")
                 cur.execute("INSERT INTO users(user_id,role_id,username,password_hash) SELECT 990,990,'gui-approver',password_hash FROM users WHERE user_id=1")
                 cur.execute("INSERT INTO role_permissions SELECT 990,permission_id FROM permissions WHERE permission_code IN ('finance.view','finance.expenses.approve','leave.view','leave.approve','payroll.view','payroll.approve')")
+                cur.execute("INSERT INTO it_asset_categories(category_id,category_code,category_name) VALUES(990,'GUI-ASSET','GUI Asset category')")
+                cur.execute("INSERT INTO it_assets(asset_id,asset_tag,asset_name,category_id,department_id,created_by) VALUES(990,'GUI-ASSET',%s,990,990,1)", ('<img src=x>'+'A'*120,))
+                cur.execute("INSERT INTO it_assets(asset_id,asset_tag,asset_name,category_id,status,created_by) VALUES(991,'GUI-MAINT','Asset in maintenance',990,'MAINTENANCE',1)")
+                cur.execute("INSERT INTO it_asset_maintenance(maintenance_id,asset_id,maintenance_type,description,start_date,status,created_by) VALUES(990,991,'REPAIR',%s,'2026-10-01','OPEN',1)", ('M'*255,))
+                cur.execute("INSERT INTO helpdesk_tickets(ticket_id,ticket_number,employee_id,department_id,category_id,subject,description,priority,status,assigned_to,created_by) VALUES(990,'GUI-TICKET',990,990,1,%s,%s,'HIGH','OPEN',NULL,1),(991,'GUI-PROGRESS',990,990,1,'Ticket in progress','Resolve this synthetic ticket','HIGH','IN_PROGRESS',5,1)", ('S'*150,'<img src=x>'+'D'*500))
                 db.commit()
                 snapshots = {}
-                for table in ('inventory_stock','stock_movements','purchase_orders','employees','departments','attendance_records','leave_requests','leave_types','employee_compensation','payroll_periods','payroll_entries','payroll_adjustments','expenses','department_budgets'):
+                for table in ('inventory_stock','stock_movements','purchase_orders','employees','departments','attendance_records','leave_requests','leave_types','employee_compensation','payroll_periods','payroll_entries','payroll_adjustments','expenses','department_budgets','it_assets','it_asset_categories','it_asset_assignments','it_asset_maintenance','helpdesk_tickets','helpdesk_ticket_history'):
                     cur.execute(f'SELECT * FROM {table} ORDER BY 1,2')
                     snapshots[table] = cur.fetchall()
             root = review.harness.ROOT

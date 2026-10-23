@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Edit Asset Category
@@ -6,10 +7,10 @@ Edit Asset Category
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
-<h2 class="mb-4">
-    Edit IT Asset Category
-</h2>
+<p class="workspace-eyebrow">Company operations</p>
+<h1>Edit IT Asset Category</h1>
 
 <div class="card shadow-sm border-0">
 
@@ -23,11 +24,11 @@ Edit Asset Category
 
                 <div class="col-md-4">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-category_code">
                         Category Code
                     </label>
 
-                    <input
+                    <input id="field-category_code"
                         type="text"
                         name="category_code"
                         class="form-control"
@@ -41,11 +42,11 @@ Edit Asset Category
 
                 <div class="col-md-8">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-category_name">
                         Category Name
                     </label>
 
-                    <input
+                    <input id="field-category_name"
                         type="text"
                         name="category_name"
                         class="form-control"
@@ -59,11 +60,11 @@ Edit Asset Category
 
                 <div class="col-12">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-description">
                         Description
                     </label>
 
-                    <textarea
+                    <textarea id="field-description"
                         name="description"
                         class="form-control"
                         rows="3"
@@ -102,4 +103,5 @@ Edit Asset Category
 
 </div>
 
+</div>
 {% endblock %}

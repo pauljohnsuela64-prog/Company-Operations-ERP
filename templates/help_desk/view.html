@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Help Desk Ticket
@@ -6,18 +7,18 @@ Help Desk Ticket
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            {{ ticket.ticket_number }}
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>{{ ticket.ticket_number }}</h1>
 
         <p class="text-muted mb-0">
             {{ ticket.subject }}
@@ -43,31 +44,31 @@ Help Desk Ticket
 
     {% if ticket.status == "OPEN" %}
 
-        <span class="badge bg-primary">
+        <span class="badge modern-badge bg-primary">
             Open
         </span>
 
     {% elif ticket.status == "IN_PROGRESS" %}
 
-        <span class="badge bg-warning text-dark">
+        <span class="badge modern-badge bg-warning text-dark">
             In Progress
         </span>
 
     {% elif ticket.status == "RESOLVED" %}
 
-        <span class="badge bg-success">
+        <span class="badge modern-badge bg-success">
             Resolved
         </span>
 
     {% elif ticket.status == "CLOSED" %}
 
-        <span class="badge bg-secondary">
+        <span class="badge modern-badge bg-secondary">
             Closed
         </span>
 
     {% else %}
 
-        <span class="badge bg-danger">
+        <span class="badge modern-badge bg-danger">
             Cancelled
         </span>
 
@@ -76,25 +77,25 @@ Help Desk Ticket
 
     {% if ticket.priority == "URGENT" %}
 
-        <span class="badge bg-danger ms-2">
+        <span class="badge modern-badge bg-danger ms-2">
             Urgent
         </span>
 
     {% elif ticket.priority == "HIGH" %}
 
-        <span class="badge bg-warning text-dark ms-2">
+        <span class="badge modern-badge bg-warning text-dark ms-2">
             High Priority
         </span>
 
     {% elif ticket.priority == "MEDIUM" %}
 
-        <span class="badge bg-primary ms-2">
+        <span class="badge modern-badge bg-primary ms-2">
             Medium Priority
         </span>
 
     {% else %}
 
-        <span class="badge bg-secondary ms-2">
+        <span class="badge modern-badge bg-secondary ms-2">
             Low Priority
         </span>
 
@@ -263,11 +264,11 @@ Help Desk Ticket
 
                 <div class="col-md-6">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-assigned_to">
                         Technician
                     </label>
 
-                    <select
+                    <select id="field-assigned_to"
                         name="assigned_to"
                         class="form-select"
                         required
@@ -392,11 +393,11 @@ Help Desk Ticket
 
                 <div class="mb-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-resolution">
                         Resolution
                     </label>
 
-                    <textarea
+                    <textarea id="field-resolution"
                         name="resolution"
                         class="form-control"
                         rows="4"
@@ -496,19 +497,19 @@ Help Desk Ticket
         </h5>
 
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Help Desk View - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table">
 
                 <thead>
 
                     <tr>
-                        <th>Date</th>
-                        <th>Action</th>
-                        <th>Old Status</th>
-                        <th>New Status</th>
-                        <th>Details</th>
-                        <th>Changed By</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Action</th>
+                        <th scope="col">Old Status</th>
+                        <th scope="col">New Status</th>
+                        <th scope="col">Details</th>
+                        <th scope="col">Changed By</th>
                     </tr>
 
                 </thead>
@@ -572,4 +573,5 @@ Help Desk Ticket
 
 </div>
 
+</div>
 {% endblock %}

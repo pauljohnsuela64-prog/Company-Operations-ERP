@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Add Asset Maintenance
@@ -6,12 +7,12 @@ Add Asset Maintenance
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 <div class="mb-4">
 
-    <h2 class="mb-1">
-        Add Maintenance
-    </h2>
+    <p class="workspace-eyebrow">Company operations</p>
+<h1>Add Maintenance</h1>
 
     <p class="text-muted mb-0">
         {{ asset.asset_tag }}
@@ -37,11 +38,11 @@ Add Asset Maintenance
 
                 <div class="col-md-6">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-maintenance_type">
                         Maintenance Type
                     </label>
 
-                    <select
+                    <select id="field-maintenance_type"
                         name="maintenance_type"
                         class="form-select"
                         required
@@ -80,11 +81,11 @@ Add Asset Maintenance
 
                 <div class="col-md-6">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-start_date">
                         Start Date
                     </label>
 
-                    <input
+                    <input id="field-start_date"
                         type="date" min="1000-01-01" max="9999-12-31"
                         name="start_date"
                         class="form-control"
@@ -99,11 +100,11 @@ Add Asset Maintenance
 
                 <div class="col-12">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-description">
                         Description
                     </label>
 
-                    <input
+                    <input id="field-description"
                         type="text"
                         name="description"
                         class="form-control"
@@ -119,11 +120,11 @@ Add Asset Maintenance
 
                 <div class="col-md-6">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-vendor">
                         Vendor / Service Provider
                     </label>
 
-                    <input
+                    <input id="field-vendor"
                         type="text"
                         name="vendor"
                         class="form-control"
@@ -138,11 +139,11 @@ Add Asset Maintenance
 
                 <div class="col-md-6">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-cost">
                         Cost
                     </label>
 
-                    <input
+                    <input id="field-cost"
                         type="number" max="9999999999.99"
                         name="cost"
                         class="form-control"
@@ -158,11 +159,11 @@ Add Asset Maintenance
 
                 <div class="col-12">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-notes">
                         Notes
                     </label>
 
-                    <textarea
+                    <textarea id="field-notes"
                         name="notes"
                         class="form-control"
                         rows="3"
@@ -204,4 +205,5 @@ Add Asset Maintenance
 
 </div>
 
+</div>
 {% endblock %}
