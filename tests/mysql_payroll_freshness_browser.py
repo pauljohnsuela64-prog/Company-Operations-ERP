@@ -72,7 +72,11 @@ def main():
                 for key,expected in (('stale','APPROVED'),('valid','PAID'),('legacy','APPROVED')):
                     assert sql('SELECT status FROM payroll_periods WHERE payroll_period_id=%s',(fixture[key],),True)==[(expected,)]
                 assert sql('SELECT * FROM payroll_entries WHERE payroll_period_id=%s',(fixture['legacy'],),True)==before_legacy
-                assert sql("SELECT COUNT(*) FROM audit_logs WHERE module='PAYROLL' AND action='MARK_PAID' AND entity_id=%s",(str(fixture['stale']),),True)==[(0,)]
+                # Central audit uses the human period_number, not its numeric PK.
+                # Also prove the positive case so a wrong identity cannot pass vacuously.
+                for key, expected in (('stale',0),('legacy',0),('valid',1)):
+                    number=sql('SELECT period_number FROM payroll_periods WHERE payroll_period_id=%s',(fixture[key],),True)[0][0]
+                    assert sql("SELECT COUNT(*) FROM audit_logs WHERE module='PAYROLL' AND entity_type='PAYROLL_PERIOD' AND action='MARK_PAID' AND entity_id=%s",(number,),True)==[(expected,)]
                 print('PASS Chrome persisted statuses, unchanged legacy values and no success audit for blocked payment')
             return result
         with patch.object(subprocess,'run',side_effect=browser):

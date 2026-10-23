@@ -36,7 +36,7 @@ module.exports=async({send,tab,evaluate,navigate,until,errors,dialogs,setConfirm
   }
   const manager=await login('review-user'),viewer=await login('denied-user');
   const modules=[
-    {key:'suppliers',url:'/procurement/suppliers',history:'SUP-HISTORY',code:'SUP-BROWSER',name:'supplier_name',long:'address',fields:[['supplier_code',30,true,'text'],['supplier_name',150,true,'text'],['contact_person',100,false,'text'],['email',150,false,'email'],['phone',30,false,'text'],['address',255,false,'textarea']]},
+    {key:'suppliers',url:'/procurement/suppliers',history:'SUP-HISTORY',code:'SUP-BROWSER',name:'supplier_name',long:'address',fields:[['supplier_code',30,true,'text'],['supplier_name',150,true,'text'],['contact_person',100,false,'text'],['email',150,false,'text'],['phone',30,false,'text'],['address',255,false,'textarea']]},
     {key:'categories',url:'/finance/expense-categories',history:'EXP-HISTORY',code:'EXP-BROWSER',name:'category_name',long:'description',fields:[['category_code',30,true,'text'],['category_name',100,true,'text'],['description',255,false,'textarea']]}
   ];
   for(const m of modules){

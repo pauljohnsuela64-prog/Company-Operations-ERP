@@ -102,3 +102,27 @@ class PayrollScheduleRouteTests(unittest.TestCase):
                 self.assertEqual(self.client.post('/payroll/periods/' + path, data=self.form).status_code, 302)
                 write.assert_not_called()
                 self.state['permissions'] = frozenset(['payroll.process', 'payroll.view'])
+
+    def test_approved_gui_contract_corrections_are_narrow_and_escape_values(self):
+        # No historical Git objects required: hosted unit checkouts may be shallow.
+        from flask import render_template_string
+        from gui_contracts import approved_cleanup_contracts
+        fields = ('period_name', 'start_date', 'end_date', 'pay_date')
+        original = '<form method="POST"><input name="csrf_token" value="preserved">' + ''.join(
+            '<input name="' + name + '" required maxlength="100">' for name in fields)
+        original += '<textarea name="notes"></textarea><button onclick="confirm(1)">Save</button></form>'
+        supplier = "150, false, 'email', wide=false"
+        sources = {'payroll/periods/add.html': original,
+                   'procurement/suppliers/add.html': supplier,
+                   'procurement/suppliers/edit.html': supplier,
+                   'unrelated.html': 'unchanged'}
+        approved_cleanup_contracts(sources)
+        with self.erp.app.test_request_context(method='POST', data=self.form):
+            html = render_template_string(sources['payroll/periods/add.html'])
+        self.assertIn('Submitted &lt;name&gt;', html)
+        self.assertIn('Retained notes', html)
+        self.assertIn('name="csrf_token" value="preserved"', html)
+        self.assertIn('onclick="confirm(1)"', html)
+        self.assertEqual(html.count('required maxlength="100"'), 4)
+        self.assertEqual(sources['procurement/suppliers/add.html'], "150, false, 'text', wide=false")
+        self.assertEqual(sources['unrelated.html'], 'unchanged')

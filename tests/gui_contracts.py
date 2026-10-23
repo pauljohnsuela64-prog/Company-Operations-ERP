@@ -16,6 +16,28 @@ BASELINE = '8d2a8367515d8b60152e38c280b5a5a525a72c52'
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def approved_cleanup_contracts(originals):
+    """Apply only the explicitly reviewed Assignment 2 contract corrections.
+
+    Keep the frozen GUI baseline for every other field, route, CSRF token,
+    status target and confirmation; never replace it with the current templates.
+    """
+    name = 'payroll/periods/add.html'
+    source = originals[name]
+    for field in ('period_name', 'start_date', 'end_date', 'pay_date'):
+        needle = 'name="' + field + '"'
+        assert source.count(needle) == 1, 'Frozen Payroll input changed: ' + field
+        source = source.replace(needle, needle + ' value="{{ request.form.get(\'' + field + '\', \'\') }}"')
+    source, count = re.subn(r'(name="notes"[^>]*>)(</textarea>)',
+                           r"\1{{ request.form.get('notes', '') }}\2", source, flags=re.S)
+    assert count == 1, 'Frozen Payroll notes changed'
+    originals[name] = source
+    for name in ('procurement/suppliers/add.html', 'procurement/suppliers/edit.html'):
+        needle = "150, false, 'email', wide=false"
+        assert originals[name].count(needle) == 1, 'Frozen Supplier email changed'
+        originals[name] = originals[name].replace(needle, "150, false, 'text', wide=false")
+
+
 class Contract(HTMLParser):
     def __init__(self, source):
         super().__init__(convert_charrefs=True)
@@ -53,6 +75,7 @@ def watch_contracts(prefixes):
     data = subprocess.check_output(['git', 'archive', '--format=zip', BASELINE, 'templates'], cwd=ROOT)
     with ZipFile(BytesIO(data)) as archive:
         originals = {name.removeprefix('templates/'): archive.read(name).decode('utf-8') for name in archive.namelist() if name.endswith('.html')}
+    approved_cleanup_contracts(originals)
     # Baseline period rows had two identical View cells under one Actions
     # heading. Remove only that frozen redundant read-only cell from expected
     # markup. Every remaining route/control/script still compares exactly.
