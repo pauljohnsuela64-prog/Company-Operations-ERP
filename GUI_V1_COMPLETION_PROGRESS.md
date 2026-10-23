@@ -13,7 +13,7 @@ Branch: feat/gui-v1-remaining-modules. Local commits only; no publication.
 - 3E IT Assets / Help Desk: complete, 8aaaf86.
 - 3F Administration / authentication / recovery: complete, cb25873.
 - Phase 4 polish and final regression: complete; local commit checkpoint below.
-- Final report: being finalized for the documentation commit.
+- Final report: complete in GUI_V1_MODERNIZATION_REPORT.md.
 
 ## Verification policy
 
@@ -228,3 +228,13 @@ No incomplete module remains. Physical devices, screen readers, production
 capacity and future HR/Payroll policy decisions remain outside verified scope.
 Next: record the final code commit SHA and complete the report; human review
 before publication. Nothing pushed or merged.
+
+
+## Delivery checkpoint
+
+Final verified polish commit: 2eeb0ef8af04ab1123870c5cb8b250878c39a2cf.
+All six code workstreams are complete. The exact 73-file manifest, ordered full
+commit SHAs, test results, Chrome coverage, limitations and PR organization are
+in GUI_V1_MODERNIZATION_REPORT.md. No blocker or incomplete GUI module remains.
+Working tree will be clean after the documentation-only delivery commit.
+Next: human review; no push or merge authorized for this assignment.
