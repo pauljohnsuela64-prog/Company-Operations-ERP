@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 IT Assets
@@ -23,8 +22,9 @@ IT Assets
         <p class="text-muted mb-0">
             Track company computers, devices, and IT equipment.
         </p>
+    </div>
 
-    <div>
+    <div class="workflow-actions">
 
     <a
         href="{{ url_for('it_asset_categories') }}"
@@ -52,7 +52,7 @@ IT Assets
     {% endif %}
 
 </div>
-
+</div>
 
 <!-- # ========================================== -->
 <!-- # ASSET SUMMARY -->
@@ -304,9 +304,9 @@ IT Assets
 
     <div class="card-body">
 
-        <div class="workspace-table-scroll" role="region" aria-label="It Assets Index - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="IT Assets - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0 workspace-table">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">IT Assets</caption>
 
                 <!-- # TABLE HEADER -->
 

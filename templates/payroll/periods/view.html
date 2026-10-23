@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Payroll Period
@@ -349,9 +348,9 @@ Payroll Period
         </div>
 
 
-        <div class="workspace-table-scroll" role="region" aria-label="Payroll View - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="Payroll Entries - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0 workspace-table">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Payroll Entries</caption>
 
                 <thead>
 
@@ -592,17 +591,6 @@ Payroll Period
                         </td>
 
                         <!-- # ENTRY ACTION -->
-
-                        <td>
-
-                            <a href="{{ url_for(
-            'view_payroll_entry',
-            payroll_entry_id=entry.payroll_entry_id
-        ) }}" class="btn btn-sm btn-outline-primary">
-                                View
-                            </a>
-
-                        </td>
 
                         <td>
 

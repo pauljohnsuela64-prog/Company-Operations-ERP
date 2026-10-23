@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 IT Asset Details
@@ -341,6 +340,7 @@ IT Asset Details
             {% endif %}
 
         {% else %}
+            <p class="text-muted">Currently unassigned.</p>
 
             {% if has_permission('it_assets.manage') and asset.status == 'AVAILABLE' and not (assignment_history | selectattr('returned_at', 'none') | list) %}
             <form
@@ -414,7 +414,10 @@ IT Asset Details
 
 
 
-        <!-- # ========================================== -->
+        </div>
+</div>
+
+<!-- # ========================================== -->
 <!-- # MAINTENANCE HISTORY -->
 <!-- # ========================================== -->
 
@@ -447,9 +450,9 @@ IT Asset Details
         </div>
 
 
-        <div class="workspace-table-scroll" role="region" aria-label="It Assets View - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="Maintenance History - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0 workspace-table">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Maintenance History</caption>
 
                 <thead>
 
@@ -493,7 +496,7 @@ IT Asset Details
                                 {{ maintenance.vendor or "-" }}
                             </td>
 
-                            <td>
+                            <td class="workflow-money">
 
                                 {% if maintenance.cost is not none %}
 
@@ -603,11 +606,6 @@ IT Asset Details
 
 </div>
 
-    </div>
-
-</div>
-
-
 <!-- # ========================================== -->
 <!-- # ASSIGNMENT HISTORY -->
 <!-- # ========================================== -->
@@ -621,9 +619,9 @@ IT Asset Details
         </h5>
 
 
-        <div class="workspace-table-scroll" role="region" aria-label="It Assets View - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="Assignment History - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0 workspace-table">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Assignment History</caption>
 
                 <thead>
 

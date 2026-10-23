@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import "partials/workspace_components.html" as ui with context %}
 
 
 {% block title %}
@@ -64,16 +63,16 @@ Employees
         {% if not listing_error %}
         <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
             <p class="text-muted mb-0" aria-live="polite">{{ total }} matching employee{{ '' if total == 1 else 's' }}. Page {{ page }} of {{ pages }}.</p>
-            <nav aria-label="Employee pages" class="workflow-actions">
+            <nav aria-label="Employee pages" class="workspace-pagination">
                 {% if page > 1 %}<a rel="prev" class="btn btn-sm btn-outline-primary" href="{{ url_for('employees',search=search,page_size=page_size,page=page-1) }}">Previous</a>{% else %}<span class="btn btn-sm btn-outline-secondary disabled" aria-disabled="true">Previous</span>{% endif %}
                 {% if page < pages %}<a rel="next" class="btn btn-sm btn-outline-primary" href="{{ url_for('employees',search=search,page_size=page_size,page=page+1) }}">Next</a>{% else %}<span class="btn btn-sm btn-outline-secondary disabled" aria-disabled="true">Next</span>{% endif %}
             </nav>
         </div>
         {% endif %}
 
-        <div class="workspace-table-scroll" role="region" aria-label="Employees Index - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="Employees - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0 workspace-table">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Employees</caption>
 
                 <thead>
 
@@ -86,7 +85,7 @@ Employees
                         <th scope="col">Status</th>
 
                         {% if has_permission('employees.edit') %}
-                            <th class="text-end">
+                            <th scope="col" class="text-end">
                                 Actions
                             </th>
                         {% endif %}

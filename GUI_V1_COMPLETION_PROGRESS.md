@@ -7,12 +7,13 @@ Branch: feat/gui-v1-remaining-modules. Local commits only; no publication.
 ## Status
 
 - Previous Foundation, Procurement, Inventory Catalog and Warehouse phases: preserved.
-- 3B-3 Stock: in progress; reviewing quantity/idempotency/report contracts.
-- 3C Finance: pending.
-- 3D HR / Attendance / Leave / current-mainline Payroll: pending.
-- 3E IT Assets / Help Desk: pending.
-- 3F Administration / authentication / recovery: pending.
-- Phase 4 cross-application polish and final regression: pending.
+- 3B-3 Stock: complete, ff9ace3.
+- 3C Finance: complete, 67ebfdc.
+- 3D HR / Attendance / Leave / current-mainline Payroll: complete, b60b128.
+- 3E IT Assets / Help Desk: complete, 8aaaf86.
+- 3F Administration / authentication / recovery: complete, cb25873.
+- Phase 4 polish and final regression: complete; local commit checkpoint below.
+- Final report: being finalized for the documentation commit.
 
 ## Verification policy
 
@@ -21,7 +22,8 @@ policy changes, seeded grant changes or paused-branch merges. Reuse successful
 checks unless later edits invalidate them. Document actual Chrome coverage and
 limitations. Each verified workstream receives a separate local commit.
 
-No implementation commits yet. No known blocking defect. Next: Stock Management.
+Initial checkpoint: no implementation commits yet; Stock was the first workstream.
+Subsequent verified checkpoints follow in order below.
 
 ## 3B-3 Stock — verified, ready for local commit
 
@@ -171,3 +173,58 @@ Syntax/whitespace passed. No security policy or production grant changes.
 
 Remaining: Phase 4 polish, combined visual checks, final Python/JS regression,
 final report and diff audit. No blocker. Next: Phase 4.
+
+
+## Phase 4 polish and final regression ? verified, ready for local commit
+
+Previous Admin/auth commit: cb25873. Files: scoped shared CSS, captions/scroll
+names and pagination in the modernized module templates, Payroll period row,
+IT panel/header hierarchy, Budget row closing tag and test helpers. No previously
+completed module template, shared workspace macro or application JS was changed.
+
+Resolved the baseline duplicate Payroll View cell while retaining its one
+intended View route and paid-only Payslip action. The contract comparator has
+one explicit, exact baseline-source adjustment for that redundant read-only
+cell; every other request/link/script contract still compares exactly. DOM
+checks enforce eleven Payroll columns and one View link per entry. Repaired
+unclosed IT listing header wrappers, separated assignment/maintenance panels,
+and closed the Budget data row. These are presentation markup corrections.
+Added captions/scoped column headers and specific scroll names; removed unused
+macro imports; kept currency/status text readable; made empty placeholders fit
+without wide unused headers. Added unassigned custody text without changing
+eligibility or controls. Print rules preserve information and hide navigation.
+
+Final results:
+- Complete Python regression: 519 passed after the final markup corrections.
+  Expected audit/cleanup fault-injection logs are not real company-DB operations.
+- All 11 existing JavaScript navigation tests passed. JavaScript syntax: 27
+  files; Python compilation: 169 sources; Jinja: 110 templates. New helper syntax
+  checked explicitly. Dependency consistency and whitespace passed.
+- Applicable per-module disposable suites and native workflow/security suites
+  passed as recorded above; successful expensive checks were reused. The final
+  combined disposable Chrome suite passed remaining modules plus prior Dashboard,
+  Procurement, Inventory Catalog, Warehouse and Expense Categories at
+  1440/1024/768/390/320, with manager/reader and applicable approver roles.
+- Mobile invalid Stock, Finance, Employee, Asset and Ticket forms retained their
+  values with visible errors; existing native constraints/tokens remained.
+- Draft payslips remain blocked. A paid payslip rendered under print media,
+  navigation was hidden and a PDF artifact was generated. Print screenshot reviewed.
+- Focused follow-up covered empty states across ten native filtered pages and
+  all five widths for manager/reader, including clear placeholder sizing. Real
+  ArrowRight scrolling and visible table focus passed, as did login Tab order.
+- Further focused Chrome checks passed IT/Budget/Payroll markup hierarchy,
+  populated/empty layouts, aligned Payroll actions, all widths and manager/reader.
+- Final and follow-up suites compared baseline contracts and proved unchanged
+  inventory, procurement, employee, department, attendance, leave, compensation,
+  Payroll, expense, Budget, IT, ticket and permission-fixture snapshots.
+- No captured JS errors, missing labels, duplicate IDs, page-wide overflow or
+  overlapping filter/action groups. Reviewed representative desktop/tablet/mobile,
+  populated/long/empty/validation/error/print screenshots, not all artifacts.
+- Key white-surface palette contrast measured: navy 15.26:1, body 13.01:1,
+  muted 5.37:1, primary 6.03:1. This is not a full accessibility certification.
+
+No significant unresolved functional/security/data-integrity regression found.
+No incomplete module remains. Physical devices, screen readers, production
+capacity and future HR/Payroll policy decisions remain outside verified scope.
+Next: record the final code commit SHA and complete the report; human review
+before publication. Nothing pushed or merged.

@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 IT Help Desk
@@ -308,9 +307,9 @@ IT Help Desk
 
     <div class="card-body">
 
-        <div class="workspace-table-scroll" role="region" aria-label="Help Desk Index - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="Help Desk - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0 workspace-table">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Help Desk</caption>
 
                 <thead>
 
@@ -501,7 +500,7 @@ IT Help Desk
 </div>
 
 {% if pagination %}
-<nav class="d-flex justify-content-between align-items-center mt-3" aria-label="Help Desk pages">
+<nav class="workspace-pagination" aria-label="Help Desk pages">
     <span>Page {{ pagination.page }} of {{ pagination.pages }} | {{ pagination.summary.total_tickets }} tickets</span>
     <div>{% if pagination.page > 1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ helpdesk_page_url(pagination.page - 1) }}">Previous</a>{% endif %}
     {% if pagination.page < pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ helpdesk_page_url(pagination.page + 1) }}">Next</a>{% endif %}</div>

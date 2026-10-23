@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Attendance
@@ -384,9 +383,9 @@ Attendance
 
     <div class="card-body">
 
-        <div class="workspace-table-scroll" role="region" aria-label="Attendance Index - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="Attendance - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0 workspace-table">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Attendance</caption>
 
                 <thead>
 
@@ -538,7 +537,7 @@ Attendance
 </div>
 
 {% if pagination %}
-<nav aria-label="Attendance pages" class="d-flex flex-wrap gap-3 align-items-center mt-3">
+<nav aria-label="Attendance pages" class="workspace-pagination">
 <span>Page {{ pagination.page }} of {{ pagination.pages }} ? {{ pagination.summary.total }} records</span>
 {% if pagination.page > 1 %}<a href="{{ attendance_page_url(1) }}">First</a><a href="{{ attendance_page_url(pagination.page-1) }}" rel="prev">Previous</a>{% endif %}
 {% if pagination.page < pagination.pages %}<a href="{{ attendance_page_url(pagination.page+1) }}" rel="next">Next</a><a href="{{ attendance_page_url(pagination.pages) }}">Last</a>{% endif %}

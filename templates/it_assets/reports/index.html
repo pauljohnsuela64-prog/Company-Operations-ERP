@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 IT Asset Reports
@@ -211,9 +210,9 @@ IT Asset Reports
         </h5>
 
 
-        <div class="workspace-table-scroll" role="region" aria-label="It Assets Index - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="It Assets Reports - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle workspace-table">
+            <table class="table table-hover align-middle workspace-table"><caption class="visually-hidden">It Assets Reports</caption>
 
                 <thead>
 
@@ -273,7 +272,7 @@ IT Asset Reports
                                 {{ category.lost_count }}
                             </td>
 
-                            <td>
+                            <td class="workflow-money">
                                 ₱{{ "{:,.2f}".format(
                                     category.total_purchase_cost
                                 ) }}
@@ -307,9 +306,9 @@ IT Asset Reports
         </h5>
 
 
-        <div class="workspace-table-scroll" role="region" aria-label="It Assets Index - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="It Assets Reports - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle workspace-table">
+            <table class="table table-hover align-middle workspace-table"><caption class="visually-hidden">It Assets Reports</caption>
 
                 <thead>
 
@@ -361,7 +360,7 @@ IT Asset Reports
                                 {{ department.lost_count }}
                             </td>
 
-                            <td>
+                            <td class="workflow-money">
                                 ₱{{ "{:,.2f}".format(
                                     department.total_purchase_cost
                                 ) }}
@@ -408,9 +407,9 @@ IT Asset Reports
         </h5>
 
 
-        <div class="workspace-table-scroll" role="region" aria-label="It Assets Index - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="It Assets Reports - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle workspace-table">
+            <table class="table table-hover align-middle workspace-table"><caption class="visually-hidden">It Assets Reports</caption>
 
                 <thead>
 
@@ -479,7 +478,7 @@ IT Asset Reports
                                 {{ asset.condition_status.title() }}
                             </td>
 
-                            <td>
+                            <td class="workflow-money">
 
                                 {% if asset.purchase_cost is not none %}
 

@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import "partials/workspace_components.html" as ui with context %}
 
 
 {% block title %}
@@ -207,9 +206,9 @@ Audit Logs
 
     <div class="card-body">
 
-        <div class="workspace-table-scroll" role="region" aria-label="Admin Index - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="Admin Audit Logs - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0 workspace-table">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Admin Audit Logs</caption>
 
                 <thead>
 
@@ -324,7 +323,7 @@ Audit Logs
 
 
         {% if pagination %}
-        <nav class="d-flex justify-content-between align-items-center mt-3" aria-label="Audit log pages">
+        <nav class="workspace-pagination" aria-label="Audit log pages">
             <span>Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }} matching records | Page {{ pagination.filters.page }} of {{ pagination.pages }}</span>
             <div>{% if pagination.filters.page > 1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ audit_page_url(pagination.filters.page - 1) }}">Previous</a>{% endif %}
             {% if pagination.filters.page < pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ audit_page_url(pagination.filters.page + 1) }}">Next</a>{% endif %}</div>

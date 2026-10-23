@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import "partials/workspace_components.html" as ui with context %}
 
 
 {% block title %}
@@ -267,9 +266,9 @@ Finance Summary
 
     <div class="card-body">
 
-        <div class="workspace-table-scroll" role="region" aria-label="Finance Index - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="Finance - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0 workspace-table">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Finance</caption>
 
 
                 <!-- # TABLE HEADER -->
@@ -282,11 +281,11 @@ Finance Summary
                             Month
                         </th>
 
-                        <th class="text-center">
+                        <th scope="col" class="text-center">
                             Expenses
                         </th>
 
-                        <th class="text-end">
+                        <th scope="col" class="text-end">
                             Total Paid
                         </th>
 
@@ -365,9 +364,9 @@ Finance Summary
 
     <div class="card-body">
 
-        <div class="workspace-table-scroll" role="region" aria-label="Finance Index - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="Finance - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0 workspace-table">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Finance</caption>
 
 
                 <!-- # TABLE HEADER -->
@@ -380,11 +379,11 @@ Finance Summary
                             Category
                         </th>
 
-                        <th class="text-center">
+                        <th scope="col" class="text-center">
                             Expenses
                         </th>
 
-                        <th class="text-end">
+                        <th scope="col" class="text-end">
                             Total Paid
                         </th>
 

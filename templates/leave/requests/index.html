@@ -58,9 +58,9 @@ Leave Requests
 
     <div class="card-body">
 
-        <div class="workspace-table-scroll" role="region" aria-label="Leave Index - scroll to see all columns" tabindex="0">
+        <div class="workspace-table-scroll" role="region" aria-label="Leave Requests - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0 workspace-table">
+            <table class="table table-hover align-middle mb-0 workspace-table"><caption class="visually-hidden">Leave Requests</caption>
 
                 <thead>
 
@@ -189,7 +189,7 @@ Leave Requests
 </div>
 
 {% if pagination %}
-<nav class="d-flex justify-content-between align-items-center mt-3" aria-label="Leave request pages">
+<nav class="workspace-pagination" aria-label="Leave request pages">
     <span>Page {{ pagination.page }} of {{ pagination.pages }} | {{ pagination.summary.total }} requests</span>
     <div>{% if pagination.page > 1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ leave_page_url(pagination.page - 1) }}">Previous</a>{% endif %}
     {% if pagination.page < pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ leave_page_url(pagination.page + 1) }}">Next</a>{% endif %}</div>

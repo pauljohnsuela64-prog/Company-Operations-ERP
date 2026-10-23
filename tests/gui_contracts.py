@@ -7,6 +7,7 @@ from html.parser import HTMLParser
 from io import BytesIO
 from pathlib import Path
 import subprocess
+import re
 from zipfile import ZipFile
 from flask import template_rendered
 from jinja2 import DictLoader
@@ -52,6 +53,12 @@ def watch_contracts(prefixes):
     data = subprocess.check_output(['git', 'archive', '--format=zip', BASELINE, 'templates'], cwd=ROOT)
     with ZipFile(BytesIO(data)) as archive:
         originals = {name.removeprefix('templates/'): archive.read(name).decode('utf-8') for name in archive.namelist() if name.endswith('.html')}
+    # Baseline period rows had two identical View cells under one Actions
+    # heading. Remove only that frozen redundant read-only cell from expected
+    # markup. Every remaining route/control/script still compares exactly.
+    pattern = r'(<!-- # ENTRY ACTION -->)\s*<td>\s*<a href="{{ url_for\(\s*\'view_payroll_entry\',\s*payroll_entry_id=entry.payroll_entry_id\s*\) }}" class="btn btn-sm btn-outline-primary">\s*View\s*</a>\s*</td>'
+    originals['payroll/periods/view.html'], count = re.subn(pattern, r'\1', originals['payroll/periods/view.html'], count=1)
+    assert count == 1, 'Frozen Payroll duplicate-link fixture changed unexpectedly'
     checked = set()
 
     def verify(sender, template, context, **extra):

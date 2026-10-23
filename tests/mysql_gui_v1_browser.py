@@ -19,7 +19,7 @@ import mysql_security_review as review
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('phase', choices=['stock','finance','hr','it','admin','all'])
+    parser.add_argument('phase', choices=['stock','finance','hr','it','admin','empty','polish','all'])
     args_phase = parser.parse_args().phase
     sys.argv = [sys.argv[0]]
     vendor = Path(os.environ['ERP_GUI_BOOTSTRAP_CSS']).read_text(encoding='utf-8')
@@ -32,9 +32,6 @@ def main():
             if not isinstance(args, list) or not any(str(a).endswith('browser_security_review.cjs') for a in args):
                 return original(args, *positional, **kwargs)
             import database
-            import app as erp
-            from flask import request
-
 
             with database.get_connection() as db:
                 cur = db.cursor()
@@ -45,7 +42,7 @@ def main():
                     if statement.strip() and not re.match(r'\s*USE\b', statement, re.I):
                         cur.execute(statement)
                 # Synthetic reader fixture only; production grants are untouched.
-                cur.execute("INSERT INTO role_permissions SELECT 2,permission_id FROM permissions WHERE permission_code IN ('inventory.view','finance.view','employees.view','departments.view','attendance.view','leave.view','payroll.view','it_assets.view','helpdesk.view','audit_logs.view')")
+                cur.execute("INSERT INTO role_permissions SELECT 2,permission_id FROM permissions WHERE permission_code IN ('inventory.view','procurement.view','finance.view','employees.view','departments.view','attendance.view','leave.view','payroll.view','it_assets.view','helpdesk.view','audit_logs.view')")
                 cur.execute("INSERT INTO inventory_items(item_id,item_code,item_name,unit_of_measure) VALUES(990,'GUI-LONG',%s,'pcs')", ('<script>long</script>'+'I'*120,))
                 cur.execute("INSERT INTO warehouses(warehouse_id,warehouse_code,warehouse_name,location) VALUES(990,'GUI-WH',%s,%s)", ('W'*100,'L'*255))
                 cur.execute('INSERT INTO inventory_stock(item_id,warehouse_id,quantity) VALUES(990,990,12.34)')
@@ -62,6 +59,7 @@ def main():
                 cur.execute("INSERT INTO payroll_entries(payroll_entry_id,payroll_period_id,employee_id,compensation_id,pay_type,basic_rate,generated_by) VALUES(990,990,990,990,'MONTHLY',12345.67,1)")
                 cur.execute("INSERT INTO payroll_periods(payroll_period_id,period_number,period_name,start_date,end_date,pay_date,status,created_by) VALUES(991,'GUI-PAID','Paid GUI Payroll','2026-09-01','2026-09-30','2026-10-01','PAID',1)")
                 cur.execute("INSERT INTO payroll_entries(payroll_entry_id,payroll_period_id,employee_id,compensation_id,pay_type,basic_rate,generated_by) VALUES(991,991,990,990,'MONTHLY',12345.67,1)")
+                cur.execute("UPDATE payroll_entries SET status='PAID' WHERE payroll_entry_id=991")
                 cur.execute("INSERT INTO roles(role_id,role_name) VALUES(990,'GUI approver')")
                 cur.execute("INSERT INTO users(user_id,role_id,username,password_hash) SELECT 990,990,'gui-approver',password_hash FROM users WHERE user_id=1")
                 cur.execute("INSERT INTO role_permissions SELECT 990,permission_id FROM permissions WHERE permission_code IN ('finance.view','finance.expenses.approve','leave.view','leave.approve','payroll.view','payroll.approve')")
@@ -72,7 +70,7 @@ def main():
                 cur.execute("INSERT INTO helpdesk_tickets(ticket_id,ticket_number,employee_id,department_id,category_id,subject,description,priority,status,assigned_to,created_by) VALUES(990,'GUI-TICKET',990,990,1,%s,%s,'HIGH','OPEN',NULL,1),(991,'GUI-PROGRESS',990,990,1,'Ticket in progress','Resolve this synthetic ticket','HIGH','IN_PROGRESS',5,1)", ('S'*150,'<img src=x>'+'D'*500))
                 db.commit()
                 snapshots = {}
-                for table in ('inventory_stock','stock_movements','purchase_orders','employees','departments','attendance_records','leave_requests','leave_types','employee_compensation','payroll_periods','payroll_entries','payroll_adjustments','expenses','department_budgets','it_assets','it_asset_categories','it_asset_assignments','it_asset_maintenance','helpdesk_tickets','helpdesk_ticket_history'):
+                for table in ('inventory_stock','stock_movements','purchase_orders','employees','departments','attendance_records','leave_requests','leave_types','employee_compensation','payroll_periods','payroll_entries','payroll_adjustments','expenses','department_budgets','it_assets','it_asset_categories','it_asset_assignments','it_asset_maintenance','helpdesk_tickets','helpdesk_ticket_history','role_permissions'):
                     cur.execute(f'SELECT * FROM {table} ORDER BY 1,2')
                     snapshots[table] = cur.fetchall()
             root = review.harness.ROOT

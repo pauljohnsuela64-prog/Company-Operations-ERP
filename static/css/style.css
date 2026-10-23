@@ -335,7 +335,7 @@ button.logout-link { background: transparent; font-family: inherit; cursor: poin
 .modern-page .workspace-heading h1 { margin-bottom: 8px; }
 .modern-page .form-select { text-overflow: ellipsis; }
 .modern-page .workspace-table-scroll { margin-bottom: 16px; }
-.modern-page .workspace-table:has(tbody > tr:only-child > td[colspan]) { min-width: 0; }
+.modern-page .workspace-table:has(tbody > tr:only-child > td[colspan]:only-child) { min-width: 0; }
 .modern-page .workspace-table td[colspan] { white-space: normal; overflow-wrap: anywhere; }
 .modern-report-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
 .modern-report-filters > div { min-width: 0; }
@@ -390,3 +390,17 @@ button.logout-link { background: transparent; font-family: inherit; cursor: poin
     .auth-shell .card-body { padding: 24px !important; }
     .auth-shell > .row { min-height: calc(100vh - 32px) !important; }
 }
+
+/* Final readability polish stays scoped to the newly modernized modules. */
+.modern-page .badge { white-space: nowrap; }
+.modern-page .workspace-table .btn { min-height: 40px; white-space: nowrap; }
+.modern-page .workspace-table { min-width: 0; }
+.modern-page .workspace-table:has(thead th:nth-child(4)) { min-width: 1000px; }
+.modern-page .workspace-table:has(tbody > tr:only-child > td[colspan]:only-child) { min-width: 0; }
+@media print {
+    .modern-page .workspace-table:has(thead th:nth-child(4)) { min-width: 0; }
+    .modern-page .badge { white-space: normal; }
+}
+
+/* Empty/error placeholders are read without scrolling through unused columns. */
+.modern-page .workspace-table:has(tbody > tr:only-child > td[colspan]:only-child) thead { display: none; }
