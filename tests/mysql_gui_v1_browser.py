@@ -42,6 +42,10 @@ def main():
                 cur.execute("INSERT INTO inventory_items(item_id,item_code,item_name,unit_of_measure) VALUES(990,'GUI-LONG',%s,'pcs')", ('<script>long</script>'+'I'*120,))
                 cur.execute("INSERT INTO warehouses(warehouse_id,warehouse_code,warehouse_name,location) VALUES(990,'GUI-WH',%s,%s)", ('W'*100,'L'*255))
                 cur.execute('INSERT INTO inventory_stock(item_id,warehouse_id,quantity) VALUES(990,990,12.34)')
+                cur.execute("INSERT INTO departments(department_id,department_code,department_name) VALUES(990,'GUI-DEPT',%s)", ('Finance department '+'D'*80,))
+                cur.execute("INSERT INTO expense_categories(category_id,category_code,category_name) VALUES(990,'GUI-CAT','GUI Expenses')")
+                cur.execute("INSERT INTO expenses(expense_id,expense_number,expense_date,category_id,department_id,description,amount,status,created_by) VALUES(990,'GUI-EXPENSE','2026-10-01',990,990,%s,1234.56,'DRAFT',1)", ('<img src=x>'+'E'*200,))
+                cur.execute("INSERT INTO department_budgets(budget_id,department_id,budget_year,budget_amount,created_by) VALUES(990,990,2026,10000.00,1)")
                 db.commit()
                 snapshots = {}
                 for table in ('inventory_stock','stock_movements','purchase_orders'):

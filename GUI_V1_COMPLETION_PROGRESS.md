@@ -51,3 +51,30 @@ normal unittest discovery. No company database connections are opened by it.
 
 Remaining: Finance, HR/Payroll, IT/Help Desk, Admin/auth, final cross-module
 polish/regression. No blocker. Next workstream: Finance.
+
+## 3C Finance — verified, ready for local commit
+
+Previous Stock commit: ff9ace3. Finance files: templates/finance/index.html,
+expenses/{index,add,edit,view}.html, budgets/{index,add,edit,view}.html,
+reports/index.html; scoped shared CSS, browser fixture/routes and this checkpoint.
+Expense Categories and the selection/report partials remain intact.
+
+Workspace cards/headers, associated labels, named keyboard-scrollable tables,
+readable currency cells, responsive filters, badges and Budget pagination.
+Existing formulas, exact formatting, options, historical selections and every
+form/link/script contract preserved. Screenshot review caught currency wrapping
+and inconsistent Budget header utilities; presentation corrected and rechecked.
+
+Verification: 30 Finance + 15 Budget Python tests passed. Disposable validation,
+Budget Management, reporting, payment and audit suites passed. Baseline contracts
+checked wherever those suites render templates; the payment suite renders none,
+so the wrapper correctly reported no template coverage after its DB assertions
+passed (not an application failure). Existing Finance/Budget Chrome functional
+suite passed, including retained corrections, exact paid/budget labels, exports,
+historical pagination, CSRF and persisted audit checks. New native-route visual
+checks and baseline contracts passed for all ten Finance pages, manager/reader,
+1440/1024/768/390/320. Representative screenshots reviewed at all requested
+classes of width. Syntax/whitespace passed; no JS errors or page overflow.
+
+Remaining: HR/Payroll, IT/Help Desk, Admin/auth, final polish/regression.
+No significant blocker. Next: mainline HR, Attendance, Leave and Payroll GUI.

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 
 {% block title %}
@@ -12,19 +13,19 @@ Expenses
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER -->
 <!-- # ========================================== -->
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            Expenses
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>Expenses</h1>
 
         <p class="text-muted mb-0">
             Manage company expenses and payments.
@@ -61,7 +62,7 @@ Expenses
         <form
             method="GET"
             action="{{ url_for('expenses') }}"
-        >
+         class="modern-get-form">
 
             <!-- # SEARCH -->
 
@@ -69,11 +70,11 @@ Expenses
 
                 <div class="col-md-8">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-search">
                         Search Expenses
                     </label>
 
-                    <input
+                    <input id="field-search"
                         type="text"
                         name="search"
                         class="form-control"
@@ -96,11 +97,11 @@ Expenses
 
                 <div class="col-md-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-status">
                         Status
                     </label>
 
-                    <select
+                    <select id="field-status"
                         name="status"
                         class="form-select"
                     >
@@ -136,11 +137,11 @@ Expenses
 
                 <div class="col-md-3">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-category_id">
                         Category
                     </label>
 
-                    <select
+                    <select id="field-category_id"
                         name="category_id"
                         class="form-select"
                     >
@@ -176,11 +177,11 @@ Expenses
 
                 <div class="col-md-2">
 
-                    <label class="form-label">
+                    <label class="form-label" for="field-year">
                         Year
                     </label>
 
-                    <select
+                    <select id="field-year"
                         name="year"
                         class="form-select"
                     >
@@ -251,9 +252,9 @@ Expenses
 
     <div class="card-body">
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Finance Index - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table">
 
 
                 <!-- # TABLE HEADER -->
@@ -262,19 +263,19 @@ Expenses
 
                     <tr>
 
-                        <th>
+                        <th scope="col">
                             Expense No.
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Date
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Category
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Description
                         </th>
 
@@ -282,7 +283,7 @@ Expenses
                             Amount
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Status
                         </th>
 
@@ -321,7 +322,7 @@ Expenses
                                 {{ expense.description }}
                             </td>
 
-                            <td class="text-end">
+                            <td class="text-end workflow-money">
                                 ₱{{ "{:,.2f}".format(expense.amount) }}
                             </td>
 
@@ -329,31 +330,31 @@ Expenses
 
                                 {% if expense.status == "DRAFT" %}
 
-                                    <span class="badge text-bg-secondary">
+                                    <span class="badge modern-badge text-bg-secondary">
                                         Draft
                                     </span>
 
                                 {% elif expense.status == "APPROVED" %}
 
-                                    <span class="badge text-bg-primary">
+                                    <span class="badge modern-badge text-bg-primary">
                                         Approved
                                     </span>
 
                                 {% elif expense.status == "PAID" %}
 
-                                    <span class="badge text-bg-success">
+                                    <span class="badge modern-badge text-bg-success">
                                         Paid
                                     </span>
 
                                 {% elif expense.status == "CANCELLED" %}
 
-                                    <span class="badge text-bg-danger">
+                                    <span class="badge modern-badge text-bg-danger">
                                         Cancelled
                                     </span>
 
                                 {% else %}
 
-                                    <span class="badge text-bg-secondary">
+                                    <span class="badge modern-badge text-bg-secondary">
                                         {{ expense.status }}
                                     </span>
 
@@ -406,4 +407,5 @@ Expenses
 </div>
 
 
+</div>
 {% endblock %}

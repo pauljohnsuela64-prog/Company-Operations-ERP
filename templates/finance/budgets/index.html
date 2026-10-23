@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/workspace_components.html" as ui with context %}
 
 {% block title %}
 Department Budgets
@@ -6,19 +7,19 @@ Department Budgets
 
 
 {% block content %}
+<div class="workspace-page workflow-page modern-page">
 <p class="text-muted small">Only departments with a listed budget are included; departmentless expenses and spending without a budget are excluded.</p>
 
 <!-- # ========================================== -->
 <!-- # PAGE HEADER / YEAR FILTER -->
 <!-- # ========================================== -->
 
-<div class="d-flex flex-wrap gap-3 justify-content-between align-items-end mb-4">
+<div class="workspace-heading workflow-heading">
 
     <div>
 
-        <h2 class="mb-1">
-            Department Budgets
-        </h2>
+        <p class="workspace-eyebrow">Company operations</p>
+<h1>Department Budgets</h1>
 
         <p class="text-muted mb-0">
             Monitor annual department budgets and spending.
@@ -31,15 +32,15 @@ Department Budgets
 
         <!-- # YEAR FILTER -->
 
-        <form method="GET" action="{{ url_for('department_budgets') }}" class="d-flex flex-wrap align-items-end gap-2">
+        <form method="GET" action="{{ url_for('department_budgets') }}" class="d-flex flex-wrap align-items-end gap-2 modern-get-form">
 
             <div>
 
-                <label class="form-label mb-1">
+                <label class="form-label mb-1" for="field-year">
                     Year
                 </label>
 
-                <select name="year" class="form-select">
+                <select id="field-year" name="year" class="form-select">
 
                     {% if selected_year not in range(current_year, current_year - 5, -1) %}
                     <option value="{{ selected_year }}" selected>{{ selected_year }}</option>
@@ -200,23 +201,23 @@ Department Budgets
 
     <div class="card-body">
 
-        <div class="table-responsive">
+        <div class="workspace-table-scroll" role="region" aria-label="Finance Index - scroll to see all columns" tabindex="0">
 
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 workspace-table">
 
                 <!-- # TABLE HEADER -->
 
                 <thead>
 
                     <tr>
-                        <th>Department</th>
-                        <th>Year</th>
-                        <th>Budget</th>
-                        <th>Spent</th>
-                        <th>Remaining</th>
-                        <th>Usage</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Year</th>
+                        <th scope="col">Budget</th>
+                        <th scope="col">Spent</th>
+                        <th scope="col">Remaining</th>
+                        <th scope="col">Usage</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
                     </tr>
 
                 </thead>
@@ -286,7 +287,7 @@ Department Budgets
 
                         <!-- # BUDGET -->
 
-                        <td>
+                        <td class="workflow-money">
                             ₱{{ "{:,.2f}".format(
                             budget.budget_amount
                             ) }}
@@ -295,7 +296,7 @@ Department Budgets
 
                         <!-- # SPENT -->
 
-                        <td>
+                        <td class="workflow-money">
                             ₱{{ "{:,.2f}".format(
                             budget.spent_amount
                             ) }}
@@ -304,7 +305,7 @@ Department Budgets
 
                         <!-- # REMAINING -->
 
-                        <td>
+                        <td class="workflow-money">
                             ₱{{ "{:,.2f}".format(
                             budget.remaining_amount
                             ) }}
@@ -359,25 +360,25 @@ Department Budgets
 
                             {% if spent_amount > budget_amount %}
 
-                            <span class="badge bg-danger">
+                            <span class="badge modern-badge bg-danger">
                                 Over Budget
                             </span>
 
                             {% elif spent_amount == budget_amount %}
 
-                            <span class="badge bg-secondary">
+                            <span class="badge modern-badge bg-secondary">
                                 Fully Used
                             </span>
 
                             {% elif usage_percentage >= 80 %}
 
-                            <span class="badge bg-warning text-dark">
+                            <span class="badge modern-badge bg-warning text-dark">
                                 Warning
                             </span>
 
                             {% else %}
 
-                            <span class="badge bg-success">
+                            <span class="badge modern-badge bg-success">
                                 Normal
                             </span>
 
@@ -434,7 +435,7 @@ Department Budgets
 </div>
 
 
-{% if pagination %}<nav class="d-flex justify-content-between mt-3" aria-label="Budget pages"><span>Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }} budgets | Page {{ pagination.filters.page }} of {{ pagination.pages }}</span><div>{% if pagination.filters.page>1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ budget_page_url(pagination.filters.page-1) }}">Previous</a>{% endif %} {% if pagination.filters.page<pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ budget_page_url(pagination.filters.page+1) }}">Next</a>{% endif %}</div></nav>{% endif %}
+{% if pagination %}<nav class="workspace-pagination" aria-label="Budget pages"><span>Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }} budgets | Page {{ pagination.filters.page }} of {{ pagination.pages }}</span><div>{% if pagination.filters.page>1 %}<a rel="prev" class="btn btn-outline-primary" href="{{ budget_page_url(pagination.filters.page-1) }}">Previous</a>{% endif %} {% if pagination.filters.page<pagination.pages %}<a rel="next" class="btn btn-outline-primary" href="{{ budget_page_url(pagination.filters.page+1) }}">Next</a>{% endif %}</div></nav>{% endif %}
 
 <!-- # ========================================== -->
 <!-- # BUDGET PROGRESS BAR SCRIPT -->
@@ -477,4 +478,5 @@ Department Budgets
 
 </script>
 
+</div>
 {% endblock %}

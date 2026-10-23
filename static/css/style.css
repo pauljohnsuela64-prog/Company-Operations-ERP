@@ -356,3 +356,19 @@ button.logout-link { background: transparent; font-family: inherit; cursor: poin
     .modern-page thead { display: table-header-group; }
     .modern-page tr { break-inside: avoid; }
 }
+
+/* Filter layouts retain the existing domain-specific groups and field order. */
+.modern-page .modern-get-form { min-width: 0; max-width: 100%; gap: 16px !important; }
+.modern-page .workspace-heading > .modern-get-form { flex: 1 1 100%; }
+.modern-page .modern-get-form > div:not(.row) { min-width: 0; flex: 1 1 160px; }
+.modern-page .modern-get-form > .row { row-gap: 16px; }
+.modern-page .badge { font-size: .75rem !important; line-height: 1.4; white-space: normal; }
+.modern-page td, .modern-page dd, .modern-page code { overflow-wrap: anywhere; }
+.modern-page .form-label { overflow-wrap: anywhere; }
+@media (max-width: 767.98px) {
+    .modern-page .modern-get-form { display: flex; flex-wrap: wrap; }
+    .modern-page .modern-get-form > div:not(.row), .modern-page .modern-get-form > .btn { flex-basis: 100%; width: 100%; }
+    .modern-page .workflow-actions { width: 100%; }
+    .modern-page .workflow-actions > .btn { flex: 1 1 auto; }
+}
+.modern-page .workspace-eyebrow { font-size: .65rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 600; color: var(--erp-blue); margin-bottom: var(--erp-space-2); }

@@ -9,13 +9,13 @@ module.exports=async({send,tab,evaluate,navigate,until,errors,phase,artifacts})=
     await evaluate(t,`(()=>{const f=document.querySelector('form');f.username.value=${JSON.stringify(username)};f.password.value='review-password';f.requestSubmit();})()`);
     await until(t,`location.pathname==='/dashboard'&&document.readyState==='complete'`);return t;
   }
-  const routes={stock:['/inventory/stock','/inventory/stock/in','/inventory/stock/out','/inventory/stock/movements','/inventory/stock/reconciliation','/inventory/stock/movements?q=NO-GUI-MATCH','/inventory/stock/movements?page_size=invalid']};
+  const routes={finance:['/finance','/finance/expenses','/finance/expenses/add','/finance/expenses/990','/finance/expenses/990/edit','/finance/budgets','/finance/budgets/add','/finance/budgets/990','/finance/budgets/990/edit','/finance/reports','/finance/expenses?search=NO-GUI-MATCH'],stock:['/inventory/stock','/inventory/stock/in','/inventory/stock/out','/inventory/stock/movements','/inventory/stock/reconciliation','/inventory/stock/movements?q=NO-GUI-MATCH','/inventory/stock/movements?page_size=invalid']};
   const manager=await login('review-user'),reader=await login('denied-user');
   for(const [role,t] of [['manager',manager],['reader',reader]]){
     for(const w of [1440,1024,768,390,320]){
       await send('Emulation.setDeviceMetricsOverride',{width:w,height:1000,deviceScaleFactor:1,mobile:false},t);
       for(const url of (phase==='all'?Object.values(routes).flat():routes[phase])){
-        if(role==='reader'&&/\/(in|out)$/.test(url))continue;
+        if(role==='reader'&&(/\/(in|out|add|edit)$/.test(url)))continue;
         await navigate(t,url);
         await evaluate(t,'new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
         const result=await evaluate(t,`(()=>{
