@@ -60,3 +60,12 @@ Local receiving repair commit: `5c523a1` (full SHA recorded in final report).
 Read actual route/decorator inventory, all 26 repository function inventories, dynamic SQL construction sites, schema admission/migration manifest, authentication/CSRF, shared exports and templates/navigation. All 232 constant template url_for references resolve to known endpoints; no template safe filters or application innerHTML/eval/document.write sites found. No tracked .env. Detailed review includes Procurement parent/item/status/receiving transactions, Stock UUID/current-read/balance locks, item UOM edits/current-label joins, Finance expense-budget lock order/Decimal/reference locks, HR revisions and Attendance/Leave source semantics, Payroll generation/calculation/workflow/period/adjustments, IT custody/maintenance and Help Desk transactional history, and Admin guardian/last-active-Super-Admin protections. Existing suites provide module evidence; no blanket claim that every path is verified.
 
 Supplier final Chrome rerun including persisted legacy email assertion passed (`%TEMP%/erp_cleanup_supplier_browser_final.log`). Local supplier repair commit `8b529d4`. Applicable MySQL batch runs sequentially and logs individual successes in `%TEMP%/erp_cleanup_mysql.log`; do not claim later suites until completed.
+
+## Verification checkpoint after application fixes
+
+- Complete Python suite: 532 passed (12.781 seconds), `python -B -m unittest discover -s tests -q`, log `%TEMP%/erp_cleanup_unittest.log`.
+- JavaScript navigation: 11 passed, `node --test tests/horizontal_navigation.test.cjs`.
+- Dependencies: `python -m pip check` passed.
+- Final schedule MySQL suite passes, including observed wait on the actual permissions row via performance_schema.data_lock_waits. An earlier diagnostic used innodb_trx.trx_query filtering and failed to observe the wait; replaced with the precise waiting-table join, retaining the required actual-wait assertion.
+- `mysql_security_smoke.py` passed after the authentication cleanup, covering committed revocation/role changes, disabled users, credential invalidation and real login. Authentication fault tests (3) and session-security tests (19) also pass.
+- Schedule fix local commit: `d2893958facc0dd5e3849a09265943ce743fc876`. Remaining MySQL batch/syntax/final audit documentation pending. The explicit freshness audit remains FAIL/P1 and is not included in the 532 passing unit-test count.

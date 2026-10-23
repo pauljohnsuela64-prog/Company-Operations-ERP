@@ -100,9 +100,10 @@ def _write_user_access(user_id, actor_user_id, *, role_id=None, is_active=None):
 
 def get_user_by_username(username):
     connection = get_connection()
-    cursor = connection.cursor(dictionary=True)
+    cursor = None
 
     try:
+        cursor = connection.cursor(dictionary=True)
         cursor.execute(
             """
             SELECT
@@ -124,8 +125,11 @@ def get_user_by_username(username):
         return cursor.fetchone()
 
     finally:
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()
 
 
 def get_permissions_by_role_id(role_id):
@@ -659,8 +663,9 @@ def update_role_permissions(
 def get_authorization_state(user_id):
     """One consistent query, including roles with no granted permissions."""
     connection = get_connection()
-    cursor = connection.cursor(dictionary=True)
+    cursor = None
     try:
+        cursor = connection.cursor(dictionary=True)
         cursor.execute(
             "SELECT u.user_id, u.username, u.password_hash, u.is_active, u.role_id, r.role_name, p.permission_code "
             "FROM users u LEFT JOIN roles r ON r.role_id = u.role_id "
@@ -674,5 +679,8 @@ def get_authorization_state(user_id):
         user["permissions"] = frozenset(row["permission_code"] for row in rows if row["permission_code"] is not None)
         return user
     finally:
-        cursor.close()
-        connection.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            connection.close()
