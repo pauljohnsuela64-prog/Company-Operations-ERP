@@ -2,7 +2,29 @@
 
 Baseline: 4b927555c5e76aa236bf9924895daec4c27198df (merged PR #30).
 Branch: feat/erp-v1-release-verification. Initial tree clean; prior branches preserved.
-Assignment 3 authorizes local synthetic verification only. No publication or rollout.
+Implementation approval covered local synthetic verification only. Separate
+feature-branch publication approval is recorded below; rollout remains unauthorized.
+
+## Final publication review
+
+The original four full commit SHAs and order, clean initial tree, merged PR #30,
+origin/main baseline and exact 16-file scope were independently verified again.
+All 13 recorded log hashes match their preserved artifacts; 544 Python, 11 navigation,
+38 SQL suites, original freshness gate, migration/restore and final Chrome/Edge
+results reconcile. Final syntax/dependency/whitespace checks passed. Expensive
+successful suites were reused because reviewed test/application sources are unchanged.
+
+One additional documentation-only commit corrects the Finance procedure name to
+mysql_finance_payment_smoke, removes an unsupported Audit Logs export implication
+and deduplicates a source reference. Actual executed evidence and readiness
+classifications are unchanged. Final publication contains five commits and 16 files;
+the original four commits remain unchanged. No runtime/schema/policy changes.
+
+The latest authorization permits only feature-branch publication for manual PR
+review. Earlier no-publication statements below describe the implementation-stage
+checkpoint. No PR creation/merge, tag/release, deployment, company data operation
+or production migration is authorized. Demo remains READY only for isolated synthetic
+use; internal pilot and production remain NOT READY. All owner gates remain open.
 
 ## Checkpoint 1 - baseline and independent checks
 
@@ -87,7 +109,7 @@ Evidence root is %TEMP%; full paths and final attempts are in the test report.
 | AUTH-1 | Valid/invalid login, logout and old-tab rejection | security.py; app.py; user_repository.py | public login / authenticated session | mysql_security_smoke + composed native security browsers | PASS | SQL/security and all browser logs | No confirmed defect | No public TLS/MFA/rate limiter certification |
 | AUTH-2 | Idle/absolute expiry, password/disabled-account invalidation and role changes | security.py; tests/test_session_security.py | current active user and route permission | full Python + mysql_security_smoke | PASS | erp_release_python_final.log; resume/mysql_security_smoke.py.log | None | In-flight requests are not retroactively revoked; copied-cookie limit |
 | ADMIN-1 | Create/update users and roles; protect last Super Admin and denied operations | user_repository.py; app.py | users.manage; roles.manage | mysql_admin_integrity_smoke + browser | PASS | 38-suite evidence; browser batch | None | Company role acceptance not tested |
-| ADMIN-2 | Authorized audit filters/pages/exports, no private payload leakage | audit_log_repository.py; audit_log_validation.py | audit_logs.view | mysql_audit_smoke; mysql_audit_log_reading_smoke; native IT audit browser | PASS | 38-suite evidence; AX/GUI and IT compositions | None | Central audit remains best effort after commit |
+| ADMIN-2 | Authorized audit filters/pages, no private payload leakage | audit_log_repository.py; audit_log_validation.py | audit_logs.view | mysql_audit_smoke; mysql_audit_log_reading_smoke; native IT audit browser | PASS | 38-suite evidence; AX/GUI and IT compositions | None | Central audit remains best effort after commit |
 | PROC-1 | Supplier create/edit/status; legacy text and optional values; historical references | supplier_repository.py; supplier_management.py | procurement.view; procurement.suppliers.manage | mysql_supplier_management_smoke + corrected tables/forms composition | PASS | erp_release_tables_isolated.log; SQL suffix | RV-01 test expectation corrected | No new email-format policy |
 | PROC-2 | PR draft/items, submit, approve/reject and denied mutation | purchase_request_repository.py; app.py | procurement.requests.create/approve; procurement.view | mysql_procurement_smoke; GUI Procurement native workflow | PASS | SQL suffix; mysql_gui_procurement_browser.py.log | None | Self-approval remains existing contract, owner decision |
 | PROC-3 | PO creation, active-supplier references and warehouse receiving eligibility | purchase_order_repository.py; goods_receipt_repository.py | procurement.orders.manage; procurement.receipts.manage | PO eligibility, warehouse and Procurement suites | PASS | 38-suite evidence; Procurement GUI persistence proof | None | External writers not certified |
@@ -95,9 +117,9 @@ Evidence root is %TEMP%; full paths and final attempts are in the test report.
 | INV-1 | Category/item creation/edit/status and reference/history eligibility | inventory_category_repository.py; inventory_item_repository.py | inventory.view; inventory.categories.manage; inventory.items.manage | category/item/master smoke + catalog browser | PASS | 38-suite evidence; catalog browser | None | UOM live-label semantics unchanged |
 | INV-2 | Warehouse filters/forms/status, inactive historical assignments and races | warehouse_repository.py | inventory.view; inventory.warehouses.manage | mysql_warehouse_smoke; mysql_gui_warehouse_browser | PASS | SQL suffix; Warehouse browser | None | No history or eligibility policy changed |
 | INV-3 | Stock IN/OUT exact decimals, concurrent withdrawals and UUID protection | stock_repository.py | inventory.view; inventory.stock.manage | mysql_stock_smoke | PASS | SQL suffix/mysql_stock_smoke.py.log | None | No production load capacity claim |
-| INV-4 | Movements/reconciliation/reports/exports; no read-side stock changes | stock_repository.py; stock_repository.py | inventory.view | mysql_inventory_reporting_smoke; full GUI stock group | PASS | SQL suffix; erp_release_gui_v1_corrected.log | None | Large exports need capacity qualification |
+| INV-4 | Movements/reconciliation/reports/exports; no read-side stock changes | stock_repository.py | inventory.view | mysql_inventory_reporting_smoke; full GUI stock group | PASS | SQL suffix; erp_release_gui_v1_corrected.log | None | Large exports need capacity qualification |
 | FIN-1 | Expense categories and draft/edit/approval/payment status rules | expense_category_repository.py; expense_repository.py | finance.view; finance.categories.manage; finance.expenses.manage/approve/pay | category, validation, audit, functional smoke + Finance browser | PASS | 38-suite evidence; finance functional browser | None | No inferred new approval policy |
-| FIN-2 | Annual budget limits under concurrent payments, exact Decimal and rollback | budget_repository.py; expense_repository.py | finance.view; finance.expenses.manage/pay | mysql_budget_management_smoke; mysql_finance_smoke | PASS | 38-suite evidence | None | Departmentless/reassignment policy remains existing |
+| FIN-2 | Annual budget limits under concurrent payments, exact Decimal and rollback | budget_repository.py; expense_repository.py | finance.view; finance.expenses.manage/pay | mysql_budget_management_smoke; mysql_finance_payment_smoke | PASS | 38-suite evidence | None | Departmentless/reassignment policy remains existing |
 | FIN-3 | Report totals, authorized XLSX and safe exported strings | finance_export.py; expense_repository.py | finance.view | mysql_finance_reporting_smoke; Finance browser; GUI report | PASS | SQL suffix; Finance/GUI screenshots | None | No production export memory benchmark |
 | HR-1 | Department/employee validation, revision conflicts and historical references | department_repository.py; employee_repository.py | departments.view/manage; employees.view/create/edit | HR validation/revision/audit + listing smoke and native HR browser | PASS | 38-suite evidence; HR validation browser | None | Employment lifecycle integration is unsupported/unapproved |
 | HR-2 | Attendance unique day, times/status, retained errors and permitted edits | attendance_repository.py; attendance_validation.py | attendance.view/manage | mysql_attendance_smoke; Attendance browser | PASS | 38-suite evidence; Attendance browser | None | No new employment-status eligibility policy |
