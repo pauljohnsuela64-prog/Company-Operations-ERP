@@ -1,9 +1,101 @@
 # ERP v1 cleanup progress
 
+## Current approved implementation checkpoint ? 2026-10-23
+
+C-05 is resolved in development: durable source generations, persisted calculation
+scope/evidence and one transaction guard now protect calculation, submission,
+approval and payment. Stale/unknown APPROVED payment rejects without reopening.
+Original five cleanup commits remain unchanged. Assignment 2 is eligible for final
+review after the checks recorded below; this is not publication or production
+approval. Six findings (three P1/three P2) are addressed in development. D-03 salary
+policy acceptance remains a separate production gate.
+
+The implementation, migration contract, proven ordering, legacy handling and
+proposed recovery are in [PAYROLL_ATTENDANCE_FRESHNESS.md](PAYROLL_ATTENDANCE_FRESHNESS.md).
+No recovery workflow was implemented. Production migration/rollout, external-writer
+coordination, guard throughput qualification, backup/rollback rehearsal and owner
+approval of APPROVED/PAID correction policy remain outstanding. No push, merge,
+deployment, company-data operations or Assignment 3 were performed.
+
+Verified so far: unchanged original same-second audit PASS; all 15 investigation
+scenarios PASS; sixteen source-first/Payroll-first races under both RR and RC PASS;
+real lock timeouts/deadlocks, uncertain commits, missing/exhausted evidence and
+Leave invalidation PASS. Migration legacy/partial/repeated/core-only/Attendance-only
+checks PASS with amounts, statuses and old values preserved. Schema gate and audit
+integration PASS. Full Python: 543 tests PASS; navigation: 11 PASS; dependency check
+PASS. Syntax: 181 Python files, 110 Jinja templates and 29 JavaScript files PASS.
+The Python run initially exposed outdated narrow audit mocks; those now isolate
+the new boundary while retaining every commit/rollback/audit assertion. Dedicated
+real MySQL and Chrome tests exercise the actual boundary without mocks.
+
+Freshness Chrome PASS: manager/process and separate approver/pay roles, denied
+reader, CSRF, native confirmations, stale submit/approve/pay, NULL legacy evidence,
+explicit recalculation and successful fresh payment. No JS runtime exceptions.
+Existing composed security and IT authorization workflows also PASS. Final
+integration/browser totals are recorded in the completion checkpoint below.
+
+## Completion checkpoint ? approved freshness implementation
+
+C-05 development resolution is verified. Assignment 2 is ready for final review;
+production readiness, publication and APPROVED recovery remain separately gated.
+All five original cleanup commits are ancestors and unchanged.
+
+New logical local commits:
+
+- 7cac7b2bc124e313fd900b2fad72697349530723 ? runtime integrity, additive migration,
+  fresh schemas, schema admission and focused unit/audit fixture updates (19 files).
+- a2824b231607cfa4cc40eac91225fa32ac36b5ef ? actual MySQL migration/regression/race
+  suites and Chrome workflow/security checks (5 files).
+- Documentation commit follows these; its SHA is supplied in the final delivery.
+
+Final verification (no skipped required checks):
+
+| Check | Result | Local log / evidence |
+| --- | --- | --- |
+| Unchanged original audit | PASS, same-second stale submission rejected | %TEMP%/erp_freshness_original_final.log |
+| All 15 scenarios + sixteen RR/RC races + fault/Leave extensions | PASS | %TEMP%/erp_freshness_verified.log |
+| Migration legacy/partial/repeated/optional modules/incompatibility | PASS | %TEMP%/erp_freshness_migration_final.log |
+| Schema compatibility gate | PASS | %TEMP%/erp_freshness_schema_gate.log |
+| Cross-module transactional audit suite | PASS | %TEMP%/erp_freshness_audit_cross.log |
+| Remaining MySQL suites | 34/34 PASS; combined smoke coverage 38/38 | %TEMP%/erp_freshness_mysql_remaining.log |
+| Full Python | 543 PASS, 6.216 seconds | %TEMP%/erp_freshness_python_final.log |
+| Navigation | 11 PASS, zero skipped | node --test tests/horizontal_navigation.test.cjs |
+| Freshness Chrome | PASS roles, CSRF, confirmations, persisted outcomes | %TEMP%/erp_freshness_browser_final.log |
+| Existing Attendance Chrome | PASS | %TEMP%/erp_freshness_attendance_browser.log |
+| Existing Leave Chrome | PASS | %TEMP%/erp_freshness_leave_browser.log |
+| Syntax | 181 Python, 110 Jinja, 29 JavaScript PASS | scripts/ci_checks.py python / javascript |
+| Dependencies and whitespace | PASS | pip check; git diff --check origin/main |
+
+All database checks used verified disposable MySQL and synthetic data only. The
+full Python suite prints intentional fault-test exceptions and cleanup diagnostics;
+its final result is OK, not a failed database run. The initial full-run audit-fixture
+errors and first Chrome dialog-handling failure were corrected and their affected
+checks rerun successfully. No previous failed attempt is counted as a pass.
+
+Diff review confirmed unchanged calculation arithmetic, unchanged original audit,
+no route/template/permission edits in this continuation, no business evidence
+backfill and no company-data operations. The 29-file continuation manifest above
+includes five documentation files. No expensive successful suites were repeated
+for the final documentation update. No push/merge/deploy or Assignment 3.
+
+## Historical audit and investigation record
+
+Everything below records earlier checkpoints and proposals. Statements that C-05
+is unimplemented, failing or awaiting development approval are historical and are
+superseded by the current approved checkpoint above. Historical test counts are
+not claims about the current implementation.
+
+
 Assignment 2 audit and safe repairs are complete; **release acceptance is BLOCKED**
 by C-05 Payroll freshness and the D-03 salary-policy acceptance gate documented in
 ERP_V1_CLEANUP_REPORT.md. This is not production-readiness certification.
 Earlier checkpoints below retain their historical pending states.
+
+Current blocker-resolution continuation: investigation complete; C-05 remains
+unresolved. A concrete additive schema/legacy/payment proposal is in the report.
+Application/schema implementation is paused under section 5 of the user's
+blocker-resolution instructions pending owner decisions. Original five local
+commits remain unchanged. This continuation is not a fix or publication approval.
 
 ## Verified prerequisites
 
@@ -82,3 +174,16 @@ Supplier final Chrome rerun including persisted legacy email assertion passed (`
 - Authentication local commit: `9ddf30fab297f2b7127f418a80819d5fa42d828e`. Exact four repair SHAs and cumulative 24-file manifest are in the report. Final audit/documentation commit SHA supplied at delivery.
 - No production/schema/permission changes or paused-branch merges. No push/merge. Remaining work is human review, explicit freshness/policy integration approval, then independent Assignment 3; this checkpoint does not authorize those actions.
 - Final syntax: 174 Python files compiled, 110 Jinja templates parsed, 28 JavaScript files passed node --check. Cumulative git diff --check origin/main passed. Actual cumulative diff: 24 files. Final report manifest and four repair SHAs checked against Git. No expensive suites rerun after documentation-only updates.
+
+## Blocker-resolution continuation checkpoint
+
+- Baseline verified: feat/erp-v1-final-cleanup, clean initial tree, HEAD 27bf6cf06aadd8e3943892d049ffbc42cb70d7f7, exactly the five original full cleanup SHAs and merged GUI ancestry.
+- Read the reports, unchanged audit probe, calculation/workflow/entry/period/adjustment code, Attendance and effective Leave writers, relevant routes, schemas and migration/test conventions. No audit restart or unrelated refactor.
+- Unchanged original probe rerun: exit 1, same-second defect reproduced. Log %TEMP%/erp_freshness_resolution_baseline.log.
+- New investigation runner completed 15 actual disposable MySQL scenarios, including both validation-to-commit races held with test events. It exits 1 explicitly because no fix is present. Log %TEMP%/erp_freshness_resolution_investigation.log. Same/later-second controls, before-calculation changes, ABA edits, recalculation, moved/reassigned rows, replacement insertion, cached missing-day guard, cutoff edits, approval, payment and repeated submissions are recorded separately in the report.
+- Confirmed current behavior: source writers can commit while Payroll is held after validation/before commit; submit and approval still commit. Later-second edits normally reject; moving a row out of scope evades the inner join. Payment after an approved-run source edit remains permitted and requires explicit policy assessment.
+- Prepared (not implemented): additive guard, employee/date generation tombstones, per-entry daily snapshots and nullable evidence/version/scope metadata; writer coordination, current reads, scoped validation, migration/fresh-install/rollback/legacy plan and exact post-approval test matrix.
+- Required decisions: approve development/disposable schema implementation; approve fail-closed legacy DRAFT/PROCESSING evidence requiring explicit recalculation; choose stale/unknown APPROVED payment handling and recovery procedure. Recommended payment rejection is a proposal, not an activated policy. No PAID rewrite, automatic replay/recalculation, migration execution or paused-branch integration.
+- Changed only the two cleanup documents and tests/mysql_payroll_freshness_investigation.py. No application, schema, migration, original audit assertion or prior commit changed. Working-tree cumulative manifest is now 25 files; the committed five-cleanup-commit scope remains the prior 24.
+- No new fix commit. Original 532 Python / 11 navigation / 36 smoke results remain historical; no claim that they verify this proposal. Full fix verification and original probe PASS are still required after approval.
+- Severity unchanged: no identified P0; 2 P1 fixed and C-05 P1 unresolved; 3 P2 addressed. D-03 salary-policy acceptance remains separate. Assignment 2 is not ready for publication. No push, merge, deployment, company DB operation or Assignment 3.

@@ -1,11 +1,138 @@
 # ERP v1 cleanup and hardening report
 
+## Current approved implementation checkpoint ? 2026-10-23
+
+C-05 is resolved in development: durable source generations, persisted calculation
+scope/evidence and one transaction guard now protect calculation, submission,
+approval and payment. Stale/unknown APPROVED payment rejects without reopening.
+Original five cleanup commits remain unchanged. Assignment 2 is eligible for final
+review after the checks recorded below; this is not publication or production
+approval. Six findings (three P1/three P2) are addressed in development. D-03 salary
+policy acceptance remains a separate production gate.
+
+The implementation, migration contract, proven ordering, legacy handling and
+proposed recovery are in [PAYROLL_ATTENDANCE_FRESHNESS.md](PAYROLL_ATTENDANCE_FRESHNESS.md).
+No recovery workflow was implemented. Production migration/rollout, external-writer
+coordination, guard throughput qualification, backup/rollback rehearsal and owner
+approval of APPROVED/PAID correction policy remain outstanding. No push, merge,
+deployment, company-data operations or Assignment 3 were performed.
+
+Verified so far: unchanged original same-second audit PASS; all 15 investigation
+scenarios PASS; sixteen source-first/Payroll-first races under both RR and RC PASS;
+real lock timeouts/deadlocks, uncertain commits, missing/exhausted evidence and
+Leave invalidation PASS. Migration legacy/partial/repeated/core-only/Attendance-only
+checks PASS with amounts, statuses and old values preserved. Schema gate and audit
+integration PASS. Full Python: 543 tests PASS; navigation: 11 PASS; dependency check
+PASS. Syntax: 181 Python files, 110 Jinja templates and 29 JavaScript files PASS.
+The Python run initially exposed outdated narrow audit mocks; those now isolate
+the new boundary while retaining every commit/rollback/audit assertion. Dedicated
+real MySQL and Chrome tests exercise the actual boundary without mocks.
+
+Freshness Chrome PASS: manager/process and separate approver/pay roles, denied
+reader, CSRF, native confirmations, stale submit/approve/pay, NULL legacy evidence,
+explicit recalculation and successful fresh payment. No JS runtime exceptions.
+Existing composed security and IT authorization workflows also PASS. Final
+integration/browser totals are recorded in the completion checkpoint below.
+
+## Approved continuation file manifest
+
+29 files changed relative to preserved checkpoint 27bf6cf:
+
+- `ERP_V1_CLEANUP_PROGRESS.md`
+- `ERP_V1_CLEANUP_REPORT.md`
+- `PAYROLL_ATTENDANCE_FRESHNESS.md`
+- `attendance_repository.py`
+- `database/attendance_schema.sql`
+- `database/core_schema.sql`
+- `database/migrations/010_payroll_attendance_freshness.py`
+- `database/migrations/README.md`
+- `database/payroll_calculation_schema.sql`
+- `leave_repository.py`
+- `payroll_adjustment_repository.py`
+- `payroll_calculation_repository.py`
+- `payroll_entry_repository.py`
+- `payroll_freshness.py`
+- `payroll_period_repository.py`
+- `payroll_workflow_repository.py`
+- `schema_compatibility.py`
+- `tests/README.md`
+- `tests/browser_payroll_freshness.cjs`
+- `tests/mysql_audit_smoke.py`
+- `tests/mysql_payroll_freshness_browser.py`
+- `tests/mysql_payroll_freshness_investigation.py`
+- `tests/mysql_payroll_freshness_migration_smoke.py`
+- `tests/mysql_payroll_freshness_smoke.py`
+- `tests/test_attendance.py`
+- `tests/test_business_audit.py`
+- `tests/test_leave.py`
+- `tests/test_payroll_freshness.py`
+- `tests/test_payroll_schedule.py`
+
+## Completion checkpoint ? approved freshness implementation
+
+C-05 development resolution is verified. Assignment 2 is ready for final review;
+production readiness, publication and APPROVED recovery remain separately gated.
+All five original cleanup commits are ancestors and unchanged.
+
+New logical local commits:
+
+- 7cac7b2bc124e313fd900b2fad72697349530723 ? runtime integrity, additive migration,
+  fresh schemas, schema admission and focused unit/audit fixture updates (19 files).
+- a2824b231607cfa4cc40eac91225fa32ac36b5ef ? actual MySQL migration/regression/race
+  suites and Chrome workflow/security checks (5 files).
+- Documentation commit follows these; its SHA is supplied in the final delivery.
+
+Final verification (no skipped required checks):
+
+| Check | Result | Local log / evidence |
+| --- | --- | --- |
+| Unchanged original audit | PASS, same-second stale submission rejected | %TEMP%/erp_freshness_original_final.log |
+| All 15 scenarios + sixteen RR/RC races + fault/Leave extensions | PASS | %TEMP%/erp_freshness_verified.log |
+| Migration legacy/partial/repeated/optional modules/incompatibility | PASS | %TEMP%/erp_freshness_migration_final.log |
+| Schema compatibility gate | PASS | %TEMP%/erp_freshness_schema_gate.log |
+| Cross-module transactional audit suite | PASS | %TEMP%/erp_freshness_audit_cross.log |
+| Remaining MySQL suites | 34/34 PASS; combined smoke coverage 38/38 | %TEMP%/erp_freshness_mysql_remaining.log |
+| Full Python | 543 PASS, 6.216 seconds | %TEMP%/erp_freshness_python_final.log |
+| Navigation | 11 PASS, zero skipped | node --test tests/horizontal_navigation.test.cjs |
+| Freshness Chrome | PASS roles, CSRF, confirmations, persisted outcomes | %TEMP%/erp_freshness_browser_final.log |
+| Existing Attendance Chrome | PASS | %TEMP%/erp_freshness_attendance_browser.log |
+| Existing Leave Chrome | PASS | %TEMP%/erp_freshness_leave_browser.log |
+| Syntax | 181 Python, 110 Jinja, 29 JavaScript PASS | scripts/ci_checks.py python / javascript |
+| Dependencies and whitespace | PASS | pip check; git diff --check origin/main |
+
+All database checks used verified disposable MySQL and synthetic data only. The
+full Python suite prints intentional fault-test exceptions and cleanup diagnostics;
+its final result is OK, not a failed database run. The initial full-run audit-fixture
+errors and first Chrome dialog-handling failure were corrected and their affected
+checks rerun successfully. No previous failed attempt is counted as a pass.
+
+Diff review confirmed unchanged calculation arithmetic, unchanged original audit,
+no route/template/permission edits in this continuation, no business evidence
+backfill and no company-data operations. The 29-file continuation manifest above
+includes five documentation files. No expensive successful suites were repeated
+for the final documentation update. No push/merge/deploy or Assignment 3.
+
+## Historical audit and investigation record
+
+Everything below records earlier checkpoints and proposals. Statements that C-05
+is unimplemented, failing or awaiting development approval are historical and are
+superseded by the current approved checkpoint above. Historical test counts are
+not claims about the current implementation.
+
+
 ## Outcome
 
 **BLOCKED for release acceptance: audit and safe cleanup completed, with an
 unresolved pre-existing P1 Payroll freshness defect.** This is Assignment 2,
 not production certification or Assignment 3. No push, merge, deployment,
 company-data access, permission changes or production migrations occurred.
+
+Blocker-resolution continuation: the unchanged original audit failed again.
+An additional 15-scenario disposable investigation confirms gaps at submission,
+approval and the validation-to-commit boundary. No application/schema fix has
+been implemented. A concrete revision proposal and the required owner decisions
+are below; approval is required before those changes, per section 5 of the
+blocker-resolution assignment. The five existing commits remain unchanged.
 
 Six concrete findings were recorded: three P1 and three P2. Five were addressed
 (two P1 and three P2); one P1 remains reproducible. Policy questions and
@@ -188,11 +315,13 @@ Logs are supporting workstation evidence, not committed company data.
 2. `8b529d472c02e797eb9bdb32d25614a80c3b2764` - Supplier email contract correction and unit/native persistence tests.
 3. `d2893958facc0dd5e3849a09265943ce743fc876` - atomic Payroll schedule guard, late conflict retention and unit/MySQL/Chrome tests.
 4. `9ddf30fab297f2b7127f418a80819d5fa42d828e` - authentication connection cleanup and fault regressions.
-5. Final audit/documentation checkpoint contains this report, explicit failing
-   freshness probe, documentation corrections and final progress. Its SHA is
-   provided in the final delivery; `git log origin/main..HEAD` lists exact commits.
+5. `27bf6cf06aadd8e3943892d049ffbc42cb70d7f7` - original audit/documentation checkpoint and failing freshness probe.
 
-Exact cumulative changed-file manifest (24):
+The blocker-resolution continuation adds only an investigation script and updates
+the two cleanup documents. These proposal/investigation changes are uncommitted;
+there is no new freshness-fix commit.
+
+Exact cumulative changed-file manifest including the continuation working tree (25):
 
 ```text
 ERP_V1_CLEANUP_PROGRESS.md
@@ -210,6 +339,7 @@ tests/README.md
 tests/browser_payroll_schedule.cjs
 tests/browser_supplier_management.cjs
 tests/mysql_payroll_freshness_audit.py
+tests/mysql_payroll_freshness_investigation.py
 tests/mysql_payroll_schedule_browser.py
 tests/mysql_payroll_schedule_smoke.py
 tests/mysql_receiving_smoke.py
@@ -225,6 +355,249 @@ No database/schema/migration, role seed, requirements, CSS, application JavaScri
 or unrelated GUI work changed. The only new permission-row use is locking an
 existing definition for scheduling; no permission/grant insertion in production.
 Synthetic fixtures alone contain test permissions/accounts/data.
+
+## Blocker-resolution investigation
+
+### Current evidence
+
+Baseline: clean feat/erp-v1-final-cleanup at 27bf6cf, exactly the five full SHAs
+above; merged GUI commit ee7e49b and GUI head 1f8d47c are ancestors. Read calculation,
+entry generation, workflow, period and adjustment repositories, Attendance writes,
+the effective Leave approval writer, related Flask routes, schema/migration
+definitions and test infrastructure. No paused branch was merged.
+
+Commands actually run in this continuation:
+
+- `python -u -B tests/mysql_payroll_freshness_audit.py`: **FAIL, exit 1**, unchanged
+  assertion reproduces the original same-second defect.
+- `python -u -B tests/mysql_payroll_freshness_investigation.py`: **exit 1,
+  investigation completed with C-05 unresolved**. This is a diagnostic, not a
+  passing regression suite. All 15 observations completed; both held-commit
+  concurrency cases used actual repository transactions and bounded test events,
+  not product sleeps. No application behavior or original failing probe changed.
+
+| Scenario observed | Current result | Interpretation |
+| --- | --- | --- |
+| Same-second edit then submit | Accepted | Defect |
+| Repeat submit while PROCESSING | Rejected | Existing status guard works |
+| Change before explicit calculation | Accepted after calculation | Correct control |
+| Multiple edits returning to original status | Accepted without recalculation | No durable change-generation evidence |
+| Explicit recalculation after edit | Accepted | Correct recovery control |
+| Ordinary later-second edit | Rejected | Existing greater-than timestamp check works in this limited case |
+| Weekday row moved outside cutoff | Accepted | Old employee/date source disappears from join |
+| Row reassigned to another employee | Accepted | Same missing-old-source gap |
+| Replacement row inserted after reassignment | Accepted without recalculation | New same-second row evades timestamp check |
+| Insert fills previously unrecorded day | Rejected until recalculation | Cached unrecorded_days guard works; not proof of general insertion freshness |
+| DRAFT cutoff moved after calculation | Accepted with old calculation | Saved calculation lacks a durable period-scope binding |
+| Edit after submission, then approve | Accepted | Approval repeats the same inadequate check |
+| Later-second edit after approval, then pay | Accepted | Payment checks statuses/counts only; post-approval policy is not established |
+| Attendance commits while submit is held after validation/before commit | Both commit | No writer coordination across validation and commit |
+| Attendance commits while approval is held after validation/before commit | Both commit | Same transaction-consistency defect |
+
+Logs: %TEMP%/erp_freshness_resolution_baseline.log and
+%TEMP%/erp_freshness_resolution_investigation.log. Both disposable servers shut
+down and their temporary directories were removed. Fixture timestamps were fixed
+only to reproduce collisions; later-second controls used a separate test session
+timestamp. No company configuration/database was used.
+
+### Complete lifecycle implications
+
+Calculation locks the period/entries and reads Attendance/approved Leave under
+locks, but stores only amounts/counters and a second-resolution calculated_at.
+Those locks end at commit. Submission/approval do not retain a comparable source
+version or coordinate with Attendance writers until commit. The stale query is
+an inner join over current employee/date membership, so removals/reassignments
+are invisible even independently of precision. A repeated submission is rejected
+by status; that guard cannot validate the first stale submission.
+
+Generation copies compensation fields and leaves calculation markers empty.
+Period date edits currently retain old calculation markers/counters. Adjustment
+writes refresh preview totals inside DRAFT; they must not mint attendance evidence.
+Return-to-Draft does not itself prove freshness; explicit calculation must do so.
+There is no application Attendance delete route/repository operation. Supported
+create/edit can change employee and date. Effective Leave approval directly inserts
+missing ON_LEAVE attendance and therefore is an Attendance writer too.
+
+Approved-to-Paid performs no source-freshness check. There is no existing
+APPROVED-to-DRAFT recovery route. Blocking stale/unverifiable approved runs or
+treating approval as an immutable payment snapshot has operational/policy
+consequences; neither is silently chosen here. Existing PAID amounts/statuses
+must never be rewritten by this fix.
+
+### Proposed approach: scoped durable generations and calculation snapshots
+
+**Design proposal only. No DDL, migration file or production code is implemented.**
+Recommend explicit monotonic employee/date generations and persisted daily
+snapshots, plus a transaction coordination row. This avoids timestamp semantics,
+content-hash collisions/ABA questions and invalidating an unrelated employee or
+out-of-period day merely because a global generation changed.
+
+Proposed additive schema:
+
+1. InnoDB payroll_attendance_guard: singleton guard_id=1, primary key and enforced
+   singleton CHECK. This row is locked, never used as a mutable freshness counter.
+2. InnoDB payroll_attendance_generations: primary key (employee_id, attendance_date),
+   generation signed BIGINT NOT NULL with enforced positive bound. Absence means
+   generation zero. Rows are durable tombstones: never remove/reset/recycle them
+   when an Attendance row moves or a future approved delete occurs.
+3. InnoDB payroll_attendance_snapshots: primary key (payroll_entry_id,
+   attendance_date), captured employee_id and generation (zero allowed). Entry FK
+   preserves referential integrity; do not cascade away PAID evidence. One row for
+   every scheduled weekday, including a missing Attendance day at generation zero.
+4. Nullable metadata on payroll_entries: attendance_evidence_version SMALLINT
+   UNSIGNED plus attendance_scope_start/end DATE. NULL means unknown/unverified,
+   not fresh. A known version requires a complete matching daily snapshot set,
+   captured employee identity and exact current period scope.
+
+The narrow attendance generations should cover every accepted Attendance insert
+or save, including date/employee moves. An accepted no-op save may conservatively
+advance the generation and require recalculation; document this explicitly.
+Increment the old and new keys on moves, once per distinct key in deterministic
+order. Never infer an old key from submitted values: read the locked stored row.
+This preserves detection across multiple edits and moves away/back, and catches
+replacement insertions. No Attendance delete endpoint is added; any future
+approved deletion must advance the old key and retain its tombstone.
+Leave approval's direct attendance inserts must advance the same generations in
+the same transaction. Counter exhaustion must fail closed before arithmetic,
+never wrap/clamp/reset, including non-strict SQL mode.
+
+During explicit calculation, acquire coordination, period and entry locks, read
+current generation/source data, run the unchanged existing formula and save
+amounts plus full snapshots/version/scope in the same transaction. Missing days
+still use the existing unrecorded_days behavior. Calculation failure rolls back
+both result and evidence. Only explicit successful calculation can create evidence.
+
+Submission and approval acquire the same coordination first, validate current
+period/entry statuses and exact saved scope, compare every expected weekday
+generation/employee, and retain coordination through commit. Missing/unknown
+version, incomplete snapshot, changed scope or generation rejects without
+transition or success audit. Do not silently recalculate. A source writer that
+commits first is observed; one that arrives after validation waits until the
+transition commits, and its subsequent generation change makes later validation
+stale. This linearization does not prohibit future HR edits or authorize payment
+after them; payment behavior still requires the decision below.
+Use current locking reads for sources/generations after any guard wait, not an
+earlier REPEATABLE READ snapshot. Normalized daily rows are proposed instead of a
+JSON blob so completeness, keys and generation comparisons remain directly
+inspectable and testable; this trades extra rows for explicit scope integrity.
+
+### Locking, scope and migration plan
+
+Use one conservative guard initially to make lock order inspectable:
+guard -> existing schedule permission gate (when needed) -> periods by ID ->
+entries by ID -> existing source/reference locks -> generation keys sorted by
+employee/date. All relevant Payroll mutators (generation, calculation, period
+edit/cancel, adjustments, submit/return/approve and proposed payment validation)
+must acquire the guard before their present locks. Attendance and effective Leave
+approval take it before any employee/type/attendance locks. This also prevents
+an adjustments entry-to-period lock order from interleaving with period-to-entry
+calculation. Audit remains best effort after confirmed business commit.
+
+Inspect all other Leave writers for a cycle before implementation. Source
+classification changes (such as leave_types.is_paid for an already approved
+ON_LEAVE interval) can change calculated pay without editing Attendance. This
+narrow mechanism must not claim complete Leave/Payroll source certification.
+Recommend a separately specified approved-Leave evidence component before
+certifying full salary freshness; no Leave eligibility or formula is changed here.
+
+Unrelated employees/dates share a short lock but do not invalidate each other's
+evidence. The singleton serializes participating writers and may reduce throughput.
+Generation rows grow by distinct edited employee/date; snapshots grow by entry
+times scheduled weekdays. No retention purge or arbitrary cutoff limit is inferred;
+measure real staging workloads separately. Direct privileged SQL, imports and old
+workers bypassing coordination are outside its guarantee. Inventory external
+writers and either adapt/fence them or refuse a freshness guarantee.
+
+Proposed migration name: 010_payroll_attendance_freshness.py, subject to confirming
+the reserved numbering of paused branches; do not create/reuse their 004-009 files.
+It would use the explicit-target, password-prompt, no-dotenv/no-import-DDL pattern
+of migration 008. Validate MySQL version, InnoDB, columns, full keys/CHECKs and
+partial states; be repeatable without resetting counters/evidence.
+
+- Existing Attendance rows need no pretend history backfill: generation zero is
+  the baseline only for a *new explicit calculation*. Existing calculations keep
+  NULL evidence. Never manufacture snapshots from today's Attendance to attest
+  an older calculation.
+- Existing DRAFT/PROCESSING runs need explicit calculate or return-to-Draft and
+  calculate before transition. Preserve stored amounts/history until that user
+  action; no bulk rewrite or automatic resubmission.
+- Existing APPROVED runs need the explicit owner decision below. Preserve PAID
+  rows unchanged and readable; no migration of salaries or status history.
+- Fresh installations define guard/generations with Attendance and evidence
+  tables/columns with Payroll calculation schema, in the documented install order.
+  Attendance-only installations must not be forced to install optional Payroll
+  business tables. Missing/partial required freshness structures fail closed for
+  participating writes; update schema diagnostics and relevant admission checks,
+  without a testing or legacy bypass.
+- Deployment requires separate approval, restorable backup, drained writes across
+  Attendance/Leave/Payroll and all workers, explicit migration, schema checks and
+  coordinated new workers. No mixed-worker rollout. DDL implicitly commits;
+  interrupted application requires inspected repeat/fix-forward, not assumed rollback.
+- Retain additive schema on recovery. Old binaries cannot provide this guarantee
+  and must not resume participating writes simply because columns remain. A code
+  rollback without a reviewed source-writer/freshness plan is not safe.
+- Lock timeout/deadlock: rollback, safe reload feedback and no success audit.
+  Lost commit acknowledgment is uncertain: reconcile before explicit retry; no
+  automatic replay, new evidence minting or counter compensation/reset.
+
+### Alternatives rejected and approval boundary
+
+Sleep/delay, greater-than-or-equal timestamp checks and microseconds alone do not
+provide source identity/history or validation-to-commit protection. Locking only
+existing Attendance rows misses moved/absent keys and future inserts. A hash of
+current values without monotonic generations misses edit-and-revert history.
+A global counter falsely invalidates unrelated cutoffs/employees. Reusing notes
+or timestamps as an undocumented evidence-version field is not maintainable.
+Simply clearing calculated_at in current writers cannot distinguish legacy
+unverified calculations at cutover and still needs complete writer coordination.
+No automatic recalculation, historical backfill or paused-branch merge is proposed.
+
+Owner approval requested for this concrete scope before implementation:
+
+1. Approve the additive generation/snapshot schema and coordinated writer rollout
+   for this attendance invariant (development/disposable implementation only;
+   company migration/deployment stays separately prohibited).
+2. Approve fail-closed NULL/unknown evidence for legacy DRAFT/PROCESSING runs,
+   requiring explicit user recalculation rather than synthesized backfill.
+3. Decide APPROVED-to-Paid handling. **Recommend rejecting payment when evidence is
+   stale or unknown, including legacy APPROVED runs, with no auto-reopen/reset.**
+   This can strand approved runs because there is no approved recovery workflow.
+   Define/approve a separate recovery procedure before operational use, or
+   explicitly choose approval-as-payment-snapshot semantics. Do not infer an
+   exception for Super Admin.
+
+This approval boundary comes from the user's blocker-resolution assignment,
+section 5: "If an explicit owner decision is required before implementing the
+design, stop the affected implementation and present the proposal for approval."
+Schema compatibility/legacy treatment and payment lifecycle are the concrete
+decisions. This is not a request to access company data or deploy.
+
+### Required verification after approval (not yet executed for a fix)
+
+Keep the original audit assertion unchanged and require it to pass. Add exact
+generation/snapshot and real-transaction tests for same/later-second changes,
+changes before calculation, multiple edits/ABA, old/new employee/date keys,
+replacement insertion, zero-generation absent days, out-of-scope stability,
+explicit recalculation, period-scope changes and complete evidence validation.
+Use actual lock waits and barriers in both winner orderings for calculation,
+submit and approve versus Attendance/Leave writers under RR/RC; test rollback,
+1205/1213, generation exhaustion, precommit and lost-ack faults, incomplete/
+repeated migration and schema admission. Add payment/legacy cases only according
+to the approved policy, preserving PAID history.
+
+Run authorization/CSRF and denied-mutation/audit snapshots, relevant Payroll/HR/
+Attendance/Leave/security suites, affected Chrome workflow/recovery checks, full
+Python and JS/navigation, syntax/dependencies/whitespace and cumulative diff.
+The previous 532/11/36 results above remain historical cleanup evidence, not
+verification of this unimplemented proposal. No expensive full suite was repeated
+for a production-code-free investigation.
+
+Continuation changed files only: ERP_V1_CLEANUP_REPORT.md,
+ERP_V1_CLEANUP_PROGRESS.md, tests/mysql_payroll_freshness_investigation.py.
+No new fix commit, push, merge, migration or deployment. P0 identified: zero;
+P1 implementation findings: two fixed, C-05 unresolved; P2 findings: three
+addressed. D-03 salary policy and other owner decisions remain separate.
+Assignment 2 is **not ready for final publication**.
 
 ## Review and Assignment 3 recommendation
 

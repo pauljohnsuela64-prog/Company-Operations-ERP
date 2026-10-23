@@ -10,12 +10,14 @@ Run this additional explicit gate before any release-readiness claim:
 ```
 
 It uses actual calculation and Attendance writers on verified disposable MySQL.
-At the Assignment 2 checkpoint it **fails (exit 1)**: a same-second PRESENT to
-ABSENT edit is accepted for submission without recalculation. This is an unresolved
-P1 release blocker, not a skipped test or a passing integration suite. It is named
-audit rather than smoke so the existing general CI remains distinct from this
-explicit release gate; a green CI result does not waive it. No failure assertion
-is disabled. See [ERP_V1_CLEANUP_REPORT.md](../ERP_V1_CLEANUP_REPORT.md).
+The approved development fix now passes this unchanged gate. CI also discovers
+mysql_payroll_freshness_smoke.py (15 scenarios, ordered races and failure tests)
+and mysql_payroll_freshness_migration_smoke.py (legacy/partial/fresh structures).
+Run tests/mysql_payroll_freshness_browser.py for real Chrome role/CSRF and stale
+submit/approve/pay checks. All use verified disposable synthetic data only.
+See [PAYROLL_ATTENDANCE_FRESHNESS.md](../PAYROLL_ATTENDANCE_FRESHNESS.md) for the
+contract and production/recovery approval limits. A passing gate does not authorize
+production rollout or certify salary policy.
 
 ## GitHub Actions CI
 
@@ -28,7 +30,7 @@ The workflow has three independent jobs:
 | --- | --- | --- |
 | Python unit tests and syntax | Ubuntu 24.04, Python 3.14 | Install `requirements.txt`; `pip check`; compile tracked Python; parse Jinja templates; complete unittest discovery |
 | JavaScript tests and syntax | Ubuntu 24.04, Node 24 | `node --check` for tracked JS/CJS files; navigation tests; no npm install |
-| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 36 suites |
+| Disposable MySQL integration | Windows 2025, Python 3.14 | Discover compatible `mysqld`; run all `tests/mysql_*_smoke.py` sequentially, currently 38 suites |
 
 Python, Node and runner labels select supported release lines, not immutable OS
 images. Official checkout/setup Actions are pinned to full commit SHAs with release
