@@ -1,6 +1,9 @@
 # ERP v1 cleanup progress
 
-Assignment 2 is in progress; this is not a production-readiness certification.
+Assignment 2 audit and safe repairs are complete; **release acceptance is BLOCKED**
+by C-05 Payroll freshness and the D-03 salary-policy acceptance gate documented in
+ERP_V1_CLEANUP_REPORT.md. This is not production-readiness certification.
+Earlier checkpoints below retain their historical pending states.
 
 ## Verified prerequisites
 
@@ -69,3 +72,13 @@ Supplier final Chrome rerun including persisted legacy email assertion passed (`
 - Final schedule MySQL suite passes, including observed wait on the actual permissions row via performance_schema.data_lock_waits. An earlier diagnostic used innodb_trx.trx_query filtering and failed to observe the wait; replaced with the precise waiting-table join, retaining the required actual-wait assertion.
 - `mysql_security_smoke.py` passed after the authentication cleanup, covering committed revocation/role changes, disabled users, credential invalidation and real login. Authentication fault tests (3) and session-security tests (19) also pass.
 - Schedule fix local commit: `d2893958facc0dd5e3849a09265943ce743fc876`. Remaining MySQL batch/syntax/final audit documentation pending. The explicit freshness audit remains FAIL/P1 and is not included in the 532 passing unit-test count.
+
+## Final audit checkpoint
+
+- All major modules reviewed; current findings, evidence, severity, unresolved policy and Assignment 3 recommendations recorded in ERP_V1_CLEANUP_REPORT.md.
+- C-01/C-03 P1 and C-02/C-04 P2 repairs verified and committed separately. C-06 P2 documentation correction included in final checkpoint. C-05 P1 remains deliberately reproducible, not suppressed. Six findings: 3 P1/3 P2; 5 addressed, 1 implementation release blocker remains.
+- Full 532 Python / 11 navigation tests and dependency checks passed. All 34 remaining existing MySQL suites passed (batch exit 0); together with expanded receiving and new schedule checks, 36/36 smoke suites passed. The separate freshness audit FAILED (exit 1).
+- Supplier and Payroll affected Chrome workflows passed, including composed authentication/CSRF and IT authorization workflows. Final Payroll lock-wait assertion passed using actual waiting-table join, without weakening the race/rollback assertions.
+- Authentication local commit: `9ddf30fab297f2b7127f418a80819d5fa42d828e`. Exact four repair SHAs and cumulative 24-file manifest are in the report. Final audit/documentation commit SHA supplied at delivery.
+- No production/schema/permission changes or paused-branch merges. No push/merge. Remaining work is human review, explicit freshness/policy integration approval, then independent Assignment 3; this checkpoint does not authorize those actions.
+- Final syntax: 174 Python files compiled, 110 Jinja templates parsed, 28 JavaScript files passed node --check. Cumulative git diff --check origin/main passed. Actual cumulative diff: 24 files. Final report manifest and four repair SHAs checked against Git. No expensive suites rerun after documentation-only updates.
