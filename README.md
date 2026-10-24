@@ -82,10 +82,33 @@ flowchart LR
 
 ## Screenshots
 
-Screenshot capture is pending a verified synthetic-only browser session.
-The [portfolio screenshot plan](docs/PORTFOLIO_SCREENSHOT_PLAN.md) specifies the
-pages, framing, fictional-data checks and publication review for each image.
-Image links will be added after capture and inspection.
+These screenshots show the running local ERP with fictional portfolio-demo data.
+They were captured at a 1440 × 1000 viewport using the synthetic Super Admin
+account; available actions depend on the signed-in user's permissions.
+
+**Dashboard** — Workforce indicators and the start of the operations overview.
+Zero counts reflect the existing demo data on the capture date.
+
+![ERP dashboard showing synthetic workforce indicators and module overview cards](docs/screenshots/01-dashboard.png)
+
+**Human Resources** — Fictional employees, department assignments and employment status.
+
+![Human Resources employee list with three fictional employees in demo departments](docs/screenshots/02-human-resources.png)
+
+**Inventory** — Existing demo item balances, warehouse assignments and reorder levels.
+
+![Inventory stock table showing synthetic pens and notebooks in the demo warehouse](docs/screenshots/06-inventory.png)
+
+**Procurement** — A synthetic purchase order in its existing partially received state.
+
+![Procurement purchase order list showing a fictional supplier and partially received order](docs/screenshots/08-procurement.png)
+
+**Finance** — Expense filters and a fictional paid electricity bill.
+
+![Finance expense list showing a synthetic paid electricity expense of 1250 Philippine pesos](docs/screenshots/10-finance.png)
+
+The [portfolio screenshot plan](docs/PORTFOLIO_SCREENSHOT_PLAN.md) documents the
+page selection, fictional-data safeguards and review criteria for further captures.
 
 ## Authentication and access control
 
