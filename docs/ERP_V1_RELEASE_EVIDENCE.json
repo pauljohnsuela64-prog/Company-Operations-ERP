@@ -1,0 +1,202 @@
+{
+  "baseline": "4b927555c5e76aa236bf9924895daec4c27198df",
+  "baseline_ci": {
+    "run_id": 39917785782,
+    "conclusion": "success",
+    "jobs": [
+      120295412923,
+      120295413186,
+      120295413697
+    ]
+  },
+  "mysql_smoke_suites": [
+    "mysql_admin_integrity_smoke.py",
+    "mysql_attendance_smoke.py",
+    "mysql_audit_log_reading_smoke.py",
+    "mysql_audit_smoke.py",
+    "mysql_budget_management_smoke.py",
+    "mysql_dashboard_reliability_smoke.py",
+    "mysql_employee_listing_smoke.py",
+    "mysql_expense_category_management_smoke.py",
+    "mysql_finance_audit_smoke.py",
+    "mysql_finance_payment_smoke.py",
+    "mysql_finance_reporting_smoke.py",
+    "mysql_finance_validation_smoke.py",
+    "mysql_helpdesk_smoke.py",
+    "mysql_hr_audit_smoke.py",
+    "mysql_hr_revision_smoke.py",
+    "mysql_hr_validation_smoke.py",
+    "mysql_inventory_categories_smoke.py",
+    "mysql_inventory_items_smoke.py",
+    "mysql_inventory_master_smoke.py",
+    "mysql_inventory_reporting_smoke.py",
+    "mysql_it_asset_audit_smoke.py",
+    "mysql_it_asset_category_validation_smoke.py",
+    "mysql_it_asset_lifecycle_smoke.py",
+    "mysql_it_asset_reporting_smoke.py",
+    "mysql_it_asset_validation_smoke.py",
+    "mysql_it_authorization_smoke.py",
+    "mysql_leave_smoke.py",
+    "mysql_payroll_freshness_migration_smoke.py",
+    "mysql_payroll_freshness_smoke.py",
+    "mysql_payroll_schedule_smoke.py",
+    "mysql_po_supplier_eligibility_smoke.py",
+    "mysql_procurement_smoke.py",
+    "mysql_receiving_smoke.py",
+    "mysql_schema_compatibility_smoke.py",
+    "mysql_security_smoke.py",
+    "mysql_stock_smoke.py",
+    "mysql_supplier_management_smoke.py",
+    "mysql_warehouse_smoke.py"
+  ],
+  "browsers": [
+    {
+      "suite": "mysql_gui_procurement_browser.py",
+      "exit": 0
+    },
+    {
+      "suite": "mysql_gui_inventory_catalog_browser.py",
+      "exit": 0
+    },
+    {
+      "suite": "mysql_gui_warehouse_browser.py",
+      "exit": 0
+    },
+    {
+      "suite": "mysql_gui_tables_forms_browser.py",
+      "final_exit": 0,
+      "initial_exit": 1,
+      "final_log": "erp_release_tables_isolated.log"
+    },
+    {
+      "suite": "mysql_finance_functional_browser.py",
+      "exit": 0
+    },
+    {
+      "suite": "mysql_admin_integrity_browser.py",
+      "exit": 0
+    },
+    {
+      "suite": "mysql_hr_validation_browser.py",
+      "exit": 0
+    },
+    {
+      "suite": "mysql_attendance_browser.py",
+      "exit": 0
+    },
+    {
+      "suite": "mysql_leave_browser.py",
+      "exit": 0
+    },
+    {
+      "suite": "mysql_helpdesk_browser.py",
+      "exit": 0
+    },
+    {
+      "suite": "mysql_navigation_dashboard_browser.py",
+      "exit": 0
+    }
+  ],
+  "logs": [
+    {
+      "name": "erp_release_python.log",
+      "sha256": "7a0e5444838cfb34ed71ef0bf321e2dc6d6395b5fcf6ea3b4d2aa5db1080534c"
+    },
+    {
+      "name": "erp_release_navigation.log",
+      "sha256": "3ace6010c09de6c4f156be5a0fa5b14aef1d7e6c011338632402d9525bb948ff"
+    },
+    {
+      "name": "erp_release_mysql.log",
+      "sha256": "9dbd07285bb8b3a57cadc907bb42fababd605aee06ff309170a070f5e1350cce"
+    },
+    {
+      "name": "erp_release_gui_v1_corrected.log",
+      "sha256": "d4054cbaef6ffbc2f9bd1101d6fd53b393004875c5ad8a2ed16d58689acb77fd"
+    },
+    {
+      "name": "erp_release_accessibility_chrome.log",
+      "sha256": "fbdcc49adb803fc2632fdb7cb45125e1daf737816a90963e3ba3de3e5f1a2907"
+    },
+    {
+      "name": "erp_release_accessibility_edge_isolated.log",
+      "sha256": "66adf21e1171f41ccec9e341a950491f0de2788e4cf9ed6100f9ccdc9cf7fb8c"
+    },
+    {
+      "name": "erp_release_rehearsal_verified.log",
+      "sha256": "8783e53e762dc276a0ae650bf692935d90b70117c7a0bbd123029ee98dd63e4b"
+    },
+    {
+      "name": "erp_release_tables_isolated.log",
+      "sha256": "af369c1ec96125b274971c069cac355faedba2853b5e9cfca4e5ea0454ba08e4"
+    },
+    {
+      "name": "erp_release_original_audit.log",
+      "sha256": "be932774386287adc44a933a0aad014a0f1322186b26827aff279f2e7cde2bb0"
+    },
+    {
+      "name": "erp_release_python_final.log",
+      "sha256": "f5500d6bcbcad6ec9ea61c8987539ace3f97e2058f5620d740352c19afedf31c"
+    },
+    {
+      "name": "erp_release_rehearsal_verified.log",
+      "sha256": "8783e53e762dc276a0ae650bf692935d90b70117c7a0bbd123029ee98dd63e4b"
+    },
+    {
+      "name": "erp_release_freshness_browser_verified.log",
+      "sha256": "c8745af420dbd20579a826b1937f759b76d87bf47e8ff79d896e25f7739f6f78"
+    },
+    {
+      "name": "erp_release_syntax_final.log",
+      "sha256": "084ca4ceabee1b00528d852ec41137377701d712a4edad493a96fdf1e86e60c6"
+    }
+  ],
+  "limits": [
+    "synthetic disposable data only",
+    "no production certification",
+    "temporary logs require retention",
+    "AX checks are partial automated checks"
+  ],
+  "final_python": {
+    "tests": 544,
+    "failures": 0,
+    "seconds": 11.719
+  },
+  "navigation": {
+    "tests": 11,
+    "failures": 0
+  },
+  "extra_browser_checks": {
+    "chrome": {
+      "version": "155.0.8059.85",
+      "cases": 55,
+      "named_control_instances": 407,
+      "result": "PASS"
+    },
+    "edge": {
+      "version": "155.0.4283.62",
+      "cases": 55,
+      "named_control_instances": 407,
+      "result": "PASS",
+      "initial_failure": "Windows socket 10048"
+    }
+  },
+  "initial_failures": [
+    "sandbox MySQL bind before expense-category assertions",
+    "frozen Payroll value and Supplier email expectations",
+    "concurrent Supplier page-count assertion (cause unproven; isolated pass)",
+    "Edge socket exhaustion 10048",
+    "new rehearsal fixture names/audit identity corrected before final pass"
+  ],
+  "syntax": {
+    "python": 183,
+    "jinja": 110,
+    "javascript": 30,
+    "result": "PASS"
+  },
+  "source_changes": "Tests, documentation and README only; no application/schema/policy edits",
+  "local_test_commits": [
+    "99e09e64a41760cc7954656bb2fb8f895253f974",
+    "b33aad184893e27c6ec681145bec64f30fd0706b"
+  ]
+}
