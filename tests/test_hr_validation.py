@@ -145,13 +145,23 @@ class HRRouteTests(unittest.TestCase):
         self.assertIn('Employee no longer exists',response.get_data(as_text=True))
 
     def test_desired_state_is_explicit_and_repeatable(self):
-        for desired in ('0','0','1','1'):
-            self.assertEqual(self.client.post('/departments/1/status',data={'is_active':desired,'expected_revision':'1'}).status_code,302)
-            self.set_department_active_status.assert_called_with(1,desired=='1',expected_revision=1)
-        self.set_department_active_status.reset_mock()
-        for fields in ({},{'is_active':'true'}, MultiDict([('is_active','0'),('is_active','1')])):
-            self.assertEqual(self.client.post('/departments/1/status',data=MultiDict([*fields.items(multi=True),('expected_revision','1')]) if isinstance(fields,MultiDict) else dict(fields,expected_revision='1')).status_code,302)
-        self.set_department_active_status.assert_not_called()
+        # The business write is mocked, so its audit persistence must be too.
+        # Otherwise the best-effort audit wrapper logs a blocked real DB attempt
+        # even though this route-only test passes (and CI annotates the traceback).
+        with patch.object(self.erp, 'create_audit_log') as audit, self.assertNoLogs(self.erp.app.logger, level='ERROR'):
+            for desired in ('0','0','1','1'):
+                audit.reset_mock()
+                self.assertEqual(self.client.post('/departments/1/status',data={'is_active':desired,'expected_revision':'1'}).status_code,302)
+                self.set_department_active_status.assert_called_with(1,desired=='1',expected_revision=1)
+                audit.assert_called_once()
+                self.assertEqual(audit.call_args.kwargs['action'], 'ACTIVATE' if desired=='1' else 'DEACTIVATE')
+                self.assertEqual(audit.call_args.kwargs['entity_id'], 1)
+            audit.reset_mock()
+            self.set_department_active_status.reset_mock()
+            for fields in ({},{'is_active':'true'}, MultiDict([('is_active','0'),('is_active','1')])):
+                self.assertEqual(self.client.post('/departments/1/status',data=MultiDict([*fields.items(multi=True),('expected_revision','1')]) if isinstance(fields,MultiDict) else dict(fields,expected_revision='1')).status_code,302)
+            self.set_department_active_status.assert_not_called()
+            audit.assert_not_called()
 
     def test_permissions_revocation_csrf_and_disabled_accounts(self):
         paths=['/employees/add','/employees/1/edit','/departments/add','/departments/1/edit','/departments/1/status']
